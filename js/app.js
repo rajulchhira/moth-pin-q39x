@@ -343,7 +343,7 @@ function paintOtpMail(code, email) {
   if (!box) return;
   box.innerHTML = `<div class="gmail-card">
     <div class="gmail-from">Gmail · Inbox</div>
-    <p class="gmail-meta">From <b>Bizgarh</b> &lt;hello@bizgarh.in&gt;<br>To ${escapeHtml(email)}</p>
+    <p class="gmail-meta">From <b>Bizgarh</b> &lt;desk@bizgarh.com&gt;<br>To ${escapeHtml(email)}</p>
     <h4>Your verification code</h4>
     <p class="gmail-code">${code}</p>
     <p class="muted">This code expires in 5 minutes. Do not share it.</p>
