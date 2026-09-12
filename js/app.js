@@ -751,7 +751,7 @@ function footerHTML() {
         </div>
         <div>
           <h4>Support</h4>
-          <a href="mailto:hello@bizgarh.in">hello@bizgarh.in</a>
+          <a href="mailto:desk@bizgarh.com">desk@bizgarh.com</a>
           <a href="contact.html">Refund help</a>
         </div>
       </div>
