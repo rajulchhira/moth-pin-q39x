@@ -1,2 +1,27 @@
 [build]
   publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/auth/telegram/callback"
+  to = "/.netlify/functions/telegram?flow=callback"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/auth/telegram"
+  to = "/.netlify/functions/telegram?flow=start"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/ticket/*"
+  to = "/.netlify/functions/ticket?ticket=:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/status"
+  to = "/.netlify/functions/status"
+  status = 200
+  force = true

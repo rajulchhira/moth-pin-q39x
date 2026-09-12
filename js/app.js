@@ -410,7 +410,7 @@ async function consumeOAuth() {
     completeStudentSession(user, "Logged in with " + (data.provider || providersLabel(user)));
     return true;
   } catch {
-    toast("OAuth server is not running. Start oauth-server.ps1");
+    toast("Telegram login could not finish. Try again.");
     return true;
   }
 }
