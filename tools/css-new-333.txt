@@ -1,0 +1,58 @@
+.hero h1 {
+  font-size: 62px;
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #1e293b;
+}
+.hero-lead {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.22em;
+  font-size: 46px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+.le-word {
+  display: inline-flex;
+  align-items: baseline;
+  margin: 0;
+  color: #1e293b;
+  animation: leTint 5.5s ease-in-out infinite;
+}
+.le-rest { display: inline; word-spacing: 0.04em; }
+.le-l {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  transform-origin: left center;
+  animation: leL 5.5s cubic-bezier(.65,.05,.36,1) infinite;
+}
+.le-flip {
+  display: inline-grid;
+  place-items: center;
+  width: .58em;
+}
+.le-flip i, .le-flip b {
+  grid-area: 1 / 1;
+  font-style: normal;
+  font-weight: inherit;
+  line-height: 1;
+}
+.le-flip i { animation: leE 5.5s ease-in-out infinite; }
+.le-flip b {
+  color: #e11d74;
+  animation: leEarn 5.5s ease-in-out infinite;
+  text-shadow: 0 0 18px rgba(225, 29, 116, .35);
+}
+.le-arn { display: inline-block; }
+@keyframes leL {
+  0%, 22% { max-width: .68em; opacity: 1; transform: translateX(0) rotateY(0); filter: blur(0); }
+  36%, 64% { max-width: 0; opacity: 0; transform: translateX(-6px) rotateY(-75deg); filter: blur(2px); }
+  78%, 100% { max-width: .68em; opacity: 1; transform: none; filter: blur(0); }
+}

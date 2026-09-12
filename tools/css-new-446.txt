@@ -1,0 +1,4 @@
+  seedLiveClasses();
+  renderHomeExtras();
+  bindExploreTiles();
+  renderHomeReviews();

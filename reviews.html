@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learner reviews | Bizgarh</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=press2">
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="page">
+    <section class="page-hero">
+      <div class="container">
+        <h1>Learner reviews</h1>
+        <p class="muted" id="reviewsSummary">Notes from people who actually sat with the lessons.</p>
+        <div class="filters" id="reviewFilters">
+          <button class="chip active" data-rev="all">All</button>
+          <button class="chip" data-rev="5">5 star</button>
+          <button class="chip" data-rev="4">4 star</button>
+          <button class="chip" data-rev="3">3 star & below</button>
+          <button class="chip" data-rev="hi">Hinglish</button>
+          <button class="chip" data-rev="en">English</button>
+        </div>
+        <input class="review-search" id="reviewSearch" type="search" placeholder="Search name, city or course...">
+      </div>
+    </section>
+    <section class="section" style="padding-top:12px">
+      <div class="container">
+        <div class="reviews-grid" id="reviewsGrid"></div>
+        <div class="reviews-more">
+          <button class="btn btn-primary" id="loadMoreReviews" type="button">Load more</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+  <script src="js/reviews-data.js?v=7"></script>
+  <script src="js/app.js?v=logo1"></script>
+  <script src="js/lms.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+            <p class="muted">18,000+ traders and investors are learning with TradeShala.</p>

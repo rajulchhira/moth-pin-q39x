@@ -1,0 +1,27 @@
+    setInterval(swap, 3200);
+  }
+  const dust = document.getElementById("heroDust");
+  if (dust) {
+    dust.innerHTML = Array.from({ length: 28 }, (_, i) =>
+      `<span style="--x:${6 + (i * 3.4) % 88}%;--y:${12 + (i * 13) % 70}%;--d:${(i * 0.22).toFixed(1)}s;--s:${0.4 + (i % 6) * 0.16}"></span>`
+    ).join("");
+  }
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduceMotion) {
+    document.querySelectorAll("[data-count]").forEach((el) => {
+      const target = parseFloat(el.dataset.count);
+      const suffix = el.dataset.suffix || "";
+      const decimals = parseInt(el.dataset.decimals || "0", 10);
+      const start = performance.now();
+      const duration = 1400;
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const val = target * eased;
+        const shown = decimals ? val.toFixed(decimals) : Math.round(val).toLocaleString("en-IN");
+        el.textContent = shown + suffix;
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }

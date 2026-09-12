@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control | Bizgarh</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=logo1">
+  <link rel="stylesheet" href="css/admin.css?v=logo1">
+</head>
+<body class="ad-body">
+  <div id="staffLogin" class="ad-login">
+    <form class="ad-login-card" id="staffLoginForm">
+      <div class="logo" style="margin-bottom:8px">
+        <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+          <defs>
+            <linearGradient id="ag" x1="8" y1="2" x2="34" y2="38" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#F7E7B8"/>
+              <stop offset=".48" stop-color="#D4B06A"/>
+              <stop offset="1" stop-color="#9A7428"/>
+            </linearGradient>
+          </defs>
+          <rect width="40" height="40" rx="11" fill="#11141C"/>
+          <rect x="4.35" y="4.35" width="31.3" height="31.3" rx="7.2" stroke="url(#ag)" stroke-width="1.15"/>
+          <path fill="url(#ag)" fill-rule="evenodd" d="M14.15 10.15h7.55c4.85 0 7.55 2.35 7.55 5.85 0 2.35-1.45 4.15-3.85 5.05 2.55.7 4.75 2.85 4.75 6.35 0 4.15-3.55 6.65-8.85 6.65h-7V10.15Zm3.4 2.45v5.45h4.2c2.4 0 3.75-1.15 3.75-2.75s-1.4-2.65-3.65-2.65h-4.3Zm0 8.15v7.7h4.85c2.85 0 4.7-1.5 4.7-3.9s-1.85-3.7-4.7-3.7H17.55Z"/>
+        </svg></span>
+        <span class="logo-word">Bizgarh</span>
+      </div>
+      <h2>Control center</h2>
+      <p class="muted">Super admin and sub-admin sign in. Student classroom stays on the public site.</p>
+      <div class="field"><label>Email</label><input name="email" type="email" required placeholder="admin@bizgarh.in"></div>
+      <div class="field"><label>Password</label><input name="password" type="password" required></div>
+      <div class="field hidden" id="totpWrap"><label>Authenticator code</label><input name="totp" placeholder="000000"></div>
+      <button class="btn btn-primary btn-block">Login</button>
+      <p class="muted" style="margin-top:12px;font-size:13px">Owner: <strong>admin@bizgarh.in</strong> / <strong>admin123</strong><br>Sub-admin: <strong>aarav@bizgarh.in</strong> / <strong>creator123</strong><br>If 2FA is on, use code <strong>000000</strong>.</p>
+    </form>
+  </div>
+
+  <div class="ad-app hidden" id="adminApp">
+    <aside class="ad-side" id="adminSide"></aside>
+    <main class="ad-main">
+      <header class="ad-head">
+        <div>
+          <button class="btn btn-ghost ad-menu" type="button" id="adMenu">Menu</button>
+          <h1 id="adminTitle">Dashboard</h1>
+          <p class="muted" id="adminSub">Live platform control</p>
+        </div>
+        <span class="ad-pill" id="adminPill">Owner</span>
+      </header>
+      <div id="adminView"></div>
+    </main>
+  </div>
+
+  <div class="overlay" id="editCourseOverlay">
+    <div class="modal" style="width:min(560px,100%)">
+      <button class="close-x" type="button" id="closeEditCourse">×</button>
+      <h3>Edit course</h3>
+      <form id="editCourseForm" class="admin-form admin-form-edit" style="margin-top:8px">
+        <input type="hidden" name="courseId">
+        <input name="title" placeholder="Course title" required>
+        <input name="instructor" id="editInstructorField" placeholder="Instructor" required>
+        <input name="price" type="number" min="0" placeholder="Price ₹" required>
+        <select name="cat" required>
+          <option value="trending">Trending</option>
+          <option value="beginners">Beginners</option>
+          <option value="options">Options</option>
+          <option value="investing">Investing</option>
+          <option value="ta">Charts</option>
+          <option value="hindi">Hindi</option>
+          <option value="crypto">Crypto</option>
+          <option value="strategy">Strategy</option>
+        </select>
+        <input name="hours" placeholder="Hours">
+        <input name="lessons" type="number" placeholder="Lessons">
+        <textarea name="description" placeholder="Course description"></textarea>
+        <button class="btn btn-primary">Save changes</button>
+      </form>
+    </div>
+  </div>
+  <div class="overlay" id="videosOverlay">
+    <div class="modal" style="width:min(640px,100%)">
+      <button class="close-x" type="button" id="closeVideos">×</button>
+      <h3 id="videosTitle">Course videos</h3>
+      <p class="muted" style="margin:6px 0 12px">Upload an MP4 or paste a direct video link.</p>
+      <div id="videosList"></div>
+      <form id="addVideoForm" class="admin-form admin-form-edit" style="margin-top:16px">
+        <input type="hidden" name="courseId">
+        <input name="title" placeholder="Lesson title" required>
+        <input name="dur" placeholder="Duration (05:20)">
+        <input name="src" placeholder="Direct MP4 / WebM URL">
+        <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
+        <button class="btn btn-primary" type="submit">Add lesson</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js?v=logo1"></script>
+  <script src="js/lms.js"></script>
+  <script src="js/admin-core.js?v=bizgarh1"></script>
+  <script src="js/admin.js?v=legacy"></script>
+  <script src="js/admin-app.js?v=logo1"></script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+.review-row.reverse .review-track { animation-direction: reverse; animation-duration: 84s; }
+.review-marquee:hover .review-track { animation-play-state: paused; }

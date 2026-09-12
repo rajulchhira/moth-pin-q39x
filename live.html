@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live classes | Bizgarh</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=lms1">
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="page">
+    <section class="page-hero">
+      <div class="container">
+        <h1>Live classes</h1>
+        <p class="muted">Creators host these rooms. Register free, then join when the class goes live.</p>
+      </div>
+    </section>
+    <section class="section" id="webinars">
+      <div class="container">
+        <h2>Upcoming webinars</h2>
+        <div class="grid-3" id="liveList" style="margin-top:18px"></div>
+      </div>
+    </section>
+    <section class="section" id="mentorship">
+      <div class="container">
+        <h2>Mentorship rooms</h2>
+        <div class="grid-3" style="margin-top:18px">
+          <div class="info-card">
+            <div class="date">Starts 28 Sep 2026</div>
+            <h3>Options income room</h3>
+            <p class="muted">4 weeks with Neha Kapoor. Spreads, adjustments, weekly review.</p>
+          </div>
+          <div class="info-card">
+            <div class="date">Starts 5 Oct 2026</div>
+            <h3>Swing structure room</h3>
+            <p class="muted">by Vikram Singh. Daily levels, weekend recap, journal checks.</p>
+          </div>
+          <div class="info-card">
+            <div class="date">Starts 12 Oct 2026</div>
+            <h3>Investing lab</h3>
+            <p class="muted">by Ananya Rao. Portfolio construction and SIP reviews.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="call">
+      <div class="container">
+        <h2>Book a 1:1 call</h2>
+        <p class="muted" style="margin-bottom:16px">45 minutes on your journal, risk, or a stuck setup.</p>
+        <form class="form-card" id="callForm">
+          <div class="field"><label>Topic</label><select name="topic" required>
+            <option value="">Choose</option>
+            <option>Risk & sizing</option>
+            <option>Options setup</option>
+            <option>Investing plan</option>
+            <option>Journal review</option>
+          </select></div>
+          <div class="field"><label>Mentor</label>
+            <select name="mentor">
+              <option value="">Any available</option>
+              <option>Aarav Mehta</option>
+              <option>Neha Kapoor</option>
+              <option>Vikram Singh</option>
+              <option>Ananya Rao</option>
+            </select>
+          </div>
+          <div class="field"><label>Preferred date</label><input name="date" type="date" required></div>
+          <div class="field"><label>Preferred time</label><input name="time" type="time" required></div>
+          <div class="field"><label>Notes</label><textarea name="notes" placeholder="What is stuck?"></textarea></div>
+          <button class="btn btn-orange">Request a slot</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+  <script src="js/app.js?v=logo1"></script>
+  <script src="js/lms.js"></script>
+</body>
+</html>

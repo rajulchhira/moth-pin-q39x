@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All courses | Bizgarh</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=auth2">
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="page">
+    <section class="section">
+      <div class="container">
+        <h2>Find courses by category</h2>
+        <p class="muted">Choose a course based on your stock market interests.</p>
+        <div class="cat-grid" data-cat-grid style="margin-top:22px"></div>
+      </div>
+    </section>
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="row-between">
+          <div>
+            <h2>Upcoming webinars <span class="live-pill">LIVE</span></h2>
+            <p class="muted">Value-packed interactive sessions with working traders.</p>
+          </div>
+          <a class="btn btn-ghost" href="live.html">View all →</a>
+        </div>
+        <div class="grid-3" id="courseWebinars" style="margin-top:18px"></div>
+      </div>
+    </section>
+    <section class="page-hero" id="courseLibrary" style="padding-top:10px">
+      <div class="container">
+        <h1>Course library</h1>
+        <p class="muted">Filter by path. Open any card to enroll and start the classroom.</p>
+        <div class="filters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="trending">Popular</button>
+          <button class="chip" data-filter="beginners">Beginners</button>
+          <button class="chip" data-filter="options">Options</button>
+          <button class="chip" data-filter="investing">Investing</button>
+          <button class="chip" data-filter="ta">Charts</button>
+          <button class="chip" data-filter="hindi">Hindi</button>
+          <button class="chip" data-filter="crypto">Crypto</button>
+          <button class="chip" data-filter="strategy">Systems</button>
+        </div>
+        <div class="grid-3" id="allCoursesGrid"></div>
+      </div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+  <script src="js/app.js?v=logo1"></script>
+  <script src="js/lms.js"></script>
+</body>
+</html>

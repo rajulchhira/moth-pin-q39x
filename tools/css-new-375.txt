@@ -1,0 +1,1 @@
+  .hero, .course-layout, .dash-grid, .cat-grid, .grid-3, .footer-grid, .mega-webs, .reviews-grid { grid-template-columns: 1fr; }
