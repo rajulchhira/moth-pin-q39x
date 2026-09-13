@@ -4,10 +4,43 @@ function botToken() {
   return String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
 }
 
+function googleClientId() {
+  return String(process.env.GOOGLE_CLIENT_ID || "").trim();
+}
+
+function googleClientSecret() {
+  return String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+}
+
+function googleReady() {
+  return Boolean(googleClientId() && googleClientSecret());
+}
+
 function publicOrigin() {
   const env = String(process.env.APP_URL || "").trim().replace(/\/$/, "");
   if (env) return env;
   return "https://bizgarh.com";
+}
+
+function requestOrigin(event) {
+  const headers = event && event.headers ? event.headers : {};
+  const host = String(headers["x-forwarded-host"] || headers.host || "").split(",")[0].trim();
+  const proto = String(headers["x-forwarded-proto"] || "https").split(",")[0].trim();
+  if (host) return `${proto}://${host}`.replace(/\/$/, "");
+  return publicOrigin();
+}
+
+function readCookie(event, name) {
+  const headers = event && event.headers ? event.headers : {};
+  const raw = String(headers.cookie || headers.Cookie || "");
+  const parts = raw.split(";");
+  for (const part of parts) {
+    const kv = part.trim();
+    const eq = kv.indexOf("=");
+    if (eq < 1) continue;
+    if (kv.slice(0, eq) === name) return kv.slice(eq + 1);
+  }
+  return "";
 }
 
 function safeNext(next) {
@@ -16,8 +49,12 @@ function safeNext(next) {
   return n;
 }
 
-function redirect(url) {
-  return { statusCode: 302, headers: { Location: url, "Cache-Control": "no-store" }, body: "" };
+function redirect(url, extraHeaders) {
+  return {
+    statusCode: 302,
+    headers: { Location: url, "Cache-Control": "no-store", ...(extraHeaders || {}) },
+    body: ""
+  };
 }
 
 function json(body, status) {
@@ -29,7 +66,7 @@ function json(body, status) {
 }
 
 function ticketKey() {
-  const token = botToken();
+  const token = botToken() || googleClientSecret() || "bizgarh";
   const extra = String(process.env.SESSION_SECRET || "bizgarh").trim();
   return crypto.createHmac("sha256", extra).update(token).digest();
 }
@@ -86,6 +123,22 @@ function verifyTelegram(qs) {
   return age < 86400;
 }
 
+function oauthUserFromGoogle(info) {
+  const email = String(info && info.email || "").trim().toLowerCase();
+  const name = String((info && info.name) || email || "Google user").trim();
+  return {
+    name,
+    email,
+    password: "",
+    providers: ["google"],
+    providerId: String((info && info.sub) || email),
+    emailVerified: true,
+    status: "active",
+    created: new Date().toISOString(),
+    referredBy: ""
+  };
+}
+
 function oauthUserFromTelegram(qs) {
   const id = String(qs.id || "");
   const handle = String(qs.username || "").replace(/^@/, "").trim().toLowerCase();
@@ -104,8 +157,33 @@ function oauthUserFromTelegram(qs) {
   };
 }
 
-function setupHtml() {
+function setupHtml(kind) {
   const origin = publicOrigin();
+  if (kind === "google") {
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Connect Google | Bizgarh</title>
+<style>
+body{font-family:Nunito,Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:40px}
+.card{max-width:640px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px}
+h1{margin:0 0 8px} .muted{color:#64748b}
+code,pre{background:#f1f5f9;padding:2px 6px;border-radius:6px;font-size:13px}
+li{margin:8px 0}
+</style></head><body><div class="card">
+<h1>Connect Google login</h1>
+<p class="muted">Create a Web OAuth client in Google Cloud, then add the two values in Netlify and redeploy.</p>
+<p>Google Cloud → APIs &amp; Services → Credentials → OAuth 2.0 Client (Web)</p>
+<p>Authorized JavaScript origins:</p>
+<pre>https://bizgarh.com
+https://www.bizgarh.com</pre>
+<p>Authorized redirect URIs:</p>
+<pre>https://bizgarh.com/auth/google/callback
+https://www.bizgarh.com/auth/google/callback</pre>
+<p>Netlify → Site configuration → Environment variables:</p>
+<pre>GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+APP_URL              ${origin}</pre>
+<p><a href="/index.html">Back to Bizgarh</a></p>
+</div></body></html>`;
+  }
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Connect Telegram | Bizgarh</title>
 <style>
 body{font-family:Nunito,Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:40px}
@@ -126,7 +204,12 @@ APP_URL              ${origin}</pre>
 
 module.exports = {
   botToken,
+  googleClientId,
+  googleClientSecret,
+  googleReady,
   publicOrigin,
+  requestOrigin,
+  readCookie,
   safeNext,
   redirect,
   json,
@@ -134,5 +217,6 @@ module.exports = {
   readTicket,
   verifyTelegram,
   oauthUserFromTelegram,
+  oauthUserFromGoogle,
   setupHtml
 };

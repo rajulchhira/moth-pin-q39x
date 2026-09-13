@@ -3,6 +3,18 @@
   functions = "netlify/functions"
 
 [[redirects]]
+  from = "/auth/google/callback"
+  to = "/.netlify/functions/google?flow=callback"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/auth/google"
+  to = "/.netlify/functions/google?flow=start"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/auth/telegram/callback"
   to = "/.netlify/functions/telegram?flow=callback"
   status = 200

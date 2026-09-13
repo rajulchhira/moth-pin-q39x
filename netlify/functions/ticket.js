@@ -15,6 +15,6 @@ exports.handler = async (event) => {
     id = String(id || "");
   }
   const row = readTicket(id);
-  if (!row) return json({ error: "Login ticket expired. Click Telegram again." }, 400);
+  if (!row) return json({ error: "Login ticket expired. Try again." }, 400);
   return json({ user: row.user, provider: row.provider || "telegram" });
 };
