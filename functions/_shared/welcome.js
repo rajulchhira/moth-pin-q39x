@@ -171,24 +171,28 @@ function wrap76(s) {
   return String(s).replace(/(.{1,76})/g, "$1\r\n").trim();
 }
 
-async function smtpSession(host, port) {
-  const socket = connect({
-    hostname: host,
-    port: Number(port),
-    secureTransport: Number(port) === 465 ? "on" : "starttls"
+function wait(ms, msg) {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(msg)), ms);
   });
+}
+
+function attachIo(socket) {
   const writer = socket.writable.getWriter();
   const reader = socket.readable.getReader();
   const decoder = new TextDecoder();
   let leftover = "";
 
   async function readResp() {
-    const timer = AbortSignal.timeout(20000);
+    const started = Date.now();
     while (true) {
-      if (timer.aborted) throw new Error("SMTP timeout");
-      const { value, done } = await reader.read();
-      if (done) throw new Error("SMTP closed");
-      leftover += decoder.decode(value, { stream: true });
+      if (Date.now() - started > 12000) throw new Error("SMTP timeout");
+      const chunk = await Promise.race([
+        reader.read(),
+        wait(12000, "SMTP timeout")
+      ]);
+      if (chunk.done) throw new Error("SMTP closed");
+      leftover += decoder.decode(chunk.value, { stream: true });
       const chunks = leftover.split(/\r?\n/);
       leftover = chunks.pop() || "";
       const lines = chunks.filter(Boolean);
@@ -211,18 +215,38 @@ async function smtpSession(host, port) {
     try { socket.close(); } catch { /* ignore */ }
   }
 
-  const greet = await readResp();
-  if (greet.code !== 220) throw new Error(greet.text || "SMTP greeting failed");
-
-  if (Number(port) !== 465) {
-    const ehlo = await talk("EHLO bizgarh.com");
-    if (ehlo.code !== 250) throw new Error(ehlo.text);
-    const start = await talk("STARTTLS");
-    if (start.code !== 220) throw new Error(start.text);
-    await socket.startTls();
+  async function release() {
+    try { writer.releaseLock(); } catch { /* ignore */ }
+    try { reader.releaseLock(); } catch { /* ignore */ }
   }
 
-  return { talk, close };
+  return { talk, readResp, close, release };
+}
+
+async function smtpSession(host, port) {
+  const useTls = Number(port) === 465;
+  let socket = connect(
+    { hostname: host, port: Number(port) },
+    { secureTransport: useTls ? "on" : "starttls" }
+  );
+  await Promise.race([socket.opened, wait(10000, "SMTP connect timeout")]);
+  let io = attachIo(socket);
+
+  const greet = await io.readResp();
+  if (greet.code !== 220) throw new Error(greet.text || "SMTP greeting failed");
+
+  if (!useTls) {
+    const ehlo = await io.talk("EHLO bizgarh.com");
+    if (ehlo.code !== 250) throw new Error(ehlo.text);
+    const start = await io.talk("STARTTLS");
+    if (start.code !== 220) throw new Error(start.text);
+    await io.release();
+    socket = socket.startTls();
+    await Promise.race([socket.opened, wait(10000, "SMTP TLS timeout")]);
+    io = attachIo(socket);
+  }
+
+  return io;
 }
 
 async function sendSmtp({ to, name, subject, html, text }) {
