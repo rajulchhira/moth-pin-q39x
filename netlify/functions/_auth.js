@@ -44,9 +44,17 @@ function readCookie(event, name) {
 }
 
 function safeNext(next) {
-  const n = String(next || "").trim().replace(/^\/+/, "");
+  let n = String(next || "").trim().replace(/^\/+/, "").split("?")[0].split("#")[0];
+  if (!n || n === "index") return "index.html";
+  if (!n.endsWith(".html")) n += ".html";
   if (!/^[A-Za-z0-9._-]+\.html$/.test(n)) return "index.html";
   return n;
+}
+
+function publicPath(next) {
+  const n = safeNext(next);
+  if (n === "index.html") return "/";
+  return "/" + n.replace(/\.html$/i, "");
 }
 
 function redirect(url, extraHeaders) {
@@ -181,7 +189,7 @@ https://www.bizgarh.com/auth/google/callback</pre>
 <pre>GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 APP_URL              ${origin}</pre>
-<p><a href="/index.html">Back to Bizgarh</a></p>
+<p><a href="/">Back to Bizgarh</a></p>
 </div></body></html>`;
   }
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Connect Telegram | Bizgarh</title>
@@ -198,7 +206,7 @@ li{margin:8px 0}
 <pre>TELEGRAM_BOT_TOKEN   (from BotFather)
 APP_URL              ${origin}</pre>
 <p>BotFather <code>/setdomain</code> should be <code>bizgarh.com</code> with no https.</p>
-<p><a href="/index.html">Back to Bizgarh</a></p>
+<p><a href="/">Back to Bizgarh</a></p>
 </div></body></html>`;
 }
 
@@ -211,6 +219,7 @@ module.exports = {
   requestOrigin,
   readCookie,
   safeNext,
+  publicPath,
   redirect,
   json,
   signTicket,

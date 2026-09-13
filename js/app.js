@@ -38,6 +38,27 @@ function brandLogoHTML() {
   return `${brandMarkSVG()}<span class="logo-word">Bizgarh</span>`;
 }
 
+function currentPageName() {
+  const p = String(location.pathname || "/").replace(/^\//, "").replace(/\.html$/i, "").split("/")[0];
+  if (!p || p === "index") return "index";
+  return p;
+}
+
+function prettyPath() {
+  const name = currentPageName();
+  return name === "index" ? "/" : "/" + name;
+}
+
+function stripHtmlUrl() {
+  const path = location.pathname;
+  let pretty = path;
+  if (/^\/index(?:\.html)?$/i.test(path)) pretty = "/";
+  else if (/\.html$/i.test(path)) pretty = path.replace(/\.html$/i, "");
+  else return;
+  if (pretty === path) return;
+  history.replaceState(null, "", pretty + location.search + location.hash);
+}
+
 function ensureBrandFont() {
   if (!document.getElementById("playfairBrand")) {
     const link = document.createElement("link");
@@ -236,7 +257,7 @@ function categoryCardsHTML(active) {
     const filter = courseFilterFromCat(c.id);
     const on = active && ((c.id === active) || (c.id !== "cert" && filter === active)) ? " on" : "";
     return `
-    <a class="cat-card${on}" data-cat="${c.id}" href="courses.html?cat=${filter}#library">
+    <a class="cat-card${on}" data-cat="${c.id}" href="/courses?cat=${filter}#library">
       <div class="cat-icon" style="background:${c.tint};color:${c.color}">${iconSvg(c.icon)}</div>
       <h3>${c.title}</h3>
       <p>${c.desc}</p>
@@ -390,7 +411,7 @@ function verifyOtpCode() {
 }
 
 function startSocial(provider) {
-  const next = (location.pathname.split("/").pop() || "index.html").replace(/^\//, "");
+  const next = currentPageName();
   location.href = "/auth/" + encodeURIComponent(provider) + "?next=" + encodeURIComponent(next);
 }
 
@@ -414,10 +435,12 @@ async function consumeOAuth() {
   const params = new URLSearchParams(location.search);
   const err = params.get("oauth_error");
   const ticket = params.get("oauth_ticket");
-  if (err) toast(err.replace(/\+/g, " "));
+  if (err) {
+    toast(err.replace(/\+/g, " "));
+    history.replaceState({}, "", prettyPath());
+  }
   if (!ticket) return false;
-  const clean = location.pathname.split("/").pop() || "index.html";
-  history.replaceState({}, "", clean);
+  history.replaceState({}, "", prettyPath());
   try {
     const res = await fetch("/api/auth/ticket/" + encodeURIComponent(ticket), { credentials: "same-origin" });
     const data = await res.json();
@@ -630,7 +653,7 @@ function savePct(c) {
 function courseCard(c, extra = "") {
   const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title, sub: c.instructor };
   const photo = photoFor(c.instructor);
-  const href = isEnrolled(c.id) ? `learn.html?id=${c.id}` : `course.html?id=${c.id}`;
+  const href = isEnrolled(c.id) ? `/learn?id=${c.id}` : `/course?id=${c.id}`;
   const pct = savePct(c);
   const rupee = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
   const priceRow = `<div class="price">${rupee(c.price)}${c.old ? ` <s>${rupee(c.old)}</s>` : ""}${pct ? ` <span class="save">SAVE ${pct}%</span>` : ""}</div>`;
@@ -668,7 +691,7 @@ function renderCourses(target, filter = "trending", asGrid = false, query = "") 
 
 function liveMegaHTML() {
   const cards = allWebinars().filter((w) => w.status !== "ended").slice(0, 3).map((w, i) => `
-    <a class="mega-web" href="live.html#webinars">
+    <a class="mega-web" href="/live#webinars">
       ${webinarBannerHTML(w, i)}
       <div class="mega-web-meta">
         <small>${w.when}</small>
@@ -679,15 +702,15 @@ function liveMegaHTML() {
   return `
     <div class="dropdown mega-live">
       <div class="mega-left">
-        <a href="live.html#webinars">
+        <a href="/live#webinars">
           <span class="mega-ico">${iconSvg("wifi")}</span>
           <span><strong>Webinars</strong><em>Value packed interactive sessions led by expert traders</em></span>
         </a>
-        <a href="live.html#mentorship">
+        <a href="/live#mentorship">
           <span class="mega-ico">${iconSvg("users")}</span>
           <span><strong>Mentorship Programs</strong><em>Learn from training and online sessions with stock market experts</em></span>
         </a>
-        <a href="live.html#call">
+        <a href="/live#call">
           <span class="mega-ico">${iconSvg("headset")}</span>
           <span><strong>1:1 Guidance</strong><em>Guidance calls with experts to discuss strategy, setups, and risk</em></span>
         </a>
@@ -695,7 +718,7 @@ function liveMegaHTML() {
       <div class="mega-right">
         <div class="mega-kicker">Upcoming live webinars</div>
         <div class="mega-webs">${cards}</div>
-        <a class="btn btn-primary" href="live.html">View All Webinars →</a>
+        <a class="btn btn-primary" href="/live">View All Webinars →</a>
       </div>
     </div>`;
 }
@@ -703,28 +726,28 @@ function liveMegaHTML() {
 function headerHTML() {
   const user = getUser();
   const auth = user
-    ? `<a class="btn btn-ghost" href="dashboard.html">Hi, ${user.name.split(" ")[0]}</a><button class="btn btn-ghost" id="logoutBtn">Logout</button>`
+    ? `<a class="btn btn-ghost" href="/dashboard">Hi, ${user.name.split(" ")[0]}</a><button class="btn btn-ghost" id="logoutBtn">Logout</button>`
     : `<button class="btn btn-ghost" data-open="loginModal">Login</button><button class="btn btn-primary" data-open="signupModal">Sign Up</button>`;
   const courseLinks = CATEGORIES.map((c) => `
-    <a href="courses.html?cat=${courseFilterFromCat(c.id)}#library">
+    <a href="/courses?cat=${courseFilterFromCat(c.id)}#library">
       <span class="mega-ico" style="background:${c.tint};color:${c.color}">${iconSvg(c.icon)}</span>
       ${c.title}
     </a>`).join("");
   return `
   <header class="header">
     <div class="container header-inner">
-      <a class="logo" href="index.html">${brandLogoHTML("h")}</a>
+      <a class="logo" href="/">${brandLogoHTML("h")}</a>
       <nav class="nav">
         <div class="nav-item mega">
-          <a class="nav-link" href="courses.html">Courses</a>
+          <a class="nav-link" href="/courses">Courses</a>
           <div class="dropdown mega-courses">${courseLinks}</div>
         </div>
         <div class="nav-item mega">
-          <a class="nav-link" href="live.html">Live <i class="live-dot-nav"></i></a>
+          <a class="nav-link" href="/live">Live <i class="live-dot-nav"></i></a>
           ${liveMegaHTML()}
         </div>
-        <a class="nav-link" href="reviews.html">Reviews</a>
-        <a class="nav-link" href="about.html">About</a>
+        <a class="nav-link" href="/reviews">Reviews</a>
+        <a class="nav-link" href="/about">About</a>
       </nav>
       <form class="search-wrap" id="searchForm">
         <input id="searchInput" placeholder="Search courses, mentors..." autocomplete="off">
@@ -736,12 +759,12 @@ function headerHTML() {
     </div>
   </header>
   <div class="mobile-nav" id="mobileNav">
-    <a href="courses.html">Courses</a>
-    <a href="live.html">Live classes</a>
-    <a href="reviews.html">Reviews</a>
-    <a href="about.html">About</a>
-    <a href="dashboard.html">My learning</a>
-    <a href="contact.html">Contact</a>
+    <a href="/courses">Courses</a>
+    <a href="/live">Live classes</a>
+    <a href="/reviews">Reviews</a>
+    <a href="/about">About</a>
+    <a href="/dashboard">My learning</a>
+    <a href="/contact">Contact</a>
   </div>`;
 }
 
@@ -751,24 +774,24 @@ function footerHTML() {
     <div class="container">
       <div class="footer-main">
         <div class="footer-brand">
-          <a class="logo" href="index.html">${brandLogoHTML()}</a>
+          <a class="logo" href="/">${brandLogoHTML()}</a>
           <p>A classroom for Indian traders and long-term investors. Setups, risk, and process — not a tip feed.</p>
           <a class="footer-mail" href="mailto:desk@bizgarh.com">desk@bizgarh.com</a>
         </div>
         <nav class="footer-nav" aria-label="Footer">
           <div>
             <h4>Classroom</h4>
-            <a href="courses.html">All courses</a>
-            <a href="live.html">Live rooms</a>
-            <a href="live.html#mentorship">Mentorship</a>
-            <a href="courses.html?cat=hindi">Hindi library</a>
+            <a href="/courses">All courses</a>
+            <a href="/live">Live rooms</a>
+            <a href="/live#mentorship">Mentorship</a>
+            <a href="/courses?cat=hindi">Hindi library</a>
           </div>
           <div>
             <h4>Company</h4>
-            <a href="about.html">About</a>
-            <a href="reviews.html">Reviews</a>
-            <a href="contact.html">Contact</a>
-            <a href="dashboard.html">My learning</a>
+            <a href="/about">About</a>
+            <a href="/reviews">Reviews</a>
+            <a href="/contact">Contact</a>
+            <a href="/dashboard">My learning</a>
           </div>
         </nav>
       </div>
@@ -879,7 +902,7 @@ function bindChrome() {
       localStorage.removeItem(USER_KEY);
       fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
       toast("Logged out");
-      location.href = "index.html";
+      location.href = "/";
     }
   });
   document.querySelectorAll(".overlay").forEach((o) => o.addEventListener("click", (e) => { if (e.target === o) closeModals(); }));
@@ -889,14 +912,14 @@ function bindChrome() {
   document.getElementById("searchForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const q = search.value.trim();
-    location.href = q ? `courses.html?q=${encodeURIComponent(q)}` : "courses.html";
+    location.href = q ? `/courses?q=${encodeURIComponent(q)}` : "/courses";
   });
   search?.addEventListener("focus", () => panel?.classList.add("open"));
   document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) panel?.classList.remove("open"); });
   search?.addEventListener("input", () => {
     const q = search.value.toLowerCase();
     const hits = allCourses().filter((c) => c.title.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q)).slice(0, 6);
-    document.getElementById("searchResults").innerHTML = hits.map((c) => `<a href="course.html?id=${c.id}">${c.title}</a>`).join("") || "<a>No matches</a>";
+    document.getElementById("searchResults").innerHTML = hits.map((c) => `<a href="/course?id=${c.id}">${c.title}</a>`).join("") || "<a>No matches</a>";
   });
 
   document.getElementById("loginForm")?.addEventListener("submit", (e) => {
@@ -1095,7 +1118,7 @@ function enroll(id) {
       logEnroll(id);
     }
     toast("Enrolled! Opening protected classroom");
-    location.href = `learn.html?id=${id}`;
+    location.href = `/learn?id=${id}`;
   });
 }
 
@@ -1225,13 +1248,13 @@ function bindCourseLibrary() {
     if (!a) return;
     e.preventDefault();
     const next = courseFilterFromCat(a.dataset.cat);
-    history.pushState({ cat: next }, "", `courses.html?cat=${encodeURIComponent(next)}#library`);
+    history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}#library`);
     applyCourseFilter(a.dataset.cat, q, true);
   });
   document.querySelectorAll(".filters .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       const next = chip.dataset.filter;
-      history.pushState({ cat: next }, "", `courses.html?cat=${encodeURIComponent(next)}#library`);
+      history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}#library`);
       applyCourseFilter(next, q, true);
     });
   });
@@ -1248,7 +1271,7 @@ function renderHomeExtras() {
   const mentorTrack = document.getElementById("mentorTrack");
   if (mentorTrack) {
     mentorTrack.innerHTML = MENTORS.map((m) => `
-      <a class="mentor-card" href="courses.html">
+      <a class="mentor-card" href="/courses">
         <div class="mentor-photo"><img src="${m.img}" alt="${m.name}"></div>
         <h3>${m.name}</h3><p>${m.role}</p><span class="pill">${m.tag}</span>
       </a>`).join("");
@@ -1381,8 +1404,8 @@ function renderCoursePage() {
     <div class="cd-layout">
       <div class="cd-main">
         <nav class="cd-crumb">
-          <a href="index.html">Home</a><span>/</span>
-          <a href="courses.html">All Courses</a><span>/</span>
+          <a href="/">Home</a><span>/</span>
+          <a href="/courses">All Courses</a><span>/</span>
           <b>${c.title}</b>
         </nav>
         <span class="cd-pill">${catLabel(c.cat).toUpperCase()}</span>
@@ -1507,7 +1530,7 @@ function renderCoursePage() {
         </ul>
         <div class="cd-price">₹${Number(c.price).toLocaleString("en-IN")}</div>
         ${owned
-          ? `<a class="btn btn-primary btn-block cd-cta" href="learn.html?id=${c.id}">Continue learning</a>
+          ? `<a class="btn btn-primary btn-block cd-cta" href="/learn?id=${c.id}">Continue learning</a>
              <a class="btn btn-ghost btn-block cd-comm-cta" href="#courseCommunity">${iconSvg("chat")} Community</a>`
           : `<button class="btn btn-primary btn-block cd-cta" id="enrollBtn">Buy Now →</button>
              <button type="button" class="btn btn-ghost btn-block cd-comm-cta locked" id="commLockCta">
@@ -1586,25 +1609,25 @@ function renderDashboard() {
         ${list.length ? list.map((c) => {
           const p = typeof courseCompletion === "function" ? courseCompletion(user.email, c.id) : { pct: 0 };
           return `<div class="bar-row"><span>${c.title}</span><div class="bar-track"><i style="width:${p.pct}%"></i></div><b>${p.pct}%</b></div>
-            ${p.cert ? `<a href="certificate.html?course=${c.id}&email=${encodeURIComponent(user.email)}">View certificate</a>` : ""}`;
+            ${p.cert ? `<a href="/certificate?course=${c.id}&email=${encodeURIComponent(user.email)}">View certificate</a>` : ""}`;
         }).join("") : `<p class="muted">No classrooms yet.</p>`}
       </div>
       <div class="info-card">
         <h3>1:1 sessions</h3>
-        ${myCalls.length ? myCalls.map((c) => `<p><strong>${c.topic}</strong> · ${c.date} ${c.time || ""} · ${c.status}${c.meetUrl ? ` · <a href="${c.meetUrl}" target="_blank">Join</a>` : ""}</p>`).join("") : `<p class="muted">No calls booked. <a href="live.html#call">Request a 1:1</a></p>`}
+        ${myCalls.length ? myCalls.map((c) => `<p><strong>${c.topic}</strong> · ${c.date} ${c.time || ""} · ${c.status}${c.meetUrl ? ` · <a href="${c.meetUrl}" target="_blank">Join</a>` : ""}</p>`).join("") : `<p class="muted">No calls booked. <a href="/live#call">Request a 1:1</a></p>`}
       </div>
       <div class="info-card">
         <h3>Affiliate</h3>
         ${aff
           ? `<p>Code <strong>${aff.code}</strong> · ${aff.status}</p>
-             <p class="muted">Share: ${location.origin}${location.pathname.replace(/[^/]+$/, "")}index.html?ref=${aff.code}</p>
+             <p class="muted">Share: ${location.origin}/?ref=${aff.code}</p>
              ${typeof affiliateBalance === "function" ? `<p>Due ${ "₹" + affiliateBalance(user.email).due.toLocaleString("en-IN") }</p>` : ""}`
           : `<p class="muted">Turn students into ambassadors. Ask admin to activate your code, or apply below.</p>
              <button class="btn btn-ghost" id="joinAffBtn" type="button">Apply as affiliate</button>`}
       </div>
     </div>`;
   if (!list.length) {
-    grid.innerHTML = `<div class="empty"><h3>No courses yet</h3><p class="muted">Pick a course to start your first week of practice.</p><a class="btn btn-primary" href="courses.html" style="margin-top:12px">Browse courses</a></div>` + extra;
+    grid.innerHTML = `<div class="empty"><h3>No courses yet</h3><p class="muted">Pick a course to start your first week of practice.</p><a class="btn btn-primary" href="/courses" style="margin-top:12px">Browse courses</a></div>` + extra;
     bindDashAff();
     return;
   }
@@ -1627,7 +1650,7 @@ function bindDashAff() {
 
 function liveActionBtn(w) {
   if (w.status === "ended") return `<span class="muted" style="display:block;margin:8px 14px 14px">This class has ended.</span>`;
-  if (w.status === "live") return `<a class="btn btn-primary" style="margin:8px 14px 14px" href="live-room.html?id=${w.id}">Join now</a>`;
+  if (w.status === "live") return `<a class="btn btn-primary" style="margin:8px 14px 14px" href="/live-room?id=${w.id}">Join now</a>`;
   return `<button class="btn btn-primary" style="margin:8px 14px 14px" data-register="${w.id}">Register free</button>`;
 }
 
@@ -1643,7 +1666,7 @@ function renderLiveRoom() {
   const id = new URLSearchParams(location.search).get("id");
   const session = allWebinars().find((w) => w.id === id);
   if (!session) {
-    root.innerHTML = `<div class="empty"><h3>Class not found</h3><a class="btn btn-primary" href="live.html" style="margin-top:12px">All live classes</a></div>`;
+    root.innerHTML = `<div class="empty"><h3>Class not found</h3><a class="btn btn-primary" href="/live" style="margin-top:12px">All live classes</a></div>`;
     return;
   }
   const staff = getStaffSession();
@@ -1676,12 +1699,12 @@ function renderLiveRoom() {
           </form>
           <div class="live-host-actions">
             ${live.status !== "ended" ? `<button class="btn btn-primary" id="endLiveBtn">End class</button>` : ""}
-            <a class="btn btn-ghost" href="admin.html">Back to dashboard</a>
+            <a class="btn btn-ghost" href="/admin">Back to dashboard</a>
           </div>` : `
           <div class="live-host-actions">
             ${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
             ${user && !registered && live.status !== "ended" ? `<button class="btn btn-primary" data-register="${live.id}">Register & stay</button>` : ""}
-            <a class="btn btn-ghost" href="live.html">All live classes</a>
+            <a class="btn btn-ghost" href="/live">All live classes</a>
           </div>`}
       </div>
       <aside class="live-side">
@@ -1732,7 +1755,7 @@ function applySignupGate() {
 
 function renderCommunityPage() {
   if (!document.getElementById("tgList") && !document.getElementById("forumList")) return;
-  location.replace("courses.html");
+  location.replace("/courses");
 }
 
 function renderCertificatePage() {
@@ -1744,7 +1767,7 @@ function renderCertificatePage() {
   const course = allCourses().find((c) => c.id === courseId);
   const row = typeof certs === "function" ? certs().find((c) => c.courseId === courseId && c.email === email) : null;
   if (!course || !row) {
-    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><a class="btn btn-primary" href="dashboard.html" style="margin-top:12px">My learning</a></div>`;
+    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><a class="btn btn-primary" href="/dashboard" style="margin-top:12px">My learning</a></div>`;
     return;
   }
   root.innerHTML = `
@@ -1761,6 +1784,7 @@ function renderCertificatePage() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  stripHtmlUrl();
   const ref = new URLSearchParams(location.search).get("ref");
   if (ref) {
     localStorage.setItem("tradeshalaPendingRef", ref);

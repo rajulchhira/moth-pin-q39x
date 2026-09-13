@@ -5,6 +5,7 @@ const {
   googleReady,
   requestOrigin,
   safeNext,
+  publicPath,
   redirect,
   readCookie,
   signTicket,
@@ -26,7 +27,7 @@ function nextFromState(state) {
 
 function fail(origin, next, message) {
   return redirect(
-    `${origin}/${next}?oauth_error=${encodeURIComponent(message)}`,
+    `${origin}${publicPath(next)}?oauth_error=${encodeURIComponent(message)}`,
     { "Set-Cookie": stateCookie("", 0) }
   );
 }
@@ -76,7 +77,7 @@ async function completeGoogle(event, origin) {
     const user = oauthUserFromGoogle(info);
     const ticket = signTicket(user, "google");
     return redirect(
-      `${origin}/${next}?oauth_ticket=${encodeURIComponent(ticket)}`,
+      `${origin}${publicPath(next)}?oauth_ticket=${encodeURIComponent(ticket)}`,
       { "Set-Cookie": stateCookie("", 0) }
     );
   } catch {

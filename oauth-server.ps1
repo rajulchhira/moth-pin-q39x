@@ -127,8 +127,17 @@ function Send-Redirect($ctx, [string]$url, $headers) {
 function Safe-Next([string]$n) {
   if ([string]::IsNullOrWhiteSpace($n)) { return "index.html" }
   $n = $n.Trim().TrimStart("/")
+  $cut = $n.IndexOfAny(@([char]'?', [char]'#'))
+  if ($cut -ge 0) { $n = $n.Substring(0, $cut) }
+  if ($n -eq "index") { return "index.html" }
+  if ($n -notmatch '\.html$') { $n = "$n.html" }
   if ($n -notmatch '^[A-Za-z0-9._-]+\.html$') { return "index.html" }
   return $n
+}
+function Public-Path([string]$n) {
+  $page = Safe-Next $n
+  if ($page -eq "index.html") { return "/" }
+  return "/" + ($page -replace '\.html$','')
 }
 function Read-Cookie($ctx, [string]$name) {
   $h = $ctx.Request.Headers["Cookie"]
@@ -187,9 +196,9 @@ function Issue-Ticket($ctx, $user, [string]$provider, [string]$next) {
     provider = $provider
     exp      = [DateTime]::UtcNow.AddMinutes(3)
   }
-  $page = Safe-Next $next
+  $page = Public-Path $next
   $cookie = New-SessionCookie $user.email
-  Send-Redirect $ctx "$($script:AppUrl)/${page}?oauth_ticket=$id" @{ "Set-Cookie" = $cookie }
+  Send-Redirect $ctx "$($script:AppUrl)${page}?oauth_ticket=$id" @{ "Set-Cookie" = $cookie }
 }
 
 function Setup-Html([string]$provider) {
@@ -227,14 +236,14 @@ Origin   $($script:AppUrl)</pre>
 <li>Facebook: <span class="$fc">$f</span> - developers.facebook.com, Facebook Login</li>
 <li>Telegram: <span class="$tc">$t</span> - BotFather /newbot then /setdomain</li>
 </ul>
-<p><a href="/index.html">Back to Bizgarh</a></p>
+<p><a href="/">Back to Bizgarh</a></p>
 </div></body></html>
 "@
 }
 
 function Fail-OAuth($ctx, [string]$message, [string]$next) {
-  $page = Safe-Next $next
-  Send-Redirect $ctx "$($script:AppUrl)/${page}?oauth_error=$(UrlEncode $message)"
+  $page = Public-Path $next
+  Send-Redirect $ctx "$($script:AppUrl)${page}?oauth_error=$(UrlEncode $message)"
 }
 
 function Begin-OAuth($ctx, [string]$provider) {
@@ -416,7 +425,18 @@ $mime = @{
 }
 
 function Serve-Static($ctx, [string]$path) {
+  $query = $ctx.Request.Url.Query
+  if ($path -eq "/index" -or $path -eq "/index.html") {
+    Send-Redirect $ctx ($script:AppUrl + "/" + $query)
+    return
+  }
+  if ($path -match '\.html$') {
+    $pretty = $path -replace '\.html$',''
+    Send-Redirect $ctx ($script:AppUrl + $pretty + $query)
+    return
+  }
   if ($path -eq "/") { $path = "/index.html" }
+  elseif ($path -notmatch '\.[A-Za-z0-9]+$') { $path = "$path.html" }
   $rel = $path.TrimStart("/").Replace("/", [IO.Path]::DirectorySeparatorChar)
   $file = [IO.Path]::GetFullPath((Join-Path $root $rel))
   $rootFull = [IO.Path]::GetFullPath($root)

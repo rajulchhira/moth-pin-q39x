@@ -37,3 +37,20 @@
   to = "/.netlify/functions/status"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/index.html"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/index"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/:page"
+  to = "/:page.html"
+  status = 200

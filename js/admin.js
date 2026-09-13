@@ -292,7 +292,7 @@ function renderLiveAdmin() {
         <td><span class="live-status ${w.status || "scheduled"}">${w.status || "scheduled"}</span></td>
         <td>${n}</td>
         <td class="admin-actions">
-          ${host && w.status !== "ended" ? `<a class="btn btn-primary" href="live-room.html?id=${w.id}">${w.status === "live" ? "Enter room" : "Go live"}</a>` : ""}
+          ${host && w.status !== "ended" ? `<a class="btn btn-primary" href="/live-room?id=${w.id}">${w.status === "live" ? "Enter room" : "Go live"}</a>` : ""}
           ${host || isOwner() ? `<button class="btn btn-ghost" data-del-live="${w.id}">Remove</button>` : ""}
         </td>
       </tr>`;
@@ -403,7 +403,7 @@ function renderClassroom() {
       return `<tr><td>${e.name}<div class="muted">${e.email}</div></td>
         <td>${p.done}/${p.total}</td><td>${p.passed}/${p.quizCount}</td>
         <td>${p.pct}%</td>
-        <td>${p.cert ? `<a class="btn btn-ghost" href="certificate.html?course=${c.id}&email=${encodeURIComponent(e.email)}" target="_blank">Certificate</a>`
+        <td>${p.cert ? `<a class="btn btn-ghost" href="/certificate?course=${c.id}&email=${encodeURIComponent(e.email)}" target="_blank">Certificate</a>`
           : `<button class="btn btn-ghost" data-issue-cert="${c.id}" data-email="${e.email}" data-name="${e.name}">Issue cert</button>`}</td></tr>`;
     })
   );

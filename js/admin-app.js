@@ -145,7 +145,7 @@ function visibleNav() {
 function renderSide() {
   const s = AdminCore.session();
   document.getElementById("adminSide").innerHTML = `
-    <a class="ad-brand" href="index.html">${typeof brandLogoHTML === "function" ? brandLogoHTML("ad") : "Bizgarh"}</a>
+    <a class="ad-brand" href="/">${typeof brandLogoHTML === "function" ? brandLogoHTML("ad") : "Bizgarh"}</a>
     <div class="ad-who">${adEsc(s.name)}<br>${AdminCore.isOwner() ? "Super Admin" : (s.creatorEnabled ? "Sub-admin · Creator" : "Sub-admin")}</div>
     <nav class="ad-nav">${visibleNav().map((g) => `
       <div class="ad-nav-label">${g.group}</div>
@@ -153,7 +153,7 @@ function renderSide() {
     `).join("")}</nav>
     <div class="ad-side-foot">
       <button type="button" id="staffLogout">Logout</button>
-      <a href="index.html">← Public site</a>
+      <a href="/">← Public site</a>
     </div>`;
 }
 
@@ -235,7 +235,7 @@ const VIEWS = {
     ];
     const s = AdminCore.session();
     const code = s.referralCode || "";
-    const link = `${location.origin}${location.pathname.replace(/[^/]+$/,"")}index.html?ref=${adEsc(code)}`;
+    const link = `${location.origin}/?ref=${adEsc(code)}`;
     const follows = AdminCore.scope.leads(AdminCore.leads()).filter((l) => l.followUp && ["NEW","CONTACTED","INTERESTED","FOLLOW-UP"].includes(l.status));
     const creatorBox = (!AdminCore.isOwner() && s.creatorEnabled) ? `
       <div class="ad-grid-2">

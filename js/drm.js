@@ -61,7 +61,7 @@ function renderLearnPage() {
     return;
   }
   if (!canAccess(c)) {
-    location.replace(`course.html?id=${c.id}`);
+    location.replace(`/course?id=${c.id}`);
     return;
   }
 
@@ -878,7 +878,7 @@ function renderLearnPage() {
       <div class="cr-progress"><span>Progress ${prog.pct}%</span><div class="bar-track"><i style="width:${prog.pct}%"></i></div></div>
       ${qzs.map((q) => `<button class="btn btn-ghost cr-quiz-btn" type="button" data-take-quiz="${q.id}">Quiz · ${q.title}${lp.quizzes[q.id] != null ? " · " + lp.quizzes[q.id] + "%" : ""}</button>`).join("")}
       ${asg.map((a) => `<button class="btn btn-ghost cr-quiz-btn" type="button" data-open-assign="${a.id}">Assignment · ${a.title}</button>`).join("")}
-      ${prog.cert ? `<a class="btn btn-primary" href="certificate.html?course=${c.id}&email=${encodeURIComponent(user.email)}">Certificate</a>` : ""}
+      ${prog.cert ? `<a class="btn btn-primary" href="/certificate?course=${c.id}&email=${encodeURIComponent(user.email)}">Certificate</a>` : ""}
       <div id="crQuizBox"></div>`;
   }
   renderCrLms();

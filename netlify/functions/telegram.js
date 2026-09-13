@@ -2,6 +2,7 @@ const {
   botToken,
   publicOrigin,
   safeNext,
+  publicPath,
   redirect,
   signTicket,
   verifyTelegram,
@@ -18,14 +19,14 @@ exports.handler = async (event) => {
   const isCallback = qs.flow === "callback" || /\/callback/i.test(path) || Boolean(qs.hash);
   if (isCallback) {
     if (!qs.hash || !qs.id) {
-      return redirect(`${origin}/${next}?oauth_error=${encodeURIComponent("Telegram login cancelled")}`);
+      return redirect(`${origin}${publicPath(next)}?oauth_error=${encodeURIComponent("Telegram login cancelled")}`);
     }
     if (!verifyTelegram(qs)) {
-      return redirect(`${origin}/${next}?oauth_error=${encodeURIComponent("Telegram signature was invalid")}`);
+      return redirect(`${origin}${publicPath(next)}?oauth_error=${encodeURIComponent("Telegram signature was invalid")}`);
     }
     const user = oauthUserFromTelegram(qs);
     const ticket = signTicket(user, "telegram");
-    return redirect(`${origin}/${next}?oauth_ticket=${encodeURIComponent(ticket)}`);
+    return redirect(`${origin}${publicPath(next)}?oauth_ticket=${encodeURIComponent(ticket)}`);
   }
 
   if (!botToken()) {
