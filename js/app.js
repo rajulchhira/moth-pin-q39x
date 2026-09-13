@@ -303,9 +303,9 @@ function findStudent(email) {
 }
 function authSocialHTML() {
   return `<div class="auth-social">
-    <button type="button" class="auth-sbtn" data-social="google">${authIcon("google")} Continue with Google</button>
-    <button type="button" class="auth-sbtn" data-social="facebook">${authIcon("facebook")} Continue with Facebook</button>
-    <button type="button" class="auth-sbtn" data-social="telegram">${authIcon("telegram")} Continue with Telegram</button>
+    <button type="button" class="auth-sbtn" data-social="google" aria-label="Continue with Google">${authIcon("google")}<span>Google</span></button>
+    <button type="button" class="auth-sbtn" data-social="facebook" aria-label="Continue with Facebook">${authIcon("facebook")}<span>Facebook</span></button>
+    <button type="button" class="auth-sbtn" data-social="telegram" aria-label="Continue with Telegram">${authIcon("telegram")}<span>Telegram</span></button>
   </div>
   <p class="auth-or"><span>or</span></p>`;
 }
@@ -429,7 +429,7 @@ async function consumeOAuth() {
     completeStudentSession(user, "Logged in with " + (data.provider || providersLabel(user)));
     return true;
   } catch {
-    toast("Telegram login could not finish. Try again.");
+    toast("Login could not finish. Try again.");
     return true;
   }
 }
@@ -749,32 +749,33 @@ function footerHTML() {
   return `
   <footer class="footer">
     <div class="container">
-      <div class="footer-grid">
-        <div>
-          <a class="logo" href="index.html" style="margin-bottom:12px">${brandLogoHTML("f")}</a>
-          <p>A practical classroom for Indian traders and long-term investors. Learn setups, risk, and process — not tips.</p>
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a class="logo" href="index.html">${brandLogoHTML()}</a>
+          <p>A classroom for Indian traders and long-term investors. Setups, risk, and process — not a tip feed.</p>
+          <a class="footer-mail" href="mailto:desk@bizgarh.com">desk@bizgarh.com</a>
         </div>
-        <div>
-          <h4>Learn</h4>
-          <a href="courses.html">All courses</a>
-          <a href="live.html">Live classes</a>
-          <a href="dashboard.html">My learning</a>
-          <a href="admin.html">Admin</a>
-        </div>
-        <div>
-          <h4>Company</h4>
-          <a href="reviews.html">Reviews</a>
-          <a href="about.html">About us</a>
-          <a href="contact.html">Contact</a>
-          <a href="courses.html?cat=hindi">Hindi library</a>
-        </div>
-        <div>
-          <h4>Support</h4>
-          <a href="mailto:desk@bizgarh.com">desk@bizgarh.com</a>
-          <a href="contact.html">Refund help</a>
-        </div>
+        <nav class="footer-nav" aria-label="Footer">
+          <div>
+            <h4>Classroom</h4>
+            <a href="courses.html">All courses</a>
+            <a href="live.html">Live rooms</a>
+            <a href="live.html#mentorship">Mentorship</a>
+            <a href="courses.html?cat=hindi">Hindi library</a>
+          </div>
+          <div>
+            <h4>Company</h4>
+            <a href="about.html">About</a>
+            <a href="reviews.html">Reviews</a>
+            <a href="contact.html">Contact</a>
+            <a href="dashboard.html">My learning</a>
+          </div>
+        </nav>
       </div>
-      <p class="legal">© 2026 Bizgarh Learning Pvt Ltd. Educational content only — not investment advice.</p>
+      <div class="footer-bottom">
+        <p>© 2026 Bizgarh Learning Pvt Ltd</p>
+        <p>Educational content only. Not investment advice.</p>
+      </div>
     </div>
   </footer>
   <div class="overlay" id="loginModal">
@@ -786,7 +787,7 @@ function footerHTML() {
       <div class="field"><label>Email</label><input name="email" type="email" required></div>
       <div class="field"><label>Password</label><input name="password" type="password" required minlength="4"></div>
       <div class="auth-forgot-row"><button type="button" data-open="forgotModal">Forgot password?</button></div>
-      <button class="btn btn-primary btn-block">Login</button>
+      <button class="btn btn-primary btn-block btn-shine">Login</button>
       <div class="switch">New here? <button type="button" data-open="signupModal">Create account</button></div>
     </form>
   </div>
@@ -801,7 +802,7 @@ function footerHTML() {
       <div class="field"><label>Password</label><input name="password" type="password" required minlength="4"></div>
       <div class="field" id="inviteFieldWrap"><label>Invite / affiliate code</label><input name="code" placeholder="Optional unless invite-only"></div>
       <p class="muted" id="signupNote"></p>
-      <button class="btn btn-orange btn-block">Send Gmail OTP</button>
+      <button class="btn btn-primary btn-block btn-shine">Send Gmail OTP</button>
       <div class="switch">Already have an account? <button type="button" data-open="loginModal">Login</button></div>
     </form>
   </div>
