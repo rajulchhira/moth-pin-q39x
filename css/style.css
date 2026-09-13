@@ -17,7 +17,7 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100%;
 }
 body {
@@ -26,7 +26,7 @@ body {
   background: var(--bg);
   font-size: 16px;
   line-height: 1.6;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100%;
 }
 img, video { max-width: 100%; display: block; }
@@ -1631,9 +1631,18 @@ body.nav-dim::before {
 .cd-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 36px;
+  gap: 20px 36px;
   align-items: start;
+  grid-template-areas:
+    "head ."
+    "player buy"
+    "body buy";
 }
+.cd-head { grid-area: head; }
+.cd-preview,
+.cd-classroom { grid-area: player; min-width: 0; }
+.cd-buy { grid-area: buy; }
+.cd-body { grid-area: body; min-width: 0; }
 .cd-crumb { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
 .cd-crumb a:hover { color: var(--teal); }
 .cd-crumb span { margin: 0 8px; }
@@ -1855,8 +1864,9 @@ body.nav-dim::before {
 .cd-more { border: 0; background: 0; color: var(--teal); font-weight: 800; margin-top: 8px; cursor: pointer; }
 .cd-buy {
   position: sticky;
-  top: 92px;
-  margin-top: 86px;
+  top: calc(var(--header-h) + 20px);
+  margin-top: 0;
+  align-self: start;
   animation: floatIn .6s ease .15s both;
 }
 .cd-facts { list-style: none; display: grid; gap: 12px; margin-bottom: 18px; }
@@ -1889,14 +1899,31 @@ body.nav-dim::before {
 @keyframes ken { from { transform: scale(1); } to { transform: scale(1.06); } }
 @keyframes floatIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media (max-width: 980px) {
-  .cd-layout, .cd-learn { grid-template-columns: 1fr; }
+  .cd-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "head"
+      "player"
+      "buy"
+      "body";
+  }
+  .cd-learn { grid-template-columns: 1fr; }
 }
 .cd-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 36px;
+  gap: 20px 36px;
   align-items: start;
+  grid-template-areas:
+    "head ."
+    "player buy"
+    "body buy";
 }
+.cd-head { grid-area: head; }
+.cd-preview,
+.cd-classroom { grid-area: player; min-width: 0; }
+.cd-buy { grid-area: buy; }
+.cd-body { grid-area: body; min-width: 0; }
 .cd-crumb { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
 .cd-crumb a:hover { color: var(--teal); }
 .cd-crumb span { margin: 0 8px; }
@@ -2118,8 +2145,9 @@ body.nav-dim::before {
 .cd-more { border: 0; background: 0; color: var(--teal); font-weight: 800; margin-top: 8px; cursor: pointer; }
 .cd-buy {
   position: sticky;
-  top: 92px;
-  margin-top: 86px;
+  top: calc(var(--header-h) + 20px);
+  margin-top: 0;
+  align-self: start;
   animation: floatIn .6s ease .15s both;
 }
 .cd-facts { list-style: none; display: grid; gap: 12px; margin-bottom: 18px; }
@@ -2152,7 +2180,15 @@ body.nav-dim::before {
 @keyframes ken { from { transform: scale(1); } to { transform: scale(1.06); } }
 @keyframes floatIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media (max-width: 980px) {
-  .cd-layout, .cd-learn { grid-template-columns: 1fr; }
+  .cd-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "head"
+      "player"
+      "buy"
+      "body";
+  }
+  .cd-learn { grid-template-columns: 1fr; }
 }
 .player {
   aspect-ratio: 16/9;
@@ -2199,6 +2235,10 @@ body.nav-dim::before {
 }
 .cd-layout.is-owned {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "head"
+    "player"
+    "body";
   gap: 0;
 }
 .cd-layout.is-owned .cd-overview-card {
@@ -4520,14 +4560,14 @@ button.cd-topic {
   }
   .side a { white-space: nowrap; }
   .cd-buy {
-    position: sticky;
+    position: relative;
     top: auto;
-    bottom: 0;
-    z-index: 24;
-    margin-top: 12px;
-    border-radius: 20px 20px 0 0;
-    box-shadow: 0 -16px 40px rgba(15, 23, 42, .12);
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    bottom: auto;
+    z-index: 1;
+    margin-top: 4px;
+    border-radius: 18px;
+    box-shadow: none;
+    padding-bottom: 20px;
   }
   .cd-title { font-size: clamp(22px, 7vw, 32px); }
   .page-hero { padding: 28px 0 8px; }

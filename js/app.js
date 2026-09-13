@@ -1680,6 +1680,26 @@ function bindCourseCommunity(courseId) {
   });
 }
 
+function courseBuyBoxHTML(c, langs, watchers, extraClass) {
+  return `<aside class="cd-buy${extraClass ? ` ${extraClass}` : ""}">
+        <ul class="cd-facts">
+          <li>${iconSvg("badge")} <span>${c.learners} Learners Enrolled</span></li>
+          <li>${iconSvg("bars")} <span>${courseLevel(c)}</span></li>
+          <li>${iconSvg("wifi")} <span>${c.hours} hrs of Content</span></li>
+          <li>${iconSvg("chat")} <span>${langs.join(", ")}</span></li>
+          <li>${iconSvg("target")} <span>1 Year Access</span></li>
+          <li>${iconSvg("badge")} <span>Earn a Certificate</span></li>
+        </ul>
+        <div class="cd-price">₹${Number(c.price).toLocaleString("en-IN")}</div>
+        <button class="btn btn-primary btn-block cd-cta js-enroll">Buy Now →</button>
+        <button type="button" class="btn btn-ghost btn-block cd-comm-cta locked js-comm-lock">
+          <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
+          Community
+        </button>
+        <p class="cd-watch"><i></i> ${watchers} learners watching right now</p>
+      </aside>`;
+}
+
 function renderCoursePage() {
   const box = document.getElementById("courseDetail");
   if (!box) return;
@@ -1696,7 +1716,7 @@ function renderCoursePage() {
 
   box.innerHTML = `
     <div class="cd-layout${owned ? " is-owned" : ""}">
-      <div class="cd-main">
+      <div class="cd-head">
         <nav class="cd-crumb">
           <a href="/">Home</a><span>/</span>
           <a href="/courses">All Courses</a><span>/</span>
@@ -1704,12 +1724,11 @@ function renderCoursePage() {
         </nav>
         <span class="cd-pill">${catLabel(c.cat).toUpperCase()}</span>
         <h1 class="cd-title">${c.title}</h1>
+      </div>
 
-        ${owned
-          ? `<div id="learnRoot" class="cd-classroom"></div>
-             <div id="certAward"></div>
-             ${courseOverviewCardHTML(c, true)}`
-          : `<div class="cd-preview" style="--cover:${art.bg}">
+      ${owned
+        ? `<div id="learnRoot" class="cd-classroom"></div>`
+        : `<div class="cd-preview" style="--cover:${art.bg}">
           <video id="cdPreview" autoplay muted loop playsinline preload="metadata" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
           <div class="cd-preview-art">
             <img class="cd-preview-person" src="${photo}" alt="${c.instructor}">
@@ -1720,8 +1739,11 @@ function renderCoursePage() {
           </div>
           <div class="cd-langs">${langs.map((l, i) => `<button type="button" class="cd-lang ${i === 0 ? "on" : ""}">${l}${i === 0 ? " <em>Original</em>" : ""}</button>`).join("")}</div>
           <div class="cd-stars">★ ${c.rating} <span>★★★★★</span></div>
-        </div>`}
+        </div>
+        ${courseBuyBoxHTML(c, langs, watchers)}`}
 
+      <div class="cd-body">
+        ${owned ? `<div id="certAward"></div>${courseOverviewCardHTML(c, true)}` : ""}
         <div class="cd-bonus cd-bonus-card">
           <div class="cd-ov-head">
             <h2>Bonus resources included</h2>
@@ -1784,32 +1806,18 @@ function renderCoursePage() {
               </div>`}
         </section>
       </div>
-
-      ${owned ? "" : `<aside class="cd-buy">
-        <ul class="cd-facts">
-          <li>${iconSvg("badge")} <span>${c.learners} Learners Enrolled</span></li>
-          <li>${iconSvg("bars")} <span>${courseLevel(c)}</span></li>
-          <li>${iconSvg("wifi")} <span>${c.hours} hrs of Content</span></li>
-          <li>${iconSvg("chat")} <span>${langs.join(", ")}</span></li>
-          <li>${iconSvg("target")} <span>1 Year Access</span></li>
-          <li>${iconSvg("badge")} <span>Earn a Certificate</span></li>
-        </ul>
-        <div class="cd-price">₹${Number(c.price).toLocaleString("en-IN")}</div>
-        <button class="btn btn-primary btn-block cd-cta" id="enrollBtn">Buy Now →</button>
-        <button type="button" class="btn btn-ghost btn-block cd-comm-cta locked" id="commLockCta">
-          <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
-          Community
-        </button>
-        <p class="cd-watch"><i></i> ${watchers} learners watching right now</p>
-      </aside>`}
     </div>`;
 
-  document.getElementById("enrollBtn")?.addEventListener("click", () => enroll(c.id));
+  document.querySelectorAll(".js-enroll").forEach((btn) => {
+    btn.addEventListener("click", () => enroll(c.id));
+  });
   const lockCommunity = () => {
     toast("Buy this course to unlock the community");
-    document.getElementById("enrollBtn")?.focus();
+    document.querySelector(".js-enroll")?.focus();
   };
-  document.getElementById("commLockCta")?.addEventListener("click", lockCommunity);
+  document.querySelectorAll(".js-comm-lock").forEach((btn) => {
+    btn.addEventListener("click", lockCommunity);
+  });
   document.getElementById("commLockedBtn")?.addEventListener("click", lockCommunity);
   if (owned) bindCourseCommunity(c.id);
   document.querySelectorAll(".cd-sec-h").forEach((btn) => {
