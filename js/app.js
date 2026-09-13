@@ -370,7 +370,6 @@ function findStudent(email) {
 function authSocialHTML() {
   return `<div class="auth-social">
     <button type="button" class="auth-sbtn" data-social="google" aria-label="Continue with Google">${authIcon("google")}<span>Google</span></button>
-    <button type="button" class="auth-sbtn" data-social="facebook" aria-label="Continue with Facebook">${authIcon("facebook")}<span>Facebook</span></button>
     <button type="button" class="auth-sbtn" data-social="telegram" aria-label="Continue with Telegram">${authIcon("telegram")}<span>Telegram</span></button>
   </div>
   <p class="auth-or"><span>or</span></p>`;
@@ -457,6 +456,10 @@ function verifyOtpCode() {
 }
 
 function startSocial(provider) {
+  if (provider === "facebook") {
+    toast("Facebook login is not available. Use Google or Telegram.");
+    return;
+  }
   const next = currentPageName();
   location.href = "/auth/" + encodeURIComponent(provider) + "?next=" + encodeURIComponent(next);
 }
@@ -976,7 +979,9 @@ function bindChrome() {
   });
   document.getElementById("navScrim")?.addEventListener("click", () => setMobileNav(false));
   document.getElementById("mobileNav")?.addEventListener("click", (e) => {
-    if (e.target.closest("a")) setMobileNav(false);
+    if (e.target.closest("a, [data-open], .js-logout, .js-open-admin, button[type=submit]")) {
+      setMobileNav(false);
+    }
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
@@ -1043,6 +1048,7 @@ function bindChrome() {
   });
   document.getElementById("mobileSearchForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
+    setMobileNav(false);
     goSearch(document.getElementById("mobileSearchInput")?.value.trim());
   });
   search?.addEventListener("focus", () => panel?.classList.add("open"));
