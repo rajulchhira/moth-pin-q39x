@@ -1,0 +1,10 @@
+.git
+.git*
+netlify
+functions
+wrangler.toml
+.env
+.env.*
+welcome-mail.html
+.cursor
+node_modules
