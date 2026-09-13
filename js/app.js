@@ -1,22 +1,41 @@
 const BRAND = "Bizgarh";
 
-function brandMarkSVG(id) {
-  return `<span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+let brandMarkSeq = 0;
+function brandMarkSVG() {
+  const n = ++brandMarkSeq;
+  const g = "baurora" + n;
+  const glass = "bglass" + n;
+  const clip = "bdisc" + n;
+  return `<span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
     <defs>
-      <linearGradient id="${id}g" x1="8" y1="2" x2="34" y2="38" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#F7E7B8"/>
-        <stop offset=".48" stop-color="#D4B06A"/>
-        <stop offset="1" stop-color="#9A7428"/>
+      <linearGradient id="${g}" x1="8" y1="40" x2="38" y2="8" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#4F46E5"/>
+        <stop offset=".46" stop-color="#7C3AED"/>
+        <stop offset="1" stop-color="#E11D74"/>
       </linearGradient>
+      <linearGradient id="${glass}" x1="14" y1="12" x2="30" y2="36">
+        <stop offset="0" stop-color="#fff" stop-opacity=".24"/>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="${clip}"><circle cx="23" cy="25.4" r="16.35"/></clipPath>
     </defs>
-    <rect width="40" height="40" rx="11" fill="#11141C"/>
-    <rect x="4.35" y="4.35" width="31.3" height="31.3" rx="7.2" stroke="url(#${id}g)" stroke-width="1.15"/>
-    <path fill="url(#${id}g)" fill-rule="evenodd" d="M14.15 10.15h7.55c4.85 0 7.55 2.35 7.55 5.85 0 2.35-1.45 4.15-3.85 5.05 2.55.7 4.75 2.85 4.75 6.35 0 4.15-3.55 6.65-8.85 6.65h-7V10.15Zm3.4 2.45v5.45h4.2c2.4 0 3.75-1.15 3.75-2.75s-1.4-2.65-3.65-2.65h-4.3Zm0 8.15v7.7h4.85c2.85 0 4.7-1.5 4.7-3.9s-1.85-3.7-4.7-3.7H17.55Z"/>
+    <circle cx="23" cy="25.4" r="20.35" fill="none" stroke="url(#${g})" stroke-width="1.75"/>
+    <circle cx="23" cy="25.4" r="16.55" fill="url(#${g})"/>
+    <ellipse cx="18.4" cy="20" rx="8.4" ry="5.8" fill="url(#${glass})"/>
+    <circle cx="23" cy="25.4" r="15.45" stroke="#fff" stroke-width="1" opacity=".32"/>
+    <path fill="#fff" d="M14.35 35.05V21.15C14.35 15.2 18.15 11.85 23 11.85S31.65 15.2 31.65 21.15v13.9h-4.05V22.85c0-2.85-2-4.95-4.6-4.95s-4.6 2.1-4.6 4.95v12.2h-4.05Z"/>
+    <g clip-path="url(#${clip})">
+      <path d="M18.9 30.35 21.95 25.15 24.85 27.2 28.85 19.55" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path fill="#fff" d="M27.55 18.05 31.35 17.35 29.55 21.45Z"/>
+    </g>
+    <circle cx="36.35" cy="9.85" r="3.55" fill="#fff"/>
+    <circle cx="36.35" cy="9.85" r="2.55" fill="#E11D74"/>
+    <circle cx="36.35" cy="9.85" r="1.05" fill="#fff"/>
   </svg></span>`;
 }
 
-function brandLogoHTML(id) {
-  return `${brandMarkSVG(id)}<span class="logo-word">Bizgarh</span>`;
+function brandLogoHTML() {
+  return `${brandMarkSVG()}<span class="logo-word">Bizgarh</span>`;
 }
 
 function ensureBrandFont() {
@@ -31,7 +50,7 @@ function ensureBrandFont() {
     const icon = document.createElement("link");
     icon.rel = "icon";
     icon.type = "image/svg+xml";
-    icon.href = "img/bizgarh-mark.svg";
+    icon.href = "img/bizgarh-mark.svg?v=orbit5";
     document.head.appendChild(icon);
   }
 }
@@ -619,7 +638,7 @@ function courseCard(c, extra = "") {
     <div class="thumb" style="background:${art.bg}">
       <img class="person" src="${photo}" alt="">
       <div class="cover-copy"><h3>${art.title}</h3></div>
-      <span class="brand-badge" aria-hidden="true">${brandMarkSVG("c" + String(c.id || "x").replace(/[^a-z0-9]/gi, ""))}</span>
+      <span class="brand-badge" aria-hidden="true">${brandMarkSVG()}</span>
     </div>
     <div class="course-body">
       <div class="course-head">

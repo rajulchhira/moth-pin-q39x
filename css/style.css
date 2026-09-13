@@ -54,37 +54,34 @@ button, input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 17px;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 .logo-mark {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  border-radius: 11px;
-  overflow: hidden;
-  background: #11141c;
-  color: #e8d5a3;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
   display: grid;
   place-items: center;
-  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 8px 16px rgba(15, 23, 42, .1);
-  transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease;
+  box-shadow: none;
+  filter: drop-shadow(0 8px 14px rgba(79, 70, 229, .22));
+  transition: transform .35s cubic-bezier(.22,1,.36,1);
 }
 .logo-mark svg { width: 100%; height: 100%; display: block; }
 .logo-word {
-  font-family: "Playfair Display", Georgia, serif;
-  font-weight: 700;
-  font-size: 14.5px;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: #16181d;
+  font-family: Nunito, "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: 21px;
+  letter-spacing: -0.05em;
+  text-transform: none;
+  color: #0f172a;
 }
-.logo:hover .logo-mark {
-  transform: translateY(-1px);
-  box-shadow: 0 1px 0 rgba(255,255,255,.3) inset, 0 12px 22px rgba(15, 23, 42, .14);
-}
-.footer .logo-word { color: #f3ead4; }
+.logo:hover .logo-mark { transform: rotate(-8deg) scale(1.07); }
+.footer .logo-word { color: #fff; }
 .new-badge { color: var(--orange); font-size: 10px; font-weight: 800; vertical-align: super; }
 .nav { display: flex; align-items: center; gap: 2px; }
 .nav-item { position: relative; }
@@ -827,22 +824,23 @@ body.nav-dim::before {
   top: 10px;
   right: 10px;
   z-index: 4;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #11141c;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, .2);
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
   display: grid;
   place-items: center;
 }
 .brand-badge .logo-mark {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   flex: none;
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: none;
+  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, .28));
 }
 .pro-tag {
   position: absolute; left: 10px; bottom: 10px;
