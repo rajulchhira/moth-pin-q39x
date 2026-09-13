@@ -726,8 +726,8 @@ function liveMegaHTML() {
 function headerHTML() {
   const user = getUser();
   const auth = user
-    ? `<a class="btn btn-ghost" href="/dashboard">Hi, ${user.name.split(" ")[0]}</a><button class="btn btn-ghost" id="logoutBtn">Logout</button>`
-    : `<button class="btn btn-ghost" data-open="loginModal">Login</button><button class="btn btn-primary" data-open="signupModal">Sign Up</button>`;
+    ? `<a class="btn btn-ghost" href="/dashboard">Hi, ${user.name.split(" ")[0]}</a><button class="btn btn-ghost js-logout" type="button">Logout</button>`
+    : `<button class="btn btn-ghost" type="button" data-open="loginModal">Login</button><button class="btn btn-primary" type="button" data-open="signupModal">Sign Up</button>`;
   const courseLinks = CATEGORIES.map((c) => `
     <a href="/courses?cat=${courseFilterFromCat(c.id)}#library">
       <span class="mega-ico" style="background:${c.tint};color:${c.color}">${iconSvg(c.icon)}</span>
@@ -755,17 +755,25 @@ function headerHTML() {
         <div class="search-panel" id="searchPanel"><div id="searchResults"></div></div>
       </form>
       <div class="header-actions" id="headerActions">${auth}</div>
-      <button class="menu-toggle" id="menuToggle">☰</button>
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </header>
-  <div class="mobile-nav" id="mobileNav">
+  <div class="nav-scrim" id="navScrim"></div>
+  <nav class="mobile-nav" id="mobileNav" aria-label="Menu">
+    <form class="mnav-search" id="mobileSearchForm">
+      <input id="mobileSearchInput" type="search" placeholder="Search courses, mentors..." autocomplete="off" enterkeyhint="search">
+      <button type="submit" aria-label="Search">⌕</button>
+    </form>
     <a href="/courses">Courses</a>
     <a href="/live">Live classes</a>
     <a href="/reviews">Reviews</a>
     <a href="/about">About</a>
     <a href="/dashboard">My learning</a>
     <a href="/contact">Contact</a>
-  </div>`;
+    <div class="mnav-auth">${auth}</div>
+  </nav>`;
 }
 
 function footerHTML() {
@@ -881,9 +889,34 @@ function footerHTML() {
   <button class="to-top" id="toTop">↑</button>`;
 }
 
+function setMobileNav(open) {
+  const nav = document.getElementById("mobileNav");
+  const btn = document.getElementById("menuToggle");
+  const scrim = document.getElementById("navScrim");
+  nav?.classList.toggle("open", open);
+  scrim?.classList.toggle("open", open);
+  btn?.classList.toggle("open", open);
+  btn?.setAttribute("aria-expanded", open ? "true" : "false");
+  btn?.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  document.body.classList.toggle("nav-open", open);
+}
+
 function bindChrome() {
   document.getElementById("menuToggle")?.addEventListener("click", () => {
-    document.getElementById("mobileNav")?.classList.toggle("open");
+    setMobileNav(!document.getElementById("mobileNav")?.classList.contains("open"));
+  });
+  document.getElementById("navScrim")?.addEventListener("click", () => setMobileNav(false));
+  document.getElementById("mobileNav")?.addEventListener("click", (e) => {
+    if (e.target.closest("a")) setMobileNav(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      setMobileNav(false);
+      closeModals();
+    }
+  });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 980) setMobileNav(false);
   });
   document.querySelectorAll(".nav-item.mega").forEach((item) => {
     item.addEventListener("mouseenter", () => document.body.classList.add("nav-dim"));
@@ -898,7 +931,7 @@ function bindChrome() {
       e.preventDefault();
       startSocial(social.dataset.social);
     }
-    if (e.target.closest("#logoutBtn")) {
+    if (e.target.closest(".js-logout")) {
       localStorage.removeItem(USER_KEY);
       fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
       toast("Logged out");
@@ -909,10 +942,14 @@ function bindChrome() {
 
   const search = document.getElementById("searchInput");
   const panel = document.getElementById("searchPanel");
+  const goSearch = (q) => { location.href = q ? `/courses?q=${encodeURIComponent(q)}` : "/courses"; };
   document.getElementById("searchForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    const q = search.value.trim();
-    location.href = q ? `/courses?q=${encodeURIComponent(q)}` : "/courses";
+    goSearch(search?.value.trim());
+  });
+  document.getElementById("mobileSearchForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    goSearch(document.getElementById("mobileSearchInput")?.value.trim());
   });
   search?.addEventListener("focus", () => panel?.classList.add("open"));
   document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) panel?.classList.remove("open"); });
@@ -1091,10 +1128,13 @@ function bindChrome() {
 
 function openModal(id) {
   closeModals();
+  setMobileNav(false);
   document.getElementById(id)?.classList.add("open");
+  document.body.classList.add("modal-open");
 }
 function closeModals() {
   document.querySelectorAll(".overlay").forEach((o) => o.classList.remove("open"));
+  document.body.classList.remove("modal-open");
 }
 
 function requireAuth(next) {
