@@ -196,6 +196,7 @@ export async function handler(event) {
       creatorName: body.creatorName,
       studentEmail: email,
       courseId,
+      title,
       amount: body.amount,
       shareType: body.shareType,
       shareRate: body.shareRate

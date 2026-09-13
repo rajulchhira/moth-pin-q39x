@@ -56,6 +56,58 @@ function inr(n) {
   return "₹" + Number(n || 0).toLocaleString("en-IN");
 }
 
+const GREETINGS = [
+  { headline: "Your classrooms closed the day, {first}.", body: "Here is how your classrooms closed today." },
+  { headline: "The day is on the desk, {first}.", body: "Here is the close for your classrooms." },
+  { headline: "Today's count is in, {first}.", body: "Sales and earning for your classrooms, in one note." },
+  { headline: "A quiet close, {first}.", body: "Here is what moved in your classrooms today." },
+  { headline: "The board is filed, {first}.", body: "Here is today's close — course by course." },
+  { headline: "Evening from the desk, {first}.", body: "Here is how your classrooms finished the day." },
+  { headline: "Seats were taken today, {first}.", body: "Here is which classrooms sold, and by how many." },
+  { headline: "One page for the day, {first}.", body: "Here is the close for your classrooms." },
+  { headline: "The till is closed, {first}.", body: "Here is today's sales and earning." },
+  { headline: "Good evening, {first}.", body: "Here is the day-close for your classrooms." }
+];
+
+function greetingFor(dateYmd, first) {
+  const digits = String(dateYmd || "").replace(/\D/g, "");
+  const idx = Number(digits || 0) % GREETINGS.length;
+  const g = GREETINGS[idx];
+  const name = first || "there";
+  return {
+    headline: g.headline.replace("{first}", name),
+    body: g.body
+  };
+}
+
+function courseList(row) {
+  return Object.values(row.courses || {}).sort((a, b) => Number(b.sales || 0) - Number(a.sales || 0) || String(a.title || "").localeCompare(String(b.title || "")));
+}
+
+function courseRowsHtml(row) {
+  const courses = courseList(row);
+  if (!courses.length) return "";
+  const lines = courses.map((c, i) => {
+    const n = Number(c.sales || 0);
+    const word = n === 1 ? "sale" : "sales";
+    const top = i === 0 ? "border-top:1px solid #f1e7dc;" : "";
+    return `<tr>
+      <td style="padding:10px 22px ${i === courses.length - 1 ? "18px" : "10px"} 22px;${top}font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1e1b4b;">${esc(c.title || "Classroom")}</td>
+      <td style="padding:10px 22px ${i === courses.length - 1 ? "18px" : "10px"} 22px;${top}font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#334155;font-weight:700;" align="right">${n} ${word}</td>
+    </tr>`;
+  }).join("");
+  return `<tr>
+    <td style="padding:24px 36px 0 36px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #eadfd4;border-radius:14px;">
+        <tr>
+          <td colspan="2" style="padding:18px 22px 6px 22px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#E11D74;">Today by classroom</td>
+        </tr>
+        ${lines}
+      </table>
+    </td>
+  </tr>`;
+}
+
 function salesKv(env) {
   return env && (env.SALES || env.SALES_KV || null);
 }
@@ -75,6 +127,7 @@ export async function recordCreatorSale(env, raw) {
   const creatorName = String(raw.creatorName || "").trim().slice(0, 80);
   const studentEmail = String(raw.studentEmail || "").trim().toLowerCase();
   const courseId = String(raw.courseId || "").trim().slice(0, 80);
+  const title = String(raw.title || "").trim().slice(0, 140);
   const amount = Math.max(0, Number(raw.amount) || 0);
   const shareType = String(raw.shareType || "percent").toLowerCase() === "fixed" ? "fixed" : "percent";
   const shareRate = Number(raw.shareRate);
@@ -93,11 +146,17 @@ export async function recordCreatorSale(env, raw) {
     sales: 0,
     earning: 0,
     gross: 0,
+    courses: {},
     sent: false
   };
   prev.creatorName = creatorName || prev.creatorName;
   prev.shareType = shareType;
   prev.shareRate = Number.isFinite(shareRate) ? shareRate : prev.shareRate;
+  prev.courses = prev.courses || {};
+  if (!prev.courses[courseId]) prev.courses[courseId] = { title: title || courseId, sales: 0, earning: 0 };
+  prev.courses[courseId].title = title || prev.courses[courseId].title;
+  prev.courses[courseId].sales += 1;
+  prev.courses[courseId].earning += earning;
   prev.sales += 1;
   prev.earning += earning;
   prev.gross += amount;
@@ -109,13 +168,11 @@ export async function recordCreatorSale(env, raw) {
 
 function digestHtml(row) {
   const origin = publicOrigin();
-  const first = esc(firstName(row.creatorName));
+  const first = firstName(row.creatorName);
+  const greet = greetingFor(row.date, first);
   const day = esc(prettyIstDate(row.date));
   const sales = Number(row.sales || 0);
   const earning = inr(row.earning);
-  const share = row.shareType === "fixed"
-    ? inr(row.shareRate) + " per sale"
-    : String(row.shareRate) + "% of each sale";
   const logo = origin + "/img/bizgarh-logo-transparent.png";
   const adminUrl = origin + "/admin.html";
   const saleWord = sales === 1 ? "sale" : "sales";
@@ -148,13 +205,13 @@ function digestHtml(row) {
           </tr>
           <tr>
             <td style="padding:8px 36px 0 36px;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.2;color:#1e1b4b;font-weight:700;">
-              Your classrooms closed the day, ${first}.
+              ${esc(greet.headline)}
             </td>
           </tr>
           <tr>
             <td style="padding:16px 36px 0 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#475569;">
-              Hello ${first},<br><br>
-              This is the close for <strong style="color:#1e1b4b;">your classrooms only</strong>. Other creators are not copied. Your earning is the share the superadmin set for you — not the full course price.
+              Hello ${esc(first)},<br><br>
+              ${esc(greet.body)}
             </td>
           </tr>
           <tr>
@@ -169,12 +226,13 @@ function digestHtml(row) {
                   <td width="50%" style="padding:22px 22px;">
                     <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#E11D74;">Your earning</div>
                     <div style="font-family:Georgia,'Times New Roman',serif;font-size:36px;color:#1e1b4b;font-weight:700;padding-top:4px;">${esc(earning)}</div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#64748b;padding-top:4px;">Your share · ${esc(share)}</div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#64748b;padding-top:4px;">today</div>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
+          ${courseRowsHtml(row)}
           <tr>
             <td style="padding:26px 36px 0 36px;" align="center">
               <a href="${esc(adminUrl)}" style="display:inline-block;background:#4F46E5;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:999px;">Open your admin desk</a>
@@ -205,24 +263,30 @@ function digestHtml(row) {
 
 function digestText(row) {
   const first = firstName(row.creatorName);
+  const greet = greetingFor(row.date, first);
   const sales = Number(row.sales || 0);
-  const share = row.shareType === "fixed"
-    ? inr(row.shareRate) + " per sale"
-    : String(row.shareRate) + "% of each sale";
+  const courses = courseList(row).map((c) => {
+    const n = Number(c.sales || 0);
+    return `- ${c.title}: ${n} ${n === 1 ? "sale" : "sales"}`;
+  });
   return [
     `Hello ${first},`,
     "",
+    greet.headline,
+    greet.body,
+    "",
     `Day close for ${prettyIstDate(row.date)}.`,
     `Total sales: ${sales}`,
-    `Your earning: ${inr(row.earning)} (${share})`,
-    "",
-    "This is only for your classrooms. The earning is the share the superadmin set for you.",
+    `Your earning: ${inr(row.earning)}`,
+    courses.length ? "" : null,
+    courses.length ? "Today by classroom:" : null,
+    ...courses,
     "",
     `Open your admin desk: ${publicOrigin()}/admin.html`,
     "",
     "Warm regards,",
     "The Bizgarh desk"
-  ].join("\n");
+  ].filter((line) => line != null).join("\n");
 }
 
 async function sendRow(row) {

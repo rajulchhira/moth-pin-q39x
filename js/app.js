@@ -461,6 +461,7 @@ function startSocial(provider) {
     return;
   }
   const next = currentPageName();
+  window.BizgarhLoader?.show?.();
   location.href = "/auth/" + encodeURIComponent(provider) + "?next=" + encodeURIComponent(next);
 }
 
@@ -2779,4 +2780,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (row && course) downloadBizgarhCertificate(row, course);
   });
   renderCertificatePage();
+  window.BizgarhLoader?.done?.();
 });

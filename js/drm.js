@@ -85,7 +85,7 @@ function renderLearnPage() {
           </div>
           <video id="drmVideo" playsinline preload="auto" disablePictureInPicture controlsList="nodownload noremoteplayback nofullscreen"></video>
           <canvas class="drm-canvas" id="drmCanvas"></canvas>
-          <div class="player-load" id="playerLoad"><div class="yt-spin"></div></div>
+          <div class="player-load" id="playerLoad">${window.BizgarhLoader ? window.BizgarhLoader.html("bg-loader--md") : '<span class="bg-loader bg-loader--md" aria-hidden="true"></span>'}</div>
           <div class="drm-blackout" id="drmBlackout">
             <div>
               <h2>Playback paused</h2>
