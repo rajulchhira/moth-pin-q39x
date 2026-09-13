@@ -17,7 +17,7 @@ const NAV = [
     { id: "leads", label: "Leads", mod: "leads", act: "view" }
   ]},
   { group: "Sub-admins / Creators", items: [
-    { id: "staff", label: "All Sub-admins", mod: "staff", act: "view", owner: true },
+    { id: "staff", label: "Admins", mod: "staff", act: "view", owner: true },
     { id: "performance", label: "Creator Performance", mod: "creator", act: "view" },
     { id: "referrals", label: "Referrals", mod: "creator", act: "view" },
     { id: "commissions", label: "Commissions", mod: "commission", act: "view" },
@@ -146,7 +146,7 @@ function renderSide() {
   const s = AdminCore.session();
   document.getElementById("adminSide").innerHTML = `
     <a class="ad-brand" href="/">${typeof brandLogoHTML === "function" ? brandLogoHTML("ad") : "Bizgarh"}</a>
-    <div class="ad-who">${adEsc(s.name)}<br>${AdminCore.isOwner() ? "Super Admin" : (s.creatorEnabled ? "Sub-admin · Creator" : "Sub-admin")}</div>
+    <div class="ad-who">${adEsc(s.name)}<br>${AdminCore.isSuperAdmin() ? "Super Admin" : (AdminCore.isOwner() ? "Owner" : (s.creatorEnabled ? "Admin · Creator" : "Admin"))}</div>
     <nav class="ad-nav">${visibleNav().map((g) => `
       <div class="ad-nav-label">${g.group}</div>
       ${g.items.map((it) => `<button type="button" data-route="${it.id}" class="${Ad.route===it.id?"on":""}">${it.label}</button>`).join("")}
@@ -169,7 +169,7 @@ function go(route) {
 function paint() {
   const s = AdminCore.session();
   if (!s) return;
-  document.getElementById("adminPill").textContent = AdminCore.isOwner() ? "Super Admin" : "Sub-admin";
+  document.getElementById("adminPill").textContent = AdminCore.isSuperAdmin() ? "Super Admin" : (AdminCore.isOwner() ? "Owner" : "Admin");
   const titles = {
     dashboard: ["Dashboard", "Command center"],
     students: ["Students", "Accounts, enrollments, attribution"],
@@ -290,14 +290,21 @@ const VIEWS = {
   },
   staff() {
     AdminCore.assert("staff", "view");
-    const rows = staffList().filter((s) => s.role !== "owner");
-    return `<div class="ad-toolbar">${AdminCore.can("staff","create")?`<button class="btn btn-primary" data-new-staff="1">Add sub-admin</button>`:""}</div>
-      ${table(["Name","Email","Status","Creator","Referral","Last login","Actions"], rows.map((s) => {
-        const n = AdminCore.normalizeStaff(s);
-        return `<tr><td><strong>${adEsc(n.name)}</strong></td><td>${adEsc(n.email)}</td><td>${badge(n.status)}</td>
-          <td>${n.creatorEnabled?"Yes":"No"}</td><td>${adEsc(n.referralCode||"—")}</td>
+    const rows = staffList().map((s) => AdminCore.normalizeStaff(s));
+    const grant = AdminCore.isSuperAdmin() ? `<form class="ad-card ad-form" id="grantAdminForm" style="margin-bottom:14px;grid-template-columns:1.4fr 1fr auto">
+      <input name="email" type="email" placeholder="Google account e.g. name@gmail.com" required>
+      <input name="name" placeholder="Name (optional)">
+      <button class="btn btn-primary" type="submit">Grant admin access</button>
+    </form>
+    <p class="muted" style="margin:-4px 0 16px">They sign in with Google on the public site. A dropdown under their name opens this panel. Super admin cannot be granted or removed here.</p>` : "";
+    return `${grant}<div class="ad-toolbar">${AdminCore.can("staff","create")?`<button class="btn btn-ghost" data-new-staff="1">Add sub-admin with password</button>`:""}</div>
+      ${table(["Name","Email","Role","Status","Creator","Last login","Actions"], rows.map((n) => {
+        const locked = n.role === "superadmin" || n.role === "owner";
+        const roleLabel = n.role === "superadmin" ? "Super admin" : (n.role === "owner" ? "Owner" : "Admin");
+        return `<tr><td><strong>${adEsc(n.name)}</strong></td><td>${adEsc(n.email)}</td><td>${adEsc(roleLabel)}</td><td>${badge(n.status)}</td>
+          <td>${n.creatorEnabled?"Yes":"No"}</td>
           <td>${n.lastLogin?new Date(n.lastLogin).toLocaleString("en-IN"):"—"}</td>
-          <td><button class="btn btn-ghost" data-staff="${adEsc(n.email)}">Manage</button></td></tr>`;
+          <td>${locked?"—":`<button class="btn btn-ghost" data-staff="${adEsc(n.email)}">Manage</button>`}</td></tr>`;
       }))}`;
   },
   performance() {
@@ -768,6 +775,12 @@ function bindApp() {
       AdminCore.audit("lead_update", f.id.value, "", f.status.value);
       paint();
     }
+    if (f.id === "grantAdminForm") {
+      e.preventDefault();
+      AdminCore.grantGoogleAdmin(f.email.value, f.name.value);
+      paint();
+      return;
+    }
     if (f.id === "addStaffForm") {
       e.preventDefault();
       AdminCore.assert("staff","create");
@@ -795,6 +808,10 @@ function bindApp() {
       e.preventDefault();
       AdminCore.assert("staff","edit");
       const email = f.email.value;
+      if (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(email)) {
+        toast("Super admin accounts cannot be edited here");
+        return;
+      }
       const row = AdminCore.staffRow(email);
       const perms = {};
       Object.keys(ADMIN_MODULES).forEach((m) => {
@@ -1044,6 +1061,23 @@ document.addEventListener("DOMContentLoaded", () => {
   if (typeof seedStaffAndAnalytics === "function") seedStaffAndAnalytics();
   AdminCore.seedControlPlane();
 
+  document.getElementById("staffGoogleBtn")?.addEventListener("click", () => {
+    if (typeof startSocial === "function") startSocial("google");
+  });
+  const cont = document.getElementById("staffContinue");
+  const u = typeof getUser === "function" ? getUser() : null;
+  if (cont && u && typeof staffAccessRole === "function" && staffAccessRole(u.email)) {
+    cont.classList.remove("hidden");
+    const who = cont.querySelector("span");
+    if (who) who.textContent = u.email;
+    cont.addEventListener("click", () => {
+      if (AdminCore.adoptPublicUser()) {
+        toast("Welcome");
+        showAdmin();
+      }
+    });
+  }
+
   document.getElementById("staffLoginForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const r = AdminCore.login(e.target.email.value.trim().toLowerCase(), e.target.password.value, e.target.totp.value);
@@ -1067,5 +1101,5 @@ document.addEventListener("DOMContentLoaded", () => {
     Ad.page = 1;
     paint();
   });
-  if (AdminCore.session()) showAdmin();
+  if (AdminCore.session() || AdminCore.adoptPublicUser()) showAdmin();
 });

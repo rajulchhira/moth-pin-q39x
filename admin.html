@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Control | Bizgarh</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=desk1">
-  <link rel="stylesheet" href="css/admin.css?v=desk1">
+  <link rel="stylesheet" href="css/style.css?v=staff1">
+  <link rel="stylesheet" href="css/admin.css?v=staff1">
 </head>
 <body class="ad-body">
   <div id="staffLogin" class="ad-login">
@@ -41,12 +41,14 @@
         <span class="logo-word">Bizgarh</span>
       </div>
       <h2>Control center</h2>
-      <p class="muted">Super admin and sub-admin sign in. Student classroom stays on the public site.</p>
-      <div class="field"><label>Email</label><input name="email" type="email" required placeholder="admin@bizgarh.in"></div>
+      <p class="muted">Super admins and admins sign in with Google. The public classroom stays unchanged for everyone else.</p>
+      <button type="button" class="btn btn-primary btn-block" id="staffGoogleBtn">Continue with Google</button>
+      <button type="button" class="btn btn-ghost btn-block hidden" id="staffContinue">Continue as <span></span></button>
+      <p class="auth-or"><span>or password</span></p>
+      <div class="field"><label>Email</label><input name="email" type="email" required placeholder="admin email"></div>
       <div class="field"><label>Password</label><input name="password" type="password" required></div>
       <div class="field hidden" id="totpWrap"><label>Authenticator code</label><input name="totp" placeholder="000000"></div>
-      <button class="btn btn-primary btn-block">Login</button>
-      <p class="muted" style="margin-top:12px;font-size:13px">Owner: <strong>admin@bizgarh.in</strong> / <strong>admin123</strong><br>Sub-admin: <strong>aarav@bizgarh.in</strong> / <strong>creator123</strong><br>If 2FA is on, use code <strong>000000</strong>.</p>
+      <button class="btn btn-ghost btn-block">Login with password</button>
     </form>
   </div>
 
@@ -108,10 +110,10 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=desk1"></script>
+  <script src="js/app.js?v=staff1"></script>
   <script src="js/lms.js"></script>
-  <script src="js/admin-core.js?v=desk1"></script>
+  <script src="js/admin-core.js?v=staff1"></script>
   <script src="js/admin.js?v=legacy"></script>
-  <script src="js/admin-app.js?v=logo1"></script>
+  <script src="js/admin-app.js?v=staff1"></script>
 </body>
 </html>

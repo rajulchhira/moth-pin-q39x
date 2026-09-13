@@ -87,6 +87,51 @@ const HIDDEN_COURSES_KEY = "tradeshalaHiddenCourses";
 const STAFF_KEY = "tradeshalaStaff";
 const STAFF_SESSION_KEY = "tradeshalaStaffSession";
 const COURSE_OWNERS_KEY = "tradeshalaCourseOwners";
+const SUPER_ADMINS = [
+  { email: "rajulchhira1@gmail.com", name: "Rajul Chhira" },
+  { email: "bizgarh@gmail.com", name: "Bizgarh" }
+];
+
+function normEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+function isSuperAdminEmail(email) {
+  const e = normEmail(email);
+  return SUPER_ADMINS.some((s) => s.email === e);
+}
+function grantedAdminEmails() {
+  try {
+    return JSON.parse(localStorage.getItem("tradeshalaGrantedAdmins") || "[]").map(normEmail);
+  } catch {
+    return [];
+  }
+}
+function staffAccessRole(email) {
+  const e = normEmail(email);
+  if (!e) return "";
+  if (isSuperAdminEmail(e)) return "superadmin";
+  const row = staffList().find((s) => normEmail(s.email) === e);
+  if (row && row.status !== "suspended" && row.status !== "inactive" && row.status !== "blocked") {
+    if (row.role === "owner") return "owner";
+    if (row.role === "superadmin") return "superadmin";
+    if (row.role === "subadmin" || row.role === "admin" || row.role === "creator") return "admin";
+  }
+  if (grantedAdminEmails().includes(e)) return "admin";
+  return "";
+}
+function openAdminDesk() {
+  const user = getUser();
+  const role = staffAccessRole(user?.email);
+  if (!role) return;
+  const named = SUPER_ADMINS.find((s) => s.email === normEmail(user.email));
+  setStaffSession({
+    name: user.name || named?.name || "Admin",
+    email: normEmail(user.email),
+    role: role === "admin" ? "subadmin" : role,
+    status: "active"
+  });
+  location.href = "/admin";
+}
 const LIVE_KEY = "tradeshalaLives";
 const COURSE_EDITS_KEY = "tradeshalaCourseEdits";
 const COURSE_VIDEOS_KEY = "tradeshalaCourseVideos";
@@ -344,6 +389,7 @@ function referralBits(code) {
   return cookieRef || (codeLooksLikeRef ? code : "");
 }
 function completeStudentSession(user, message) {
+  if (isSuperAdminEmail(user.email)) user.status = "active";
   if (user.status === "pending") {
     toast("Account created. Wait for admin approval before login.");
     closeModals();
@@ -723,11 +769,34 @@ function liveMegaHTML() {
     </div>`;
 }
 
-function headerHTML() {
+function headerAuthHTML(place) {
   const user = getUser();
-  const auth = user
-    ? `<a class="btn btn-ghost" href="/dashboard">Hi, ${user.name.split(" ")[0]}</a><button class="btn btn-ghost js-logout" type="button">Logout</button>`
-    : `<button class="btn btn-ghost" type="button" data-open="loginModal">Login</button><button class="btn btn-primary" type="button" data-open="signupModal">Sign Up</button>`;
+  if (!user) {
+    return `<button class="btn btn-ghost" type="button" data-open="loginModal">Login</button><button class="btn btn-primary" type="button" data-open="signupModal">Sign Up</button>`;
+  }
+  const first = escapeHtml(user.name.split(" ")[0]);
+  const role = staffAccessRole(user.email);
+  if (!role) {
+    return `<a class="btn btn-ghost" href="/dashboard">Hi, ${first}</a><button class="btn btn-ghost js-logout" type="button">Logout</button>`;
+  }
+  if (place === "mobile") {
+    return `<a class="btn btn-ghost" href="/dashboard">Hi, ${first}</a>
+      <a class="btn btn-primary js-open-admin" href="/admin">Admin panel</a>
+      <button class="btn btn-ghost js-logout" type="button">Logout</button>`;
+  }
+  return `<div class="acct-wrap">
+    <button class="btn btn-ghost acct-btn" type="button" aria-haspopup="true" aria-expanded="false">Hi, ${first} <span class="acct-caret" aria-hidden="true">▾</span></button>
+    <div class="acct-menu" role="menu">
+      <a href="/dashboard">My learning</a>
+      <a class="js-open-admin" href="/admin">Admin panel</a>
+      <button type="button" class="js-logout">Logout</button>
+    </div>
+  </div>`;
+}
+
+function headerHTML() {
+  const authDesk = headerAuthHTML("desk");
+  const authMobile = headerAuthHTML("mobile");
   const courseLinks = CATEGORIES.map((c) => `
     <a href="/courses?cat=${courseFilterFromCat(c.id)}#library">
       <span class="mega-ico" style="background:${c.tint};color:${c.color}">${iconSvg(c.icon)}</span>
@@ -754,7 +823,7 @@ function headerHTML() {
         <button class="search-btn" type="submit" aria-label="Search">⌕</button>
         <div class="search-panel" id="searchPanel"><div id="searchResults"></div></div>
       </form>
-      <div class="header-actions" id="headerActions">${auth}</div>
+      <div class="header-actions" id="headerActions">${authDesk}</div>
       <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">
         <span></span><span></span><span></span>
       </button>
@@ -772,7 +841,7 @@ function headerHTML() {
     <a href="/about">About</a>
     <a href="/dashboard">My learning</a>
     <a href="/contact">Contact</a>
-    <div class="mnav-auth">${auth}</div>
+    <div class="mnav-auth">${authMobile}</div>
   </nav>`;
 }
 
@@ -913,6 +982,7 @@ function bindChrome() {
     if (e.key === "Escape") {
       setMobileNav(false);
       closeModals();
+      document.querySelectorAll(".acct-wrap").forEach((el) => el.classList.remove("open"));
     }
   });
   window.addEventListener("resize", () => {
@@ -931,8 +1001,32 @@ function bindChrome() {
       e.preventDefault();
       startSocial(social.dataset.social);
     }
+    if (e.target.closest(".js-open-admin")) {
+      e.preventDefault();
+      openAdminDesk();
+      return;
+    }
+    const acctBtn = e.target.closest(".acct-btn");
+    if (acctBtn) {
+      const wrap = acctBtn.closest(".acct-wrap");
+      const open = !wrap.classList.contains("open");
+      document.querySelectorAll(".acct-wrap").forEach((el) => {
+        el.classList.remove("open");
+        el.querySelector(".acct-btn")?.setAttribute("aria-expanded", "false");
+      });
+      wrap.classList.toggle("open", open);
+      acctBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      return;
+    }
+    if (!e.target.closest(".acct-wrap")) {
+      document.querySelectorAll(".acct-wrap").forEach((el) => {
+        el.classList.remove("open");
+        el.querySelector(".acct-btn")?.setAttribute("aria-expanded", "false");
+      });
+    }
     if (e.target.closest(".js-logout")) {
       localStorage.removeItem(USER_KEY);
+      clearStaffSession();
       fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
       toast("Logged out");
       location.href = "/";

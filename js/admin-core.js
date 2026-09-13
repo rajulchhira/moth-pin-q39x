@@ -85,7 +85,11 @@ AdminCore.session = () => {
 };
 AdminCore.isOwner = () => {
   const s = AdminCore.session();
-  return s && (s.role === "owner" || s.role === "superadmin");
+  return s && (s.role === "owner" || s.role === "superadmin" || isSuperAdminEmail(s.email));
+};
+AdminCore.isSuperAdmin = () => {
+  const s = AdminCore.session();
+  return s && (s.role === "superadmin" || isSuperAdminEmail(s.email));
 };
 
 AdminCore.brandEmail = (email) => String(email || "").replace(/@tradeshala\.in$/i, "@bizgarh.in");
@@ -93,18 +97,32 @@ AdminCore.brandEmail = (email) => String(email || "").replace(/@tradeshala\.in$/
 AdminCore.staffRow = (email) => {
   if (!email) return null;
   email = AdminCore.brandEmail(email);
-  if (email.toLowerCase() === "admin@bizgarh.in") {
-    const listed = staffList().find((s) => AdminCore.brandEmail(s.email).toLowerCase() === email.toLowerCase());
+  const e = String(email).toLowerCase();
+  const listed = staffList().find((s) => AdminCore.brandEmail(s.email).toLowerCase() === e) || null;
+  if (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(e)) {
+    const named = SUPER_ADMINS.find((s) => s.email === e);
+    return {
+      ...(listed || {}),
+      name: listed?.name || named?.name || "Super Admin",
+      email: e,
+      role: "superadmin",
+      status: listed?.status === "suspended" ? "active" : (listed?.status || "active"),
+      creatorEnabled: false,
+      permissions: {},
+      totp: false
+    };
+  }
+  if (e === "admin@bizgarh.in") {
     return listed || { name: "Platform Owner", email: "admin@bizgarh.in", role: "owner", status: "active", creatorEnabled: false };
   }
-  return staffList().find((s) => AdminCore.brandEmail(s.email).toLowerCase() === String(email).toLowerCase()) || null;
+  return listed;
 };
 
 AdminCore.can = (mod, action, staff) => {
   const s = staff || AdminCore.session();
   if (!s) return false;
   if (s.status === "suspended" || s.status === "inactive") return false;
-  if (s.role === "owner" || s.role === "superadmin") return true;
+  if (s.role === "owner" || s.role === "superadmin" || (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(s.email))) return true;
   const perms = s.permissions || CREATOR_DEFAULT_PERMS;
   const list = perms[mod] || [];
   return list.includes(action) || list.includes("*");
@@ -146,9 +164,16 @@ AdminCore.saveStaff = (row) => {
 AdminCore.normalizeStaff = (s) => {
   if (!s) return s;
   const creatorEnabled = s.creatorEnabled != null ? s.creatorEnabled : s.role === "creator";
+  const email = AdminCore.brandEmail(s.email);
+  let role = s.role;
+  if (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(email)) role = "superadmin";
+  else if (role === "owner") role = "owner";
+  else if (role === "superadmin") role = "superadmin";
+  else role = "subadmin";
   return {
     ...s,
-    role: s.role === "owner" || s.role === "superadmin" ? "owner" : "subadmin",
+    email,
+    role,
     status: s.status || "active",
     phone: s.phone || "",
     photo: s.photo || "",
@@ -158,10 +183,11 @@ AdminCore.normalizeStaff = (s) => {
     studentScope: s.studentScope || "own",
     commission: s.commission || { type: "percent", newSale: 20, renewal: 10, start: "", end: "" },
     payout: s.payout || { method: "upi", upi: "", account: "" },
-    permissions: s.permissions || (s.role === "owner" ? {} : { ...CREATOR_DEFAULT_PERMS }),
+    permissions: s.permissions || (role === "owner" || role === "superadmin" ? {} : { ...CREATOR_DEFAULT_PERMS }),
     lastLogin: s.lastLogin || "",
     created: s.created || "2026-08-01T10:00:00.000Z",
-    totp: !!s.totp
+    totp: !!s.totp,
+    googleAuth: !!s.googleAuth || !s.password
   };
 };
 
@@ -187,6 +213,29 @@ AdminCore.migrateStaff = () => {
   } else {
     const owner = list.find((s) => s.email === "admin@bizgarh.in");
     if (owner && owner.totp == null) owner.totp = true;
+  }
+  if (typeof SUPER_ADMINS !== "undefined") {
+    SUPER_ADMINS.forEach((sa) => {
+      const i = list.findIndex((s) => AdminCore.brandEmail(s.email).toLowerCase() === sa.email);
+      if (i < 0) {
+        list.unshift({
+          name: sa.name,
+          email: sa.email,
+          role: "superadmin",
+          status: "active",
+          creatorEnabled: false,
+          permissions: {},
+          totp: false,
+          googleAuth: true,
+          created: "2026-01-01T00:00:00.000Z",
+          lastLogin: ""
+        });
+      } else {
+        list[i].role = "superadmin";
+        list[i].status = "active";
+        list[i].googleAuth = true;
+      }
+    });
   }
   list.forEach((s) => {
     if (s.creatorEnabled && !s.referralCode) {
@@ -436,6 +485,10 @@ AdminCore.login = (email, password, totp) => {
     return { ok: false, error: "Too many failed logins. Try again in 15 minutes." };
   }
   const row = AdminCore.staffRow(email);
+  if (row && (row.googleAuth || !row.password) && !(row.password && password === row.password) && email !== "admin@bizgarh.in") {
+    AdminCore.noteLoginFail();
+    return { ok: false, error: "This admin signs in with Google on the public site." };
+  }
   const passOk = row && (
     (row.email === "admin@bizgarh.in" && password === (row.password || "admin123")) ||
     (row.password && row.password === password)
@@ -457,6 +510,77 @@ AdminCore.login = (email, password, totp) => {
   setStaffSession({ ...staff, password: undefined });
   AdminCore.audit("login", staff.email, "", "ok");
   return { ok: true, staff };
+};
+
+AdminCore.adoptPublicUser = () => {
+  const u = typeof getUser === "function" ? getUser() : null;
+  if (!u?.email) return false;
+  const role = typeof staffAccessRole === "function" ? staffAccessRole(u.email) : "";
+  if (!role) return false;
+  let row = AdminCore.staffRow(u.email);
+  if (!row) {
+    row = {
+      name: u.name,
+      email: normEmail(u.email),
+      role: role === "admin" ? "subadmin" : role,
+      status: "active",
+      googleAuth: true,
+      created: AdminCore.now()
+    };
+  }
+  const staff = AdminCore.normalizeStaff({ ...row, name: row.name || u.name, googleAuth: true });
+  if (staff.status === "suspended" || staff.status === "inactive") return false;
+  staff.lastLogin = AdminCore.now();
+  AdminCore.saveStaff(staff);
+  AdminCore.recordSession(staff, true);
+  setStaffSession({ ...staff, password: undefined });
+  return true;
+};
+
+AdminCore.grantGoogleAdmin = (email, name) => {
+  if (!AdminCore.isSuperAdmin()) {
+    toast("Only a super admin can grant admin access");
+    return { ok: false };
+  }
+  const e = String(email || "").trim().toLowerCase();
+  if (!e || !e.includes("@")) {
+    toast("Enter a valid Google email");
+    return { ok: false };
+  }
+  if (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(e)) {
+    toast("This account is already a super admin");
+    return { ok: false };
+  }
+  const existing = AdminCore.staffRow(e);
+  if (existing && (existing.role === "owner" || existing.role === "superadmin")) {
+    toast("This account already has full control");
+    return { ok: false };
+  }
+  const perms = {};
+  Object.keys(ADMIN_MODULES).forEach((m) => {
+    if (m === "staff" || m === "settings") return;
+    perms[m] = ADMIN_MODULES[m].slice();
+  });
+  const row = AdminCore.normalizeStaff({
+    ...(existing || {}),
+    name: (name || "").trim() || existing?.name || e.split("@")[0],
+    email: e,
+    role: "subadmin",
+    status: "active",
+    googleAuth: true,
+    totp: false,
+    permissions: existing?.permissions || perms,
+    created: existing?.created || AdminCore.now()
+  });
+  AdminCore.saveStaff(row);
+  try {
+    const extra = JSON.parse(localStorage.getItem("tradeshalaGrantedAdmins") || "[]");
+    if (!extra.map((x) => String(x).toLowerCase()).includes(e)) extra.push(e);
+    localStorage.setItem("tradeshalaGrantedAdmins", JSON.stringify(extra));
+  } catch { /* ignore */ }
+  AdminCore.audit("staff_grant_google", e, existing ? existing.role : "", "subadmin");
+  toast("Admin access granted. They sign in with Google, then open Admin panel from their name.");
+  return { ok: true };
 };
 
 AdminCore.logout = () => {

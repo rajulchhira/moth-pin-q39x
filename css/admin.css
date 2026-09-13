@@ -30,6 +30,8 @@
   box-shadow: 0 24px 60px rgba(15,23,42,.08);
 }
 .ad-login-card h2 { margin: 8px 0 6px; font-size: 24px; }
+.ad-login-card .auth-or { margin: 16px 0 14px; }
+.ad-login-card .btn-block { margin-top: 8px; }
 .ad-app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
 .ad-side {
   background: var(--ad-side);
