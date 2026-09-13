@@ -60,7 +60,7 @@ function stripHtmlUrl() {
 }
 
 function ensureBrandFont() {
-  if (!document.getElementById("playfairBrand")) {
+  if (!document.getElementById("playfairBrand") && !document.querySelector('link[href*="Playfair"]')) {
     const link = document.createElement("link");
     link.id = "playfairBrand";
     link.rel = "stylesheet";
@@ -1496,6 +1496,67 @@ function courseOverview(c) {
   ];
 }
 
+function curriculumFromLessons(c) {
+  const lessons = lessonsFor(c.id);
+  const titles = ["Introduction", "Core ideas", "The setup", "Risk & journal", "Managing trades"];
+  const sections = [];
+  for (let i = 0; i < lessons.length; i += 3) {
+    const slice = lessons.slice(i, i + 3);
+    const gi = Math.floor(i / 3);
+    sections.push({
+      t: titles[gi] || `Section ${String(gi + 1).padStart(2, "0")}`,
+      m: `${slice.length} lesson${slice.length === 1 ? "" : "s"}`,
+      items: slice.map((l, j) => ({ t: l.t, dur: l.dur, lesson: i + j }))
+    });
+  }
+  return sections;
+}
+
+function courseOverviewCardHTML(c, playable) {
+  const sections = playable
+    ? curriculumFromLessons(c)
+    : courseOverview(c).map((s) => ({
+        t: s.t,
+        m: s.m,
+        items: s.items.map((t) => ({ t }))
+      }));
+  const topicCount = playable ? lessonsFor(c.id).length : c.lessons;
+  return `
+        <section class="cd-card cd-overview-card" id="courseOverview">
+          <div class="cd-ov-head">
+            <h2>Your Course Overview</h2>
+            <p class="cd-ov-meta">
+              <span>${sections.length} sections</span>
+              <span>${topicCount} topics</span>
+              <span>${c.hours} hrs content</span>
+            </p>
+          </div>
+          <div class="cd-overview">
+            ${sections.map((s, i) => `
+              <div class="cd-sec ${playable || i === 0 ? "open" : ""}" style="--i:${i}">
+                <button type="button" class="cd-sec-h" aria-expanded="${playable || i === 0 ? "true" : "false"}">
+                  <span class="cd-sec-num">${String(i + 1).padStart(2, "0")}</span>
+                  <span class="cd-sec-title">${escapeHtml(s.t)}</span>
+                  <em class="cd-sec-dur">${iconSvg("clock")} ${escapeHtml(s.m)}</em>
+                  <i class="cd-sec-arrow" aria-hidden="true"></i>
+                </button>
+                <div class="cd-topics">
+                  <div class="cd-topics-inner">
+                    ${s.items.map((it) => playable && it.lesson != null
+                      ? `<button type="button" class="cd-topic playable${it.lesson === 0 ? " active" : ""}" data-lesson="${it.lesson}">
+                          <span class="cd-topic-ico">${iconSvg("play")}</span>
+                          <span>${escapeHtml(it.t)}</span>
+                          ${it.dur ? `<em>${escapeHtml(it.dur)}</em>` : ""}
+                        </button>`
+                      : `<div class="cd-topic"><span class="cd-topic-ico">${iconSvg("play")}</span><span>${escapeHtml(it.t)}</span></div>`).join("")}
+                  </div>
+                </div>
+              </div>`).join("")}
+            ${awardedCertFooterHTML(c, playable)}
+          </div>
+        </section>`;
+}
+
 function courseAbout(c) {
   if (c.description) return c.description;
   return `${c.title} is taught by ${c.instructor}. The classroom is built around a written setup, a clear invalidation, and a journal you can keep after the video ends. You will learn how to choose the trade, size it, and review the week — not a list of tips. The lessons are short, practical, and meant to be replayed before the next session.`;
@@ -1567,13 +1628,12 @@ function renderCoursePage() {
   const owned = logged && isEnrolled(c.id);
   const langs = courseLangs(c);
   const points = learnPoints(c);
-  const sections = courseOverview(c);
   const watchers = 11 + (c.title.length * 3) % 37;
   const photo = photoFor(c.instructor);
   document.title = `${c.title} | ${BRAND}`;
 
   box.innerHTML = `
-    <div class="cd-layout">
+    <div class="cd-layout${owned ? " is-owned" : ""}">
       <div class="cd-main">
         <nav class="cd-crumb">
           <a href="/">Home</a><span>/</span>
@@ -1584,9 +1644,11 @@ function renderCoursePage() {
         <h1 class="cd-title">${c.title}</h1>
 
         ${owned
-          ? `<div id="learnRoot" class="cd-classroom"></div>`
+          ? `<div id="learnRoot" class="cd-classroom"></div>
+             <div id="certAward"></div>
+             ${courseOverviewCardHTML(c, true)}`
           : `<div class="cd-preview" style="--cover:${art.bg}">
-          <video id="cdPreview" autoplay muted loop playsinline preload="auto" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
+          <video id="cdPreview" autoplay muted loop playsinline preload="metadata" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
           <div class="cd-preview-art">
             <img class="cd-preview-person" src="${photo}" alt="${c.instructor}">
             <div class="cd-preview-copy"><small>${BRAND}</small><b>${art.title}</b></div>
@@ -1622,39 +1684,7 @@ function renderCoursePage() {
           </ul>
         </section>
 
-        <section class="cd-card cd-overview-card">
-          <div class="cd-ov-head">
-            <h2>Your Course Overview</h2>
-            <p class="cd-ov-meta">
-              <span>${sections.length} sections</span>
-              <span>${c.lessons} topics</span>
-              <span>${c.hours} hrs content</span>
-            </p>
-          </div>
-          <div class="cd-overview">
-            ${sections.map((s, i) => `
-              <div class="cd-sec ${i === 0 ? "open" : ""}" style="--i:${i}">
-                <button type="button" class="cd-sec-h" aria-expanded="${i === 0 ? "true" : "false"}">
-                  <span class="cd-sec-num">${String(i + 1).padStart(2, "0")}</span>
-                  <span class="cd-sec-title">${s.t}</span>
-                  <em class="cd-sec-dur">${iconSvg("clock")} ${s.m}</em>
-                  <i class="cd-sec-arrow" aria-hidden="true"></i>
-                </button>
-                <div class="cd-topics">
-                  <div class="cd-topics-inner">
-                    ${s.items.map((it) => `<div class="cd-topic"><span class="cd-topic-ico">${iconSvg("play")}</span><span>${it}</span></div>`).join("")}
-                  </div>
-                </div>
-              </div>`).join("")}
-            <div class="cd-cert">
-              <span class="cd-cert-ico">${iconSvg("badge")}</span>
-              <div>
-                <b>Earn a Certificate</b>
-                <p>Add this to your LinkedIn profile or résumé after you finish the classroom.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+        ${owned ? "" : courseOverviewCardHTML(c, false)}
 
         <section class="cd-card cd-about-card" id="cdAbout">
           <div class="cd-ov-head">
@@ -1693,7 +1723,7 @@ function renderCoursePage() {
         </section>
       </div>
 
-      <aside class="cd-buy">
+      ${owned ? "" : `<aside class="cd-buy">
         <ul class="cd-facts">
           <li>${iconSvg("badge")} <span>${c.learners} Learners Enrolled</span></li>
           <li>${iconSvg("bars")} <span>${courseLevel(c)}</span></li>
@@ -1703,22 +1733,16 @@ function renderCoursePage() {
           <li>${iconSvg("badge")} <span>Earn a Certificate</span></li>
         </ul>
         <div class="cd-price">₹${Number(c.price).toLocaleString("en-IN")}</div>
-        ${owned
-          ? `<button type="button" class="btn btn-primary btn-block cd-cta" id="watchNowBtn">Continue lesson</button>
-             <a class="btn btn-ghost btn-block cd-comm-cta" href="#courseCommunity">${iconSvg("chat")} Community</a>`
-          : `<button class="btn btn-primary btn-block cd-cta" id="enrollBtn">Buy Now →</button>
-             <button type="button" class="btn btn-ghost btn-block cd-comm-cta locked" id="commLockCta">
-               <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
-               Community
-             </button>`}
-        <p class="cd-watch"><i></i> ${owned ? c.learners + " learners have enrolled" : watchers + " learners watching right now"}</p>
-      </aside>
+        <button class="btn btn-primary btn-block cd-cta" id="enrollBtn">Buy Now →</button>
+        <button type="button" class="btn btn-ghost btn-block cd-comm-cta locked" id="commLockCta">
+          <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
+          Community
+        </button>
+        <p class="cd-watch"><i></i> ${watchers} learners watching right now</p>
+      </aside>`}
     </div>`;
 
   document.getElementById("enrollBtn")?.addEventListener("click", () => enroll(c.id));
-  document.getElementById("watchNowBtn")?.addEventListener("click", () => {
-    document.getElementById("learnRoot")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
   const lockCommunity = () => {
     toast("Buy this course to unlock the community");
     document.getElementById("enrollBtn")?.focus();
@@ -1729,6 +1753,13 @@ function renderCoursePage() {
   document.querySelectorAll(".cd-sec-h").forEach((btn) => {
     btn.addEventListener("click", () => {
       const sec = btn.parentElement;
+      const playable = Boolean(document.querySelector("#courseOverview .cd-topic.playable"));
+      if (playable) {
+        const open = !sec.classList.contains("open");
+        sec.classList.toggle("open", open);
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        return;
+      }
       const open = sec.classList.contains("open");
       document.querySelectorAll(".cd-sec").forEach((s) => {
         s.classList.remove("open");
@@ -1765,6 +1796,10 @@ function renderCoursePage() {
     else vid.addEventListener("canplay", start, { once: true });
   }
   if (owned && typeof renderLearnPage === "function") renderLearnPage();
+  if (owned && typeof maybeIssueCert === "function") {
+    const cert = maybeIssueCert(getUser().email, c.id);
+    if (cert) renderCertAward(document.getElementById("certAward"), c, cert);
+  }
 }
 
 function renderDashboard() {
@@ -1787,7 +1822,7 @@ function renderDashboard() {
         ${list.length ? list.map((c) => {
           const p = typeof courseCompletion === "function" ? courseCompletion(user.email, c.id) : { pct: 0 };
           return `<div class="bar-row"><span>${c.title}</span><div class="bar-track"><i style="width:${p.pct}%"></i></div><b>${p.pct}%</b></div>
-            ${p.cert ? `<a href="/certificate?course=${c.id}&email=${encodeURIComponent(user.email)}">View certificate</a>` : ""}`;
+            ${p.cert ? `<div class="cert-mini-links"><a href="/certificate?course=${c.id}">View certificate</a><button type="button" class="btn btn-primary" data-cert-download="${c.id}">Download</button></div>` : ""}`;
         }).join("") : `<p class="muted">No classrooms yet.</p>`}
       </div>
       <div class="info-card">
@@ -1936,7 +1971,507 @@ function renderCommunityPage() {
   location.replace("/courses");
 }
 
-function renderCertificatePage() {
+function awardedCertFooterHTML(c, playable) {
+  const u = getUser();
+  const row = playable && u && typeof certFor === "function" ? certFor(u.email, c.id) : null;
+  if (row) {
+    return `<div class="cd-cert is-awarded">
+      <span class="cd-cert-ico">${iconSvg("badge")}</span>
+      <div>
+        <b>Certificate ready</b>
+        <p>Classroom complete</p>
+      </div>
+      <button type="button" class="btn btn-primary" data-cert-download="${c.id}">Download</button>
+    </div>`;
+  }
+  return `<div class="cd-cert">
+    <span class="cd-cert-ico">${iconSvg("badge")}</span>
+    <div>
+      <b>Earn a Certificate</b>
+      <p>Finish every lesson and your Bizgarh certificate unlocks here.</p>
+    </div>
+  </div>`;
+}
+
+function renderCertAward(host, course, row) {
+  if (!host || !course || !row) return;
+  host.innerHTML = `
+    <div class="cert-award">
+      <div class="cert-award-copy">
+        <span class="cert-award-pill">Classroom complete</span>
+        <b>Your certificate is ready</b>
+        <p>Finish line crossed. Download it for LinkedIn or print a copy for your desk.</p>
+      </div>
+      <div class="cert-award-actions">
+        <button type="button" class="btn btn-primary" data-cert-download="${course.id}">Download certificate</button>
+        <a class="btn btn-ghost" href="/certificate?course=${encodeURIComponent(course.id)}">View certificate</a>
+      </div>
+    </div>`;
+  host.hidden = false;
+}
+
+function certRoundRect(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
+}
+
+function drawBizgarhMark(ctx, cx, cy, size) {
+  const s = size / 48;
+  ctx.save();
+  ctx.translate(cx - 24 * s, cy - 24 * s);
+  ctx.scale(s, s);
+  const g = ctx.createLinearGradient(8, 40, 38, 8);
+  g.addColorStop(0, "#4F46E5");
+  g.addColorStop(0.46, "#7C3AED");
+  g.addColorStop(1, "#E11D74");
+  ctx.beginPath();
+  ctx.arc(23, 25.4, 20.35, 0, Math.PI * 2);
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 1.75;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(23, 25.4, 16.55, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.22)";
+  ctx.beginPath();
+  ctx.ellipse(18.4, 20, 8.4, 5.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(23, 25.4, 15.45, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,.32)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.fill(new Path2D("M14.35 35.05V21.15C14.35 15.2 18.15 11.85 23 11.85S31.65 15.2 31.65 21.15v13.9h-4.05V22.85c0-2.85-2-4.95-4.6-4.95s-4.6 2.1-4.6 4.95v12.2h-4.05Z"));
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(18.9, 30.35);
+  ctx.lineTo(21.95, 25.15);
+  ctx.lineTo(24.85, 27.2);
+  ctx.lineTo(28.85, 19.55);
+  ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.moveTo(27.55, 18.05);
+  ctx.lineTo(31.35, 17.35);
+  ctx.lineTo(29.55, 21.45);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(36.35, 9.85, 3.55, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(36.35, 9.85, 2.55, 0, Math.PI * 2);
+  ctx.fillStyle = "#E11D74";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(36.35, 9.85, 1.05, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.restore();
+}
+
+function fitCertText(ctx, text, maxW, maxSize, minSize, font) {
+  let size = maxSize;
+  ctx.font = font.replace("SIZE", size);
+  while (size > minSize && ctx.measureText(text).width > maxW) {
+    size -= 2;
+    ctx.font = font.replace("SIZE", size);
+  }
+  return size;
+}
+
+function ensureCertFonts() {
+  if (!document.getElementById("certScriptFont")) {
+    const link = document.createElement("link");
+    link.id = "certScriptFont";
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,700;1,700&display=swap";
+    document.head.appendChild(link);
+  }
+  const ready = document.fonts?.ready ? document.fonts.ready.catch(() => {}) : Promise.resolve();
+  return ready.then(() => Promise.all([
+    document.fonts?.load("80px Great Vibes").catch(() => {}),
+    document.fonts?.load("700 72px 'Playfair Display'").catch(() => {}),
+    document.fonts?.load("italic 700 28px 'Playfair Display'").catch(() => {})
+  ]));
+}
+
+function fillTracked(ctx, text, cx, y, tracking) {
+  const prev = ctx.textAlign;
+  ctx.textAlign = "left";
+  const chars = Array.from(text);
+  const widths = chars.map((ch) => ctx.measureText(ch).width);
+  const total = widths.reduce((a, b) => a + b, 0) + tracking * Math.max(0, chars.length - 1);
+  let x = cx - total / 2;
+  chars.forEach((ch, i) => {
+    ctx.fillText(ch, x, y);
+    x += widths[i] + tracking;
+  });
+  ctx.textAlign = prev;
+}
+
+function wrapCertLines(ctx, text, maxW) {
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = "";
+  words.forEach((word) => {
+    const next = line ? line + " " + word : word;
+    if (ctx.measureText(next).width > maxW && line) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawCertSeal(ctx, x, y, r) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  const spikes = 20;
+  for (let i = 0; i <= spikes; i++) {
+    const a = (i / spikes) * Math.PI * 2 - Math.PI / 2;
+    const rad = i % 2 === 0 ? r : r * 0.78;
+    const px = Math.cos(a) * rad;
+    const py = Math.sin(a) * rad;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  const g = ctx.createLinearGradient(-r, -r, r, r);
+  g.addColorStop(0, "#4F46E5");
+  g.addColorStop(0.5, "#7C3AED");
+  g.addColorStop(1, "#E11D74");
+  ctx.fillStyle = g;
+  ctx.shadowColor = "rgba(79,70,229,.28)";
+  ctx.shadowBlur = 18;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
+  ctx.fillStyle = "#1e1b4b";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.54, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,.35)";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  drawBizgarhMark(ctx, 0, 2, r * 1.05);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(-18, r * 0.72);
+  ctx.quadraticCurveTo(-28, r * 1.35, -8, r * 1.55);
+  ctx.lineTo(4, r * 0.78);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(18, r * 0.72);
+  ctx.quadraticCurveTo(30, r * 1.38, 10, r * 1.58);
+  ctx.lineTo(-2, r * 0.78);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCertCornerWaves(ctx, W, H, layer) {
+  ctx.save();
+  if (layer === "dark") {
+    ctx.fillStyle = "#1e1b4b";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(260, 0);
+    ctx.bezierCurveTo(120, 12, 28, 80, 0, 210);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(W, H);
+    ctx.lineTo(W - 260, H);
+    ctx.bezierCurveTo(W - 120, H - 12, W - 28, H - 80, W, H - 210);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  const ribbon = (flip) => {
+    ctx.save();
+    if (flip) {
+      ctx.translate(W, H);
+      ctx.rotate(Math.PI);
+    }
+    const g = ctx.createLinearGradient(0, 20, 520, 240);
+    g.addColorStop(0, "rgba(225,29,116,.95)");
+    g.addColorStop(0.45, "rgba(124,58,237,.92)");
+    g.addColorStop(1, "rgba(79,70,229,.55)");
+    ctx.strokeStyle = g;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const paths = [
+      [[16, 28], [190, 12, 340, 62, 470, 34], [580, 12, 640, 86, 500, 138]],
+      [[6, 62], [160, 42, 280, 98, 430, 78], [560, 54, 630, 128, 470, 172]],
+      [[36, 98], [180, 78, 310, 136, 430, 112]]
+    ];
+    const widths = [22, 11, 6];
+    paths.forEach((p, i) => {
+      ctx.lineWidth = widths[i];
+      ctx.beginPath();
+      ctx.moveTo(p[0][0], p[0][1]);
+      p.slice(1).forEach((c) => ctx.bezierCurveTo(c[0], c[1], c[2], c[3], c[4], c[5]));
+      ctx.stroke();
+    });
+    ctx.restore();
+  };
+  ribbon(false);
+  ribbon(true);
+  ctx.restore();
+}
+
+function auroraStroke(ctx, x1, y1, x2, y2) {
+  const g = ctx.createLinearGradient(x1, y1, x2, y2);
+  g.addColorStop(0, "#4F46E5");
+  g.addColorStop(0.5, "#7C3AED");
+  g.addColorStop(1, "#E11D74");
+  return g;
+}
+
+function drawCertCrest(ctx, cx, cy, r) {
+  const g = auroraStroke(ctx, cx - r, cy + r, cx + r, cy - r);
+  ctx.save();
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.15;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 8, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#7C3AED";
+  [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach((a) => {
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = "#4F46E5";
+  ctx.font = `700 ${Math.round(r * 0.92)}px 'Playfair Display', Georgia, serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("B", cx, cy + 1);
+  ctx.restore();
+}
+
+function drawCertBackdrop(ctx, W, H) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(150, 96, 1300, 908);
+  ctx.clip();
+
+  ctx.globalAlpha = 0.1;
+  drawBizgarhMark(ctx, W / 2, 560, 520);
+  ctx.globalAlpha = 1;
+
+  ctx.setLineDash([8, 12]);
+  ctx.strokeStyle = "rgba(79,70,229,.18)";
+  ctx.lineWidth = 1.7;
+  ctx.beginPath();
+  ctx.ellipse(W / 2, 560, 460, 268, -0.16, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(124,58,237,.16)";
+  ctx.beginPath();
+  ctx.ellipse(W / 2, 560, 352, 198, 0.24, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = "rgba(225,29,116,.14)";
+  ctx.lineWidth = 1.35;
+  ctx.beginPath();
+  ctx.ellipse(W / 2, 560, 248, 132, -0.08, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(79,70,229,.11)";
+  ctx.beginPath();
+  ctx.ellipse(390, 280, 168, 108, 0.55, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(225,29,116,.11)";
+  ctx.beginPath();
+  ctx.ellipse(1210, 840, 188, 118, -0.38, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = auroraStroke(ctx, 220, 200, 1380, 900);
+  ctx.globalAlpha = 0.22;
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(240, 740);
+  ctx.bezierCurveTo(470, 610, 700, 880, 980, 690);
+  ctx.bezierCurveTo(1160, 580, 1300, 800, 1400, 770);
+  ctx.stroke();
+  ctx.globalAlpha = 0.16;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(220, 320);
+  ctx.bezierCurveTo(420, 180, 780, 260, 1120, 210);
+  ctx.bezierCurveTo(1280, 180, 1360, 280, 1420, 250);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  const ornaments = [
+    [210, 160],
+    [1390, 160],
+    [210, 940],
+    [1390, 940]
+  ];
+  ornaments.forEach(([x, y]) => {
+    ctx.strokeStyle = "rgba(124,58,237,.18)";
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(x - 16, y);
+    ctx.lineTo(x, y - 16);
+    ctx.lineTo(x + 16, y);
+    ctx.lineTo(x, y + 16);
+    ctx.closePath();
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+async function paintBizgarhCertificate(canvas, { row, course }) {
+  await ensureCertFonts();
+  const W = 1600;
+  const H = 1100;
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const name = String(row.name || "Learner");
+  const title = String(course.title || "Classroom");
+  const instructor = String(course.instructor || "Bizgarh");
+  const when = new Date(row.at || Date.now()).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+  const aurora = ctx.createLinearGradient(140, 90, 1460, 1010);
+  aurora.addColorStop(0, "#4F46E5");
+  aurora.addColorStop(0.46, "#7C3AED");
+  aurora.addColorStop(1, "#E11D74");
+
+  ctx.fillStyle = "#fbf7f1";
+  ctx.fillRect(0, 0, W, H);
+  const washA = ctx.createRadialGradient(1280, 180, 40, 1280, 180, 520);
+  washA.addColorStop(0, "rgba(79,70,229,.12)");
+  washA.addColorStop(1, "rgba(79,70,229,0)");
+  ctx.fillStyle = washA;
+  ctx.fillRect(0, 0, W, H);
+  const washB = ctx.createRadialGradient(280, 940, 20, 280, 940, 460);
+  washB.addColorStop(0, "rgba(225,29,116,.12)");
+  washB.addColorStop(1, "rgba(225,29,116,0)");
+  ctx.fillStyle = washB;
+  ctx.fillRect(0, 0, W, H);
+
+  drawCertCornerWaves(ctx, W, H, "dark");
+  drawCertCornerWaves(ctx, W, H, "ribbons");
+
+  ctx.strokeStyle = aurora;
+  ctx.lineWidth = 7;
+  ctx.strokeRect(132, 78, 1336, 944);
+  ctx.lineWidth = 2.2;
+  ctx.strokeRect(150, 96, 1300, 908);
+
+  drawCertBackdrop(ctx, W, H);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  drawBizgarhMark(ctx, 1396, 178, 86);
+
+  ctx.fillStyle = "#4F46E5";
+  ctx.font = "700 86px 'Playfair Display', Georgia, serif";
+  fillTracked(ctx, "CERTIFICATE", W / 2, 268, 12);
+  ctx.fillStyle = "#E11D74";
+  ctx.font = "800 28px Nunito, Segoe UI, sans-serif";
+  fillTracked(ctx, "OF COMPLETION", W / 2, 316, 12);
+
+  ctx.fillStyle = "#7C3AED";
+  ctx.font = "800 18px Nunito, Segoe UI, sans-serif";
+  ctx.fillText("A classroom, not a tip desk", W / 2, 372);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = "22px Nunito, Segoe UI, sans-serif";
+  ctx.fillText("This certificate is proudly presented to", W / 2, 430);
+
+  ctx.fillStyle = "#E11D74";
+  const nameSize = fitCertText(ctx, name, 1080, 108, 56, "SIZEpx Great Vibes, 'Playfair Display', cursive");
+  ctx.font = `${nameSize}px Great Vibes, 'Playfair Display', cursive`;
+  ctx.fillText(name, W / 2, 548);
+
+  ctx.strokeStyle = aurora;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 280, 576);
+  ctx.lineTo(W / 2 + 280, 576);
+  ctx.stroke();
+  ctx.fillStyle = "#7C3AED";
+  ctx.beginPath();
+  ctx.arc(W / 2 - 280, 576, 4.5, 0, Math.PI * 2);
+  ctx.arc(W / 2 + 280, 576, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#4F46E5";
+  const titleSize = fitCertText(ctx, title, 1100, 42, 28, "800 SIZEpx Nunito, Segoe UI, sans-serif");
+  ctx.font = `800 ${titleSize}px Nunito, Segoe UI, sans-serif`;
+  ctx.fillText(title, W / 2, 648);
+
+  ctx.fillStyle = "#334155";
+  ctx.font = "22px Nunito, Segoe UI, sans-serif";
+  ctx.fillText("taught by " + instructor + "  ·  " + when, W / 2, 702);
+
+  ctx.fillStyle = "#7C3AED";
+  ctx.font = "52px Great Vibes, 'Playfair Display', cursive";
+  ctx.fillText(instructor, W / 2, 790);
+
+  ctx.strokeStyle = aurora;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 110, 808);
+  ctx.lineTo(W / 2 + 110, 808);
+  ctx.stroke();
+
+  ctx.fillStyle = "#1e1b4b";
+  ctx.font = "800 18px Nunito, Segoe UI, sans-serif";
+  fillTracked(ctx, "BIZGARH LEARNING", W / 2, 848, 6);
+  ctx.fillStyle = "#E11D74";
+  ctx.font = "700 16px Nunito, Segoe UI, sans-serif";
+  ctx.fillText("Classroom instructor", W / 2, 878);
+
+  ctx.fillStyle = "#7C3AED";
+  ctx.font = "700 15px Nunito, Segoe UI, sans-serif";
+  ctx.fillText("bizgarh.com   ·   desk@bizgarh.com", W / 2, 980);
+}
+
+async function downloadBizgarhCertificate(row, course) {
+  const canvas = document.createElement("canvas");
+  await paintBizgarhCertificate(canvas, { row, course });
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Bizgarh-Certificate-${course.id}.png`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  toast("Certificate downloaded");
+}
+
+async function renderCertificatePage() {
   const root = document.getElementById("certRoot");
   if (!root) return;
   const q = new URLSearchParams(location.search);
@@ -1945,20 +2480,33 @@ function renderCertificatePage() {
   const course = allCourses().find((c) => c.id === courseId);
   const row = typeof certs === "function" ? certs().find((c) => c.courseId === courseId && c.email === email) : null;
   if (!course || !row) {
-    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><a class="btn btn-primary" href="/dashboard" style="margin-top:12px">My learning</a></div>`;
+    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><p class="muted">Finish every lesson in the classroom and it appears here.</p><a class="btn btn-primary" href="/dashboard" style="margin-top:12px">My learning</a></div>`;
     return;
   }
+  document.title = `Certificate · ${course.title} | ${BRAND}`;
   root.innerHTML = `
-    <div class="cert-paper">
-      <p class="muted">Bizgarh Learning</p>
-      <h1>Certificate of completion</h1>
-      <p>This is to certify that</p>
-      <h2>${row.name}</h2>
-      <p>has completed</p>
-      <h3>${course.title}</h3>
-      <p class="muted">Instructor ${course.instructor} · ${new Date(row.at).toLocaleDateString("en-IN")}</p>
-      <button class="btn btn-primary" onclick="window.print()">Print / save PDF</button>
+    <div class="cert-stage">
+      <p class="cert-stage-kicker">Certificate of completion</p>
+      <h1 class="cert-stage-title">Your classroom certificate</h1>
+      <canvas class="biz-cert-canvas" id="bizCertCanvas" aria-label="Certificate of completion"></canvas>
+      <div class="cert-actions">
+        <button type="button" class="btn btn-primary" data-cert-download="${course.id}">Download PNG</button>
+        <button type="button" class="btn btn-ghost" id="certPrintBtn">Print / PDF</button>
+      </div>
     </div>`;
+  await paintBizgarhCertificate(document.getElementById("bizCertCanvas"), { row, course });
+  document.getElementById("certPrintBtn")?.addEventListener("click", () => {
+    const canvas = document.getElementById("bizCertCanvas");
+    const win = window.open("", "_blank");
+    if (!win) {
+      window.print();
+      return;
+    }
+    win.document.write(`<!DOCTYPE html><title>Certificate</title><img src="${canvas.toDataURL("image/png")}" style="width:100%;display:block">`);
+    win.document.close();
+    win.focus();
+    win.print();
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -2160,5 +2708,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
   renderCommunityPage();
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-cert-download]");
+    if (!btn) return;
+    const u = getUser();
+    const course = allCourses().find((c) => c.id === btn.dataset.certDownload);
+    const row = u && course && typeof certFor === "function" ? certFor(u.email, course.id) : null;
+    if (row && course) downloadBizgarhCertificate(row, course);
+  });
   renderCertificatePage();
 });

@@ -76,14 +76,14 @@ function renderLearnPage() {
   const LESSONS = lessonsFor(c.id);
 
   root.innerHTML = `
-    <div class="learn-wrap">
+    <div class="learn-wrap${onCoursePage ? " is-player-only" : ""}">
       <section>
         <div class="player-shell show-ui" id="drmStage">
           <div class="yt-top" id="playerTop">
             <span class="drm-chip">Protected</span>
             <span class="yt-fs-title" id="ytFsTitle">${escapeHtml(LESSONS[0].t)}</span>
           </div>
-          <video id="drmVideo" playsinline disablePictureInPicture controlsList="nodownload noremoteplayback nofullscreen"></video>
+          <video id="drmVideo" playsinline preload="auto" disablePictureInPicture controlsList="nodownload noremoteplayback nofullscreen"></video>
           <canvas class="drm-canvas" id="drmCanvas"></canvas>
           <div class="player-load" id="playerLoad"><div class="yt-spin"></div></div>
           <div class="drm-blackout" id="drmBlackout">
@@ -169,29 +169,27 @@ function renderLearnPage() {
         </div>
         ${onCoursePage ? `<h2 class="cr-lesson-title" id="lessonTitle">${escapeHtml(LESSONS[0].t)}</h2>` : `<h1 class="cr-lesson-title" id="lessonTitle">${escapeHtml(LESSONS[0].t)}</h1>`}
         <p class="muted" style="margin-top:6px">${c.title} · ${c.instructor}</p>
+        ${onCoursePage ? `<p class="cr-note">Watermarked to <strong>${escapeHtml(user.email)}</strong>. Recording or sharing is a license breach.</p>` : ""}
       </section>
-      <aside>
-        <h3 style="margin-bottom:12px">${c.title}</h3>
+      ${onCoursePage ? "" : `<aside>
+        <h3 style="margin-bottom:12px">${escapeHtml(c.title)}</h3>
         <div class="cr-list" id="lessonList"></div>
-        <div class="cr-lms" id="crLms"></div>
-        ${onCoursePage ? "" : `<section class="cr-community" id="crCommunity">
-          <h3>Community</h3>
-          <div id="courseCommInner"></div>
-        </section>`}
-        <p class="cr-note">Watermarked to <strong>${user.email}</strong>. Recording or sharing is a license breach.</p>
-      </aside>
+        <p class="cr-note">Watermarked to <strong>${escapeHtml(user.email)}</strong>. Recording or sharing is a license breach.</p>
+      </aside>`}
     </div>`;
 
   const list = document.getElementById("lessonList");
-  list.innerHTML = LESSONS.map((l, i) => `
+  if (list) {
+    list.innerHTML = LESSONS.map((l, i) => `
     <button class="cr-item${i === 0 ? " active" : ""}" data-lesson="${i}">
       <span class="cr-num">${String(i + 1).padStart(2, "0")}</span>
       <span class="cr-item-body"><strong>${escapeHtml(l.t)}</strong><small>${escapeHtml(l.dur)} · encrypted</small></span>
     </button>`).join("");
+  }
 
   const video = document.getElementById("drmVideo");
   const canvas = document.getElementById("drmCanvas");
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
   const playBtn = document.getElementById("playBtn");
   const vol = document.getElementById("vol");
   const timeLabel = document.getElementById("timeLabel");
@@ -221,8 +219,12 @@ function renderLearnPage() {
   let wx = 48;
   let wy = 72;
   let painting = true;
+  let wmTimer = 0;
+  let waitTimer = 0;
   window.__drmTeardown = () => {
     painting = false;
+    clearInterval(wmTimer);
+    clearTimeout(waitTimer);
     drmCtl.abort();
   };
   let uiTimer;
@@ -240,6 +242,8 @@ function renderLearnPage() {
   let ended = false;
 
   video.controls = false;
+  video.playsInline = true;
+  video.preload = "auto";
   video.disablePictureInPicture = true;
   if (video.disableRemotePlayback !== undefined) video.disableRemotePlayback = true;
 
@@ -253,20 +257,8 @@ function renderLearnPage() {
       ([v, lab]) => `<button type="button" data-qual="${v}"><span>${lab}</span></button>`
     ).join("");
 
-  function sizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
-    const w = Math.max(640, Math.floor(rect.width * devicePixelRatio));
-    const h = Math.max(360, Math.floor(rect.height * devicePixelRatio));
-    canvas.width = w;
-    canvas.height = h;
-  }
-  sizeCanvas();
-  window.addEventListener("resize", sizeCanvas, drmSig);
-
   function paint() {
-    if (!painting) return;
-    requestAnimationFrame(paint);
-    if (!canvas.width) return;
+    if (!painting || !canvas.width) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.font = `700 ${Math.round(canvas.width / 48)}px Roboto, Nunito, sans-serif`;
     ctx.fillStyle = "rgba(255,255,255,0.18)";
@@ -275,11 +267,23 @@ function renderLearnPage() {
     ctx.fillText(user.email, canvas.width * 0.08, canvas.height * 0.88);
     ctx.fillText(sid, canvas.width * 0.55, canvas.height * 0.18);
   }
-  paint();
-  setInterval(() => {
+  function sizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(1.25, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (canvas.width === w && canvas.height === h) return;
+    canvas.width = w;
+    canvas.height = h;
+    paint();
+  }
+  sizeCanvas();
+  window.addEventListener("resize", sizeCanvas, drmSig);
+  wmTimer = setInterval(() => {
     wx = 20 + Math.random() * (canvas.width * 0.5);
     wy = 40 + Math.random() * (canvas.height * 0.65);
-  }, 2200);
+    paint();
+  }, 2800);
 
   function flashBezel(kind) {
     bezel.innerHTML = ytIcon(kind);
@@ -401,8 +405,6 @@ function renderLearnPage() {
       b.querySelectorAll("svg").forEach((s) => s.remove());
       if (b.dataset.qual === quality) b.querySelector("span")?.insertAdjacentHTML("afterbegin", ytIcon("check"));
     });
-    const cap = quality === "auto" ? 0 : Number(quality);
-    stage.style.setProperty("--q-blur", cap && cap < h ? "0.35px" : "0px");
     localStorage.setItem("tradeshalaQuality", quality);
   }
   function paintChapters() {
@@ -493,7 +495,13 @@ function renderLearnPage() {
     currentLesson = i;
     ended = false;
     endCard.hidden = true;
-    document.querySelectorAll(".cr-item").forEach((b) => b.classList.toggle("active", Number(b.dataset.lesson) === i));
+    document.querySelectorAll("[data-lesson]").forEach((b) => b.classList.toggle("active", Number(b.dataset.lesson) === i));
+    const topic = document.querySelector(`#courseOverview [data-lesson="${i}"]`);
+    const sec = topic?.closest(".cd-sec");
+    if (sec && !sec.classList.contains("open")) {
+      sec.classList.add("open");
+      sec.querySelector(".cd-sec-h")?.setAttribute("aria-expanded", "true");
+    }
     titleEl.textContent = LESSONS[i].t;
     document.getElementById("ytFsTitle").textContent = LESSONS[i].t;
     if (blobUrl) URL.revokeObjectURL(blobUrl);
@@ -700,8 +708,19 @@ function renderLearnPage() {
     ended = true;
     setPlaying(false);
     playBtn.innerHTML = ytIcon("replay");
-    if (typeof markLessonDone === "function") markLessonDone(user.email, c.id, currentLesson);
-    renderCrLms();
+    let awarded = null;
+    if (typeof markLessonDone === "function") awarded = markLessonDone(user.email, c.id, currentLesson);
+    if (awarded) {
+      endCard.hidden = true;
+      renderCertAward(document.getElementById("certAward"), c, awarded);
+      const foot = document.querySelector("#courseOverview .cd-cert");
+      if (foot) {
+        foot.outerHTML = awardedCertFooterHTML(c, true);
+      }
+      document.getElementById("certAward")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      toast("Certificate ready · download it below");
+      return;
+    }
     if (autoplay && currentLesson < LESSONS.length - 1) {
       loadLesson(currentLesson + 1);
       return;
@@ -728,8 +747,18 @@ function renderLearnPage() {
     paintChapters();
     attachCaptions(LESSONS[currentLesson], video.duration);
   });
-  video.addEventListener("waiting", () => loadEl.classList.add("show"));
-  video.addEventListener("playing", () => loadEl.classList.remove("show"));
+  video.addEventListener("waiting", () => {
+    clearTimeout(waitTimer);
+    waitTimer = setTimeout(() => loadEl.classList.add("show"), 280);
+  });
+  video.addEventListener("playing", () => {
+    clearTimeout(waitTimer);
+    loadEl.classList.remove("show");
+  });
+  video.addEventListener("canplay", () => {
+    clearTimeout(waitTimer);
+    loadEl.classList.remove("show");
+  });
   video.addEventListener("volumechange", syncVolume);
 
   const tip = document.getElementById("ytTip");
@@ -772,7 +801,13 @@ function renderLearnPage() {
     }, 220);
   });
   stage.addEventListener("dblclick", (e) => e.preventDefault());
-  stage.addEventListener("mousemove", () => showUi());
+  let lastUiMove = 0;
+  stage.addEventListener("mousemove", () => {
+    const now = performance.now();
+    if (now - lastUiMove < 140) return;
+    lastUiMove = now;
+    showUi();
+  });
   stage.addEventListener("wheel", (e) => {
     if (!e.altKey && Math.abs(e.deltaY) < 4) return;
     if (!stage.matches(":hover")) return;
@@ -787,9 +822,15 @@ function renderLearnPage() {
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".yt-gear-wrap")) closeMenus();
   }, drmSig);
-  list.addEventListener("click", (e) => {
+  list?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-lesson]");
     if (b) loadLesson(Number(b.dataset.lesson));
+  });
+  document.getElementById("courseOverview")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-lesson]");
+    if (!b) return;
+    loadLesson(Number(b.dataset.lesson));
+    document.getElementById("drmStage")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
 
   const lock = () => {
@@ -887,76 +928,6 @@ function renderLearnPage() {
     navigator.mediaDevices.getDisplayMedia = blocked;
     window.addEventListener("pagehide", () => { navigator.mediaDevices.getDisplayMedia = orig; }, drmSig);
   }
-
-  function renderCrLms() {
-    const host = document.getElementById("crLms");
-    if (!host || typeof quizzesOf !== "function") return;
-    const qzs = quizzesOf(c.id);
-    const asg = assignmentsOf(c.id);
-    const prog = courseCompletion(user.email, c.id);
-    const lp = learnerProgress(user.email, c.id);
-    host.innerHTML = `
-      <div class="cr-progress"><span>Progress ${prog.pct}%</span><div class="bar-track"><i style="width:${prog.pct}%"></i></div></div>
-      ${qzs.map((q) => `<button class="btn btn-ghost cr-quiz-btn" type="button" data-take-quiz="${q.id}">Quiz · ${q.title}${lp.quizzes[q.id] != null ? " · " + lp.quizzes[q.id] + "%" : ""}</button>`).join("")}
-      ${asg.map((a) => `<button class="btn btn-ghost cr-quiz-btn" type="button" data-open-assign="${a.id}">Assignment · ${a.title}</button>`).join("")}
-      ${prog.cert ? `<a class="btn btn-primary" href="/certificate?course=${c.id}&email=${encodeURIComponent(user.email)}">Certificate</a>` : ""}
-      <div id="crQuizBox"></div>`;
-  }
-  renderCrLms();
-  if (!onCoursePage) {
-    const commInner = document.getElementById("courseCommInner");
-    if (commInner && typeof courseCommunityBodyHTML === "function") {
-      commInner.innerHTML = courseCommunityBodyHTML(c);
-      bindCourseCommunity(c.id);
-    }
-  }
-  document.getElementById("crLms")?.addEventListener("click", (e) => {
-    const quizBtn = e.target.closest("[data-take-quiz]");
-    const asBtn = e.target.closest("[data-open-assign]");
-    const box = document.getElementById("crQuizBox");
-    if (quizBtn) {
-      const quiz = quizzesOf(c.id).find((q) => q.id === quizBtn.dataset.takeQuiz);
-      if (!quiz || !box) return;
-      box.innerHTML = `<form id="takeQuizForm" class="cr-quiz">
-        <h4>${quiz.title}</h4>
-        ${(quiz.questions || []).map((q, i) => `<fieldset><legend>${q.q}</legend>${q.options.map((o, j) => `<label><input type="radio" name="q${i}" value="${j}" required> ${o}</label>`).join("")}</fieldset>`).join("")}
-        <button class="btn btn-primary" type="submit">Submit quiz</button>
-      </form>`;
-      document.getElementById("takeQuizForm").onsubmit = (ev) => {
-        ev.preventDefault();
-        const fd = new FormData(ev.target);
-        let ok = 0;
-        quiz.questions.forEach((q, i) => { if (Number(fd.get("q" + i)) === Number(q.answer)) ok += 1; });
-        const score = Math.round((ok / quiz.questions.length) * 100);
-        const cur = learnerProgress(user.email, c.id);
-        patchProgress(user.email, c.id, { quizzes: { ...cur.quizzes, [quiz.id]: score } });
-        const attempts = quizAttempts();
-        attempts.push({ quizId: quiz.id, courseId: c.id, email: user.email, score, at: new Date().toISOString() });
-        writeList(QUIZ_ATTEMPT_KEY, attempts);
-        toast(score >= quiz.passScore ? `Passed · ${score}%` : `Score ${score}% · pass is ${quiz.passScore}%`);
-        if (score >= quiz.passScore && courseCompletion(user.email, c.id).pct >= 80) issueCert(user.email, user.name, c.id);
-        renderCrLms();
-      };
-    }
-    if (asBtn) {
-      const a = assignmentsOf(c.id).find((x) => x.id === asBtn.dataset.openAssign);
-      if (!a || !box) return;
-      box.innerHTML = `<form id="takeAssignForm" class="cr-quiz">
-        <h4>${a.title}</h4>
-        <p class="muted">${a.prompt || ""} ${a.due ? " · due " + a.due : ""}</p>
-        <textarea name="text" required placeholder="Your submission"></textarea>
-        <button class="btn btn-primary" type="submit">Submit</button>
-      </form>`;
-      document.getElementById("takeAssignForm").onsubmit = (ev) => {
-        ev.preventDefault();
-        const list = assignSubs();
-        list.push({ id: "sub-" + Date.now(), courseId: c.id, assignmentId: a.id, email: user.email, name: user.name, text: ev.target.text.value.trim(), at: new Date().toISOString(), status: "submitted" });
-        writeList(ASSIGN_SUB_KEY, list);
-        toast("Assignment submitted");
-        renderCrLms();
-      };
-    }
-  });
 
   loadLesson(0);
 }

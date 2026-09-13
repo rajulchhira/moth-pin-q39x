@@ -84,16 +84,28 @@ function markLessonDone(email, courseId, idx) {
   const cur = learnerProgress(email, courseId);
   const lessons = { ...cur.lessons, [idx]: true };
   patchProgress(email, courseId, { lessons });
+  return maybeIssueCert(email, courseId);
 }
 function courseCompletion(email, courseId) {
-  const c = allCourses().find((x) => x.id === courseId);
   const total = Math.max(lessonsFor(courseId).length, 1);
   const p = learnerProgress(email, courseId);
   const done = Object.keys(p.lessons).filter((k) => p.lessons[k]).length;
-  const qzs = quizzesOf(courseId);
-  const passed = qzs.filter((q) => Number(p.quizzes[q.id] || 0) >= Number(q.passScore || 70)).length;
-  const pct = Math.round((done / total) * 80 + (qzs.length ? (passed / qzs.length) * 20 : done ? 20 : 0));
-  return { done, total, passed, quizCount: qzs.length, pct: Math.min(100, pct), cert: !!p.cert };
+  const pct = Math.round((done / total) * 100);
+  return { done, total, passed: 0, quizCount: 0, pct: Math.min(100, pct), cert: !!p.cert };
+}
+function certFor(email, courseId) {
+  return certs().find((c) => c.email === email && c.courseId === courseId) || null;
+}
+function certCode(courseId) {
+  const slug = String(courseId || "BG").replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase() || "BG";
+  return "BG-" + slug + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+}
+function maybeIssueCert(email, courseId) {
+  if (!email || !courseId) return null;
+  const stats = courseCompletion(email, courseId);
+  if (stats.done < stats.total) return certFor(email, courseId);
+  const u = typeof getUser === "function" ? getUser() : null;
+  return issueCert(email, u?.name || email, courseId);
 }
 
 function makeCode(prefix) {
@@ -130,8 +142,23 @@ function creditReferral(user, course) {
 
 function issueCert(email, name, courseId) {
   const list = certs();
-  if (list.some((c) => c.email === email && c.courseId === courseId)) return list.find((c) => c.email === email && c.courseId === courseId);
-  const row = { id: "cert-" + Date.now(), email, name, courseId, at: new Date().toISOString() };
+  const existing = list.find((c) => c.email === email && c.courseId === courseId);
+  if (existing) {
+    if (!existing.code) {
+      existing.code = certCode(courseId);
+      writeList(CERT_KEY, list);
+    }
+    patchProgress(email, courseId, { cert: true });
+    return existing;
+  }
+  const row = {
+    id: "cert-" + Date.now(),
+    code: certCode(courseId),
+    email,
+    name,
+    courseId,
+    at: new Date().toISOString()
+  };
   list.push(row);
   writeList(CERT_KEY, list);
   patchProgress(email, courseId, { cert: true });
