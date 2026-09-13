@@ -548,11 +548,21 @@ body.nav-dim::before {
 @keyframes tapeBg { to { background-position: -200% 0; } }
 .tape-track {
   display: flex;
-  gap: 12px;
   width: max-content;
-  animation: tapeRun 28s linear infinite;
+  animation: tapeRun 36s linear infinite;
+  will-change: transform;
 }
-.tape-track span {
+.tape-set {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: 100vw;
+  box-sizing: border-box;
+  padding-right: 12px;
+}
+.tape-set span {
   white-space: nowrap;
   background: rgba(255,255,255,.18);
   color: #fff;
@@ -2657,25 +2667,22 @@ body.drm-lock, body.drm-lock *,
 .press-marquee {
   position: relative;
   overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
-.press-marquee::before,
-.press-marquee::after {
-  content: "";
-  position: absolute;
-  top: 0; bottom: 0;
-  width: 90px;
-  z-index: 2;
-  pointer-events: none;
-}
-.press-marquee::before { left: 0; background: linear-gradient(90deg, #fff, transparent); }
-.press-marquee::after { right: 0; background: linear-gradient(90deg, transparent, #fff); }
 .press-track {
   display: flex;
-  align-items: center;
-  gap: 56px;
   width: max-content;
-  animation: pressRun 32s linear infinite;
+  animation: pressRun 40s linear infinite;
+  will-change: transform;
+}
+.press-set {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 56px;
+  flex-shrink: 0;
+  min-width: 100vw;
+  box-sizing: border-box;
+  padding-right: 56px;
 }
 .press-marquee:hover .press-track { animation-play-state: paused; }
 @keyframes pressRun {
@@ -2688,7 +2695,7 @@ body.drm-lock, body.drm-lock *,
   flex-shrink: 0;
   color: #64748b;
   filter: grayscale(1);
-  opacity: .72;
+  opacity: .9;
   transform: translateY(0);
   transition: transform .45s cubic-bezier(.2,.8,.2,1), opacity .35s, filter .35s, color .35s;
   animation: pressFloat 5.6s ease-in-out infinite;
@@ -2743,7 +2750,7 @@ body.drm-lock, body.drm-lock *,
 .pl-tape i::before { top: -5px; }
 .pl-tape i::after { bottom: -5px; }
 @media (max-width: 640px) {
-  .press-track { gap: 36px; }
+  .press-set { gap: 36px; padding-right: 36px; }
   .pl-ledger b { font-size: 18px; }
 }
 
