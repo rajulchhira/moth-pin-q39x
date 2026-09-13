@@ -35,7 +35,9 @@ export async function toEvent(context) {
     queryStringParameters: qs,
     body,
     path: url.pathname,
-    rawUrl: url.href
+    rawUrl: url.href,
+    env: context.env,
+    waitUntil: (p) => context.waitUntil(p)
   };
 }
 

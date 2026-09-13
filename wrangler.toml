@@ -2,3 +2,7 @@ name = "bizgarh"
 compatibility_date = "2025-09-13"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "."
+
+[[kv_namespaces]]
+binding = "SALES"
+id = "4bf3b2ad591f4156b25009f3327810fa"

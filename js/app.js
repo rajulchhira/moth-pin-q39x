@@ -597,16 +597,47 @@ function logEnroll(courseId) {
   sendWelcomeMail(courseId);
 }
 
+function mailEndpoint(path) {
+  return /(?:^|\.)bizgarh\.com$/i.test(location.hostname)
+    ? path
+    : "https://bizgarh.com" + path;
+}
+
+function creatorShareFor(course) {
+  const ownerEmail = typeof ownerEmailOf === "function" ? ownerEmailOf(course) : "";
+  if (!ownerEmail) return null;
+  const staff = (typeof staffList === "function" ? staffList() : []).find((s) => String(s.email || "").toLowerCase() === String(ownerEmail).toLowerCase());
+  const rule = staff?.commission || { type: "percent", newSale: 20 };
+  const courseRule = (rule.courses || []).find((x) => x.courseId === course.id);
+  const shareType = courseRule?.type || rule.type || "percent";
+  const shareRate = courseRule ? Number(courseRule.value) : Number(rule.newSale || 20);
+  return {
+    creatorEmail: ownerEmail,
+    creatorName: staff?.name || course.instructor || "",
+    shareType,
+    shareRate
+  };
+}
+
+function pingCreatorDigest() {
+  const key = "tradeshalaDigestPing";
+  const last = localStorage.getItem(key) || "";
+  const now = Date.now();
+  if (last && now - Number(last) < 30 * 60 * 1000) return;
+  fetch(mailEndpoint("/api/digest"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+    .then(() => localStorage.setItem(key, String(now)))
+    .catch(() => {});
+}
+
 function sendWelcomeMail(courseId) {
   const u = getUser();
   const course = allCourses().find((c) => c.id === courseId);
   if (!u?.email || !course) return;
   const key = "tradeshalaWelcome:" + String(u.email).toLowerCase() + ":" + courseId;
   if (localStorage.getItem(key) === "1") return;
-  const endpoint = /(?:^|\.)bizgarh\.com$/i.test(location.hostname)
-    ? "/api/welcome"
-    : "https://bizgarh.com/api/welcome";
-  fetch(endpoint, {
+  const share = creatorShareFor(course);
+  const amount = Number(course.price || 0);
+  fetch(mailEndpoint("/api/welcome"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -616,7 +647,9 @@ function sendWelcomeMail(courseId) {
       title: course.title,
       instructor: course.instructor,
       hours: course.hours,
-      lessons: course.lessons
+      lessons: course.lessons,
+      amount,
+      ...(share || {})
     })
   }).then((r) => {
     if (r.ok) localStorage.setItem(key, "1");
@@ -2538,6 +2571,7 @@ async function renderCertificatePage() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  pingCreatorDigest();
   stripHtmlUrl();
   const ref = new URLSearchParams(location.search).get("ref");
   if (ref) {

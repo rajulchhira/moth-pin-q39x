@@ -6,5 +6,6 @@ wrangler.toml
 .env
 .env.*
 welcome-mail.html
+sale-mail.html
 .cursor
 node_modules
