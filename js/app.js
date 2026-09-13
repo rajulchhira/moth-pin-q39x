@@ -653,7 +653,7 @@ function savePct(c) {
 function courseCard(c, extra = "") {
   const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title, sub: c.instructor };
   const photo = photoFor(c.instructor);
-  const href = isEnrolled(c.id) ? `/learn?id=${c.id}` : `/course?id=${c.id}`;
+  const href = `/course?id=${c.id}`;
   const pct = savePct(c);
   const rupee = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
   const priceRow = `<div class="price">${rupee(c.price)}${c.old ? ` <s>${rupee(c.old)}</s>` : ""}${pct ? ` <span class="save">SAVE ${pct}%</span>` : ""}</div>`;
@@ -1149,16 +1149,47 @@ function requireAuth(next) {
   toast("Create an account to continue");
 }
 
-function enroll(id) {
-  requireAuth(() => {
-    const ids = enrolled();
-    if (!ids.includes(id)) {
-      ids.push(id);
-      setEnrolled(ids);
-      logEnroll(id);
+function unlockCourse(id, opts = {}) {
+  const ids = enrolled();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    setEnrolled(ids);
+    logEnroll(id);
+  }
+  if (!opts.silent) toast("Classroom unlocked on this page");
+  const here = document.getElementById("courseDetail");
+  const current = new URLSearchParams(location.search).get("id");
+  if (here && current === id) {
+    if (!opts.skipRender) {
+      renderCoursePage();
+      document.getElementById("learnRoot")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      sessionStorage.setItem("tradeshalaScrollPlayer", "1");
     }
-    toast("Enrolled! Opening protected classroom");
-    location.href = `/learn?id=${id}`;
+    return;
+  }
+  location.href = `/course?id=${id}`;
+}
+
+function consumePendingBuy() {
+  if (!getUser()) return;
+  const id = sessionStorage.getItem("tradeshalaPendingBuy");
+  if (!id) return;
+  sessionStorage.removeItem("tradeshalaPendingBuy");
+  const here = document.getElementById("courseDetail");
+  const current = new URLSearchParams(location.search).get("id");
+  if (here && current === id) {
+    unlockCourse(id, { silent: false, skipRender: true });
+    return;
+  }
+  unlockCourse(id);
+}
+
+function enroll(id) {
+  sessionStorage.setItem("tradeshalaPendingBuy", id);
+  requireAuth(() => {
+    sessionStorage.removeItem("tradeshalaPendingBuy");
+    unlockCourse(id);
   });
 }
 
@@ -1432,7 +1463,8 @@ function renderCoursePage() {
   const id = new URLSearchParams(location.search).get("id");
   const c = allCourses().find((x) => x.id === id) || allCourses()[0];
   const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title, sub: c.instructor };
-  const owned = isEnrolled(c.id);
+  const logged = Boolean(getUser());
+  const owned = logged && isEnrolled(c.id);
   const langs = courseLangs(c);
   const points = learnPoints(c);
   const sections = courseOverview(c);
@@ -1451,7 +1483,9 @@ function renderCoursePage() {
         <span class="cd-pill">${catLabel(c.cat).toUpperCase()}</span>
         <h1 class="cd-title">${c.title}</h1>
 
-        <div class="cd-preview" style="--cover:${art.bg}">
+        ${owned
+          ? `<div id="learnRoot" class="cd-classroom"></div>`
+          : `<div class="cd-preview" style="--cover:${art.bg}">
           <video id="cdPreview" autoplay muted loop playsinline preload="auto" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
           <div class="cd-preview-art">
             <img class="cd-preview-person" src="${photo}" alt="${c.instructor}">
@@ -1462,7 +1496,7 @@ function renderCoursePage() {
           </div>
           <div class="cd-langs">${langs.map((l, i) => `<button type="button" class="cd-lang ${i === 0 ? "on" : ""}">${l}${i === 0 ? " <em>Original</em>" : ""}</button>`).join("")}</div>
           <div class="cd-stars">★ ${c.rating} <span>★★★★★</span></div>
-        </div>
+        </div>`}
 
         <div class="cd-bonus cd-bonus-card">
           <div class="cd-ov-head">
@@ -1570,7 +1604,7 @@ function renderCoursePage() {
         </ul>
         <div class="cd-price">₹${Number(c.price).toLocaleString("en-IN")}</div>
         ${owned
-          ? `<a class="btn btn-primary btn-block cd-cta" href="/learn?id=${c.id}">Continue learning</a>
+          ? `<button type="button" class="btn btn-primary btn-block cd-cta" id="watchNowBtn">Continue lesson</button>
              <a class="btn btn-ghost btn-block cd-comm-cta" href="#courseCommunity">${iconSvg("chat")} Community</a>`
           : `<button class="btn btn-primary btn-block cd-cta" id="enrollBtn">Buy Now →</button>
              <button type="button" class="btn btn-ghost btn-block cd-comm-cta locked" id="commLockCta">
@@ -1582,6 +1616,9 @@ function renderCoursePage() {
     </div>`;
 
   document.getElementById("enrollBtn")?.addEventListener("click", () => enroll(c.id));
+  document.getElementById("watchNowBtn")?.addEventListener("click", () => {
+    document.getElementById("learnRoot")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   const lockCommunity = () => {
     toast("Buy this course to unlock the community");
     document.getElementById("enrollBtn")?.focus();
@@ -1627,6 +1664,7 @@ function renderCoursePage() {
     if (vid.readyState >= 2) start();
     else vid.addEventListener("canplay", start, { once: true });
   }
+  if (owned && typeof renderLearnPage === "function") renderLearnPage();
 }
 
 function renderDashboard() {
@@ -1958,7 +1996,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindExploreTiles();
   renderHomeReviews();
   renderReviewsPage();
+  consumePendingBuy();
   renderCoursePage();
+  if (sessionStorage.getItem("tradeshalaScrollPlayer")) {
+    sessionStorage.removeItem("tradeshalaScrollPlayer");
+    document.getElementById("learnRoot")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   renderDashboard();
   renderLive();
   renderLiveRoom();

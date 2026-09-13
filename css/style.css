@@ -2087,6 +2087,12 @@ body.nav-dim::before {
   gap: 28px;
   padding: 24px 0 80px;
 }
+.cd-classroom .learn-wrap {
+  padding: 0 0 12px;
+  gap: 18px;
+}
+.cd-classroom .cr-lesson-title { font-size: 20px; margin-top: 14px; }
+.cd-classroom .cr-note { margin-bottom: 4px; }
 .cr-lock { max-width: 520px; margin: 80px auto; text-align: center; }
 .cr-lesson-title { font-size: 22px; margin-top: 16px; font-weight: 800; }
 .cr-list { display: grid; gap: 8px; }
@@ -2211,7 +2217,8 @@ body.nav-dim::before {
 }
 .drm-blackout.show { display: grid; }
 .drm-blackout p { color: #94a3b8; margin-top: 8px; }
-body.drm-lock, body.drm-lock * { user-select: none !important; -webkit-user-select: none; }
+body.drm-lock, body.drm-lock *,
+.cd-classroom.drm-lock, .cd-classroom.drm-lock * { user-select: none !important; -webkit-user-select: none; }
 .drm-canvas {
   position: absolute;
   inset: 0;
@@ -2325,7 +2332,8 @@ body.drm-lock, body.drm-lock * { user-select: none !important; -webkit-user-sele
 }
 .drm-blackout.show { display: grid; }
 .drm-blackout p { color: #9aa8a4; margin-top: 8px; }
-body.drm-lock, body.drm-lock * { user-select: none !important; -webkit-user-select: none; }
+body.drm-lock, body.drm-lock *,
+.cd-classroom.drm-lock, .cd-classroom.drm-lock * { user-select: none !important; -webkit-user-select: none; }
 .drm-canvas {
   position: absolute;
   inset: 0;

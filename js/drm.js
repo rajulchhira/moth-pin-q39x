@@ -52,20 +52,24 @@ function renderLearnPage() {
     document.documentElement.innerHTML = "";
     return;
   }
+  const onCoursePage = Boolean(document.getElementById("courseDetail"));
   const id = new URLSearchParams(location.search).get("id");
   const c = allCourses().find((x) => x.id === id) || allCourses()[0];
-  document.title = `${c.title} | Classroom`;
+  if (!onCoursePage) document.title = `${c.title} | Classroom`;
 
   if (!getUser()) {
+    if (onCoursePage) return;
     root.innerHTML = `<div class="cr-lock"><h3>Login required</h3><p>This classroom is locked to your Bizgarh account.</p><button class="btn btn-orange" data-open="signupModal" style="margin-top:14px">Start learning</button></div>`;
     return;
   }
   if (!canAccess(c)) {
+    if (onCoursePage) return;
     location.replace(`/course?id=${c.id}`);
     return;
   }
 
-  document.body.classList.add("drm-lock");
+  if (onCoursePage) root.classList.add("drm-lock");
+  else document.body.classList.add("drm-lock");
   const user = getUser();
   const sid = shieldId();
   const mark = `${user.name} · ${user.email} · ${sid}`;
@@ -163,17 +167,17 @@ function renderLearnPage() {
             <button type="button" class="btn btn-primary" id="keysClose">Got it</button>
           </div>
         </div>
-        <h1 class="cr-lesson-title" id="lessonTitle">${escapeHtml(LESSONS[0].t)}</h1>
+        ${onCoursePage ? `<h2 class="cr-lesson-title" id="lessonTitle">${escapeHtml(LESSONS[0].t)}</h2>` : `<h1 class="cr-lesson-title" id="lessonTitle">${escapeHtml(LESSONS[0].t)}</h1>`}
         <p class="muted" style="margin-top:6px">${c.title} · ${c.instructor}</p>
       </section>
       <aside>
         <h3 style="margin-bottom:12px">${c.title}</h3>
         <div class="cr-list" id="lessonList"></div>
         <div class="cr-lms" id="crLms"></div>
-        <section class="cr-community" id="crCommunity">
+        ${onCoursePage ? "" : `<section class="cr-community" id="crCommunity">
           <h3>Community</h3>
           <div id="courseCommInner"></div>
-        </section>
+        </section>`}
         <p class="cr-note">Watermarked to <strong>${user.email}</strong>. Recording or sharing is a license breach.</p>
       </aside>
     </div>`;
@@ -206,13 +210,21 @@ function renderLearnPage() {
   const bezel = document.getElementById("ytBezel");
   const cueEl = document.getElementById("ytCue");
   const endCard = document.getElementById("endCard");
-  const wrap = document.querySelector(".learn-wrap");
+  const wrap = root.querySelector(".learn-wrap");
+  if (window.__drmTeardown) window.__drmTeardown();
+  const drmCtl = new AbortController();
+  window.__drmCtl = drmCtl;
+  const drmSig = { signal: drmCtl.signal };
   let currentLesson = 0;
   let blobUrl = "";
   let vttUrl = "";
   let wx = 48;
   let wy = 72;
   let painting = true;
+  window.__drmTeardown = () => {
+    painting = false;
+    drmCtl.abort();
+  };
   let uiTimer;
   let remainTime = false;
   let clickTimer = 0;
@@ -249,7 +261,7 @@ function renderLearnPage() {
     canvas.height = h;
   }
   sizeCanvas();
-  window.addEventListener("resize", sizeCanvas);
+  window.addEventListener("resize", sizeCanvas, drmSig);
 
   function paint() {
     if (!painting) return;
@@ -646,7 +658,7 @@ function renderLearnPage() {
   document.addEventListener("fullscreenchange", () => {
     setFs(!!document.fullscreenElement);
     sizeCanvas();
-  });
+  }, drmSig);
   bigPlay.addEventListener("click", (e) => {
     e.stopPropagation();
     togglePlay();
@@ -774,7 +786,7 @@ function renderLearnPage() {
   }, { passive: false });
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".yt-gear-wrap")) closeMenus();
-  });
+  }, drmSig);
   list.addEventListener("click", (e) => {
     const b = e.target.closest("[data-lesson]");
     if (b) loadLesson(Number(b.dataset.lesson));
@@ -785,13 +797,19 @@ function renderLearnPage() {
     blackout.classList.add("show");
   };
   const unlock = () => blackout.classList.remove("show");
-  document.addEventListener("visibilitychange", () => { if (document.hidden) lock(); else unlock(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) lock(); else unlock(); }, drmSig);
 
-  const block = (e) => { e.preventDefault(); e.stopPropagation(); return false; };
-  document.addEventListener("contextmenu", block);
-  document.addEventListener("copy", block);
-  document.addEventListener("cut", block);
-  document.addEventListener("dragstart", block);
+  const inClassroom = (el) => Boolean(el?.closest?.("#learnRoot, #drmStage"));
+  const block = (e) => {
+    if (onCoursePage && !inClassroom(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  };
+  document.addEventListener("contextmenu", block, drmSig);
+  document.addEventListener("copy", block, drmSig);
+  document.addEventListener("cut", block, drmSig);
+  document.addEventListener("dragstart", block, drmSig);
   document.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
     const bad =
@@ -806,6 +824,7 @@ function renderLearnPage() {
       toast("Capture blocked · session watermarked");
       return;
     }
+    if (onCoursePage && !inClassroom(e.target) && !document.fullscreenElement) return;
     if (typeInField(e) || (e.ctrlKey && k !== "/") || e.metaKey || e.altKey) return;
     if (e.key === "?" || (e.shiftKey && e.key === "/")) {
       e.preventDefault();
@@ -855,16 +874,18 @@ function renderLearnPage() {
       fn();
       showUi();
     }
-  });
+  }, drmSig);
 
-  if (navigator.mediaDevices?.getDisplayMedia) {
+  if (navigator.mediaDevices?.getDisplayMedia && !navigator.mediaDevices.getDisplayMedia.__bizgarhBlock) {
     const orig = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
-    navigator.mediaDevices.getDisplayMedia = async function () {
+    const blocked = async function () {
       lock();
       toast("Screen capture is not allowed in this classroom");
       throw new DOMException("Capture blocked", "NotAllowedError");
     };
-    window.addEventListener("pagehide", () => { navigator.mediaDevices.getDisplayMedia = orig; });
+    blocked.__bizgarhBlock = true;
+    navigator.mediaDevices.getDisplayMedia = blocked;
+    window.addEventListener("pagehide", () => { navigator.mediaDevices.getDisplayMedia = orig; }, drmSig);
   }
 
   function renderCrLms() {
@@ -882,10 +903,12 @@ function renderLearnPage() {
       <div id="crQuizBox"></div>`;
   }
   renderCrLms();
-  const commInner = document.getElementById("courseCommInner");
-  if (commInner && typeof courseCommunityBodyHTML === "function") {
-    commInner.innerHTML = courseCommunityBodyHTML(c);
-    bindCourseCommunity(c.id);
+  if (!onCoursePage) {
+    const commInner = document.getElementById("courseCommInner");
+    if (commInner && typeof courseCommunityBodyHTML === "function") {
+      commInner.innerHTML = courseCommunityBodyHTML(c);
+      bindCourseCommunity(c.id);
+    }
   }
   document.getElementById("crLms")?.addEventListener("click", (e) => {
     const quizBtn = e.target.closest("[data-take-quiz]");
@@ -938,6 +961,7 @@ function renderLearnPage() {
   loadLesson(0);
 }
 
+window.renderLearnPage = renderLearnPage;
 document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("learnRoot")) renderLearnPage();
+  if (document.getElementById("learnRoot") && !document.getElementById("courseDetail")) renderLearnPage();
 });

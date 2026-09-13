@@ -51,6 +51,12 @@
   force = true
 
 [[redirects]]
+  from = "/learn"
+  to = "/course"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/:page"
   to = "/:page.html"
   status = 200

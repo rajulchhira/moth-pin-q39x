@@ -2,19 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Redirecting | Bizgarh</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Classroom | Bizgarh</title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=fluid1">
+  <script>
+    (function () {
+      var id = new URLSearchParams(location.search).get("id");
+      location.replace(id ? "/course?id=" + encodeURIComponent(id) : "/courses");
+    })();
+  </script>
 </head>
 <body>
-  <div id="site-header"></div>
-  <main class="container page">
-    <div id="learnRoot"></div>
-  </main>
-  <div id="site-footer"></div>
-  <script src="js/app.js?v=fluid1"></script>
-  <script src="js/lms.js"></script>
-  <script src="js/drm.js?v=bizgarh1"></script>
+  <p>This classroom now lives on the course page. <a href="/courses">Browse courses</a></p>
 </body>
 </html>
