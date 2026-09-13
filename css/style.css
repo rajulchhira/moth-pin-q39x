@@ -2201,8 +2201,8 @@ body.drm-lock, body.drm-lock * { user-select: none !important; -webkit-user-sele
   .nav, .search-wrap { display: none; }
   .menu-toggle { display: block; }
   .hero { min-height: 560px; padding-top: 56px; }
-  .hero h1 { font-size: 40px; }
-  .hero-lead { font-size: 30px; gap: 0.24em; }
+  .hero h1 { font-size: 36px; }
+  .hero-lead { font-size: 24px; gap: 0.22em; white-space: normal; flex-wrap: wrap; }
   .tabs-row { flex-wrap: wrap; }
   .arrow { display: none; }
   .orbit-card, .hero-rings, .hero-chips { display: none; }
