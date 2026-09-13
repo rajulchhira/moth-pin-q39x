@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bizgarh logo download</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --teal:#4f46e5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Nunito, "Segoe UI", sans-serif; color: var(--ink); background: #f8fafc; }
+    main { width: min(920px, calc(100% - 32px)); margin: 40px auto 64px; }
+    h1 { font-size: 32px; letter-spacing: -.04em; margin: 0 0 8px; }
+    p { color: var(--muted); margin: 0 0 28px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    article { background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 22px; }
+    .preview {
+      height: 280px; border-radius: 18px; display: grid; place-items: center;
+      margin-bottom: 16px;
+    }
+    .preview.checker {
+      background:
+        linear-gradient(45deg, #e5e7eb 25%, transparent 25%) 0 0 / 24px 24px,
+        linear-gradient(-45deg, #e5e7eb 25%, transparent 25%) 0 12px / 24px 24px,
+        linear-gradient(45deg, transparent 75%, #e5e7eb 75%) 0 12px / 24px 24px,
+        linear-gradient(-45deg, transparent 75%, #e5e7eb 75%) 12px 0 / 24px 24px,
+        #fff;
+    }
+    .preview.white { background: #fff; border: 1px solid var(--line); }
+    img { width: 220px; height: 220px; display: block; }
+    a.btn {
+      display: flex; align-items: center; justify-content: center;
+      height: 46px; border-radius: 999px; background: var(--teal); color: #fff;
+      font-weight: 800; text-decoration: none;
+    }
+    a.btn:hover { filter: brightness(1.05); }
+    .back { display: inline-block; margin-bottom: 18px; color: var(--teal); font-weight: 800; text-decoration: none; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="/">← Bizgarh</a>
+    <h1>Download the logo</h1>
+    <p>2048 × 2048 PNG · same orbit-gate mark used on the site.</p>
+    <div class="grid">
+      <article>
+        <div class="preview checker"><img src="img/bizgarh-logo-transparent.png" alt="Bizgarh logo on transparent background"></div>
+        <a class="btn" href="img/bizgarh-logo-transparent.png" download="bizgarh-logo-transparent.png">Download transparent PNG</a>
+      </article>
+      <article>
+        <div class="preview white"><img src="img/bizgarh-logo-white.png" alt="Bizgarh logo on white background"></div>
+        <a class="btn" href="img/bizgarh-logo-white.png" download="bizgarh-logo-white.png">Download white-background PNG</a>
+      </article>
+    </div>
+  </main>
+</body>
+</html>
