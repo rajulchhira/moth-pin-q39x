@@ -594,7 +594,35 @@ function logEnroll(courseId) {
   const course = allCourses().find((c) => c.id === courseId);
   if (course && typeof creditReferral === "function") creditReferral(u, course);
   if (typeof commerceOnEnroll === "function") commerceOnEnroll(u, courseId);
+  sendWelcomeMail(courseId);
 }
+
+function sendWelcomeMail(courseId) {
+  const u = getUser();
+  const course = allCourses().find((c) => c.id === courseId);
+  if (!u?.email || !course) return;
+  const key = "tradeshalaWelcome:" + String(u.email).toLowerCase() + ":" + courseId;
+  if (localStorage.getItem(key) === "1") return;
+  const endpoint = /(?:^|\.)bizgarh\.com$/i.test(location.hostname)
+    ? "/api/welcome"
+    : "https://bizgarh.com/api/welcome";
+  fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: u.name,
+      email: u.email,
+      courseId: course.id,
+      title: course.title,
+      instructor: course.instructor,
+      hours: course.hours,
+      lessons: course.lessons
+    })
+  }).then((r) => {
+    if (r.ok) localStorage.setItem(key, "1");
+  }).catch(() => {});
+}
+
 function extraCourses() { return readList(EXTRA_COURSES_KEY); }
 function hiddenCourseIds() { return readList(HIDDEN_COURSES_KEY); }
 function courseEdits() {

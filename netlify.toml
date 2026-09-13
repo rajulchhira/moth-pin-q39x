@@ -39,6 +39,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/welcome"
+  to = "/.netlify/functions/welcome"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/index.html"
   to = "/"
   status = 301
