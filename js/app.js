@@ -557,18 +557,27 @@ function completeStudentSession(user, message) {
   afterAuthArrive();
 }
 
+function pagePath() {
+  return (location.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
+}
+
 function afterAuthArrive() {
   const pending = sessionStorage.getItem("tradeshalaPendingBuy");
   if (pending) {
     location.href = "/course?id=" + encodeURIComponent(pending);
     return;
   }
-  const path = (location.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
-  if (path === "/" || path === "/index") {
-    location.href = "/dashboard";
+  if (pagePath() === "/dashboard") {
+    location.reload();
     return;
   }
-  location.reload();
+  location.href = "/dashboard";
+}
+
+function sendLoggedInHomeToDashboard() {
+  if (!getUser()) return;
+  const path = pagePath();
+  if (path === "/" || path === "/index") location.replace("/dashboard");
 }
 
 function userInitials(name) {
@@ -687,7 +696,7 @@ async function restoreOAuthSession() {
     if (!user) return;
     setUser({ name: user.name, email: user.email, password: "", referredBy: user.referredBy || "", providers: user.providers || [] });
     upsertUser(user);
-    location.reload();
+    afterAuthArrive();
   } catch { /* static file server without OAuth */ }
 }
 
@@ -3136,7 +3145,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindChrome();
   applySignupGate();
   const oauthed = await consumeOAuth();
-  if (!oauthed) restoreOAuthSession();
+  if (!oauthed) await restoreOAuthSession();
+  sendLoggedInHomeToDashboard();
 
   const typedEl = document.getElementById("typed");
   if (typedEl) {
