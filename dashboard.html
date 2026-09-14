@@ -3,34 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>My learning | Bizgarh</title>
+  <title>My Dashboard | Bizgarh</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=spin1">
+  <link rel="stylesheet" href="css/style.css?v=dash1">
   <script src="js/boot.js?v=spin1"></script>
 </head>
-<body>
+<body class="ld-body">
   <div id="bgBoot" aria-busy="true" aria-label="Loading Bizgarh"></div>
   <div id="site-header"></div>
-  <main class="container page">
-    <section class="page-hero">
-      <h1>My learning</h1>
-      <p class="muted">Welcome, <span id="dashName">learner</span>. Your enrolled rooms live here.</p>
-    </section>
-    <div class="dash-grid">
-      <aside class="side">
-        <a class="active" href="/dashboard">Classroom</a>
-        <a href="/live#call">1:1 calls</a>
-        <a href="/courses">Browse more</a>
-        <a href="/live">Live classes</a>
-        <a href="/contact">Support</a>
-      </aside>
-      <div id="myCourses"></div>
-    </div>
-  </main>
+  <main id="learnerHome" class="ld-page"></main>
   <div id="site-footer"></div>
-  <script src="js/app.js?v=hms1"></script>
+  <script src="js/app.js?v=dash1"></script>
   <script src="js/lms.js?v=cert1"></script>
 </body>
 </html>

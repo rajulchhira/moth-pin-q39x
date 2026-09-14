@@ -569,6 +569,10 @@ function renderLearnPage() {
   async function loadLesson(i) {
     if (i < 0 || i >= LESSONS.length) return;
     currentLesson = i;
+    const watcher = getUser();
+    if (watcher && c?.id && typeof patchProgress === "function") {
+      patchProgress(watcher.email, c.id, { lastIdx: i });
+    }
     ended = false;
     endCard.hidden = true;
     document.querySelectorAll("[data-lesson]").forEach((b) => b.classList.toggle("active", Number(b.dataset.lesson) === i));
@@ -1004,7 +1008,18 @@ function renderLearnPage() {
     window.addEventListener("pagehide", () => { navigator.mediaDevices.getDisplayMedia = orig; }, drmSig);
   }
 
-  loadLesson(0);
+  let startAt = 0;
+  const rawLesson = new URLSearchParams(location.search).get("lesson");
+  const qLesson = rawLesson == null || rawLesson === "" ? NaN : Number(rawLesson);
+  if (Number.isInteger(qLesson) && qLesson >= 0 && qLesson < LESSONS.length) startAt = qLesson;
+  else {
+    const watcher = typeof getUser === "function" ? getUser() : null;
+    if (watcher && c?.id && typeof learnerProgress === "function") {
+      const last = Number(learnerProgress(watcher.email, c.id).lastIdx);
+      if (Number.isInteger(last) && last >= 0 && last < LESSONS.length) startAt = last;
+    }
+  }
+  loadLesson(startAt);
 }
 
 window.renderLearnPage = renderLearnPage;

@@ -82,6 +82,7 @@ const ENROLL_KEY = "tradeshalaEnroll";
 const USERS_KEY = "tradeshalaUsers";
 const ALL_ENROLL_KEY = "tradeshalaAllEnrolls";
 const REGS_KEY = "tradeshalaRegs";
+const TICKETS_KEY = "tradeshalaTickets";
 const EXTRA_COURSES_KEY = "tradeshalaExtraCourses";
 const HIDDEN_COURSES_KEY = "tradeshalaHiddenCourses";
 const STAFF_KEY = "tradeshalaStaff";
@@ -491,7 +492,8 @@ function upsertUser(user) {
     inviteCode: user.inviteCode || prev.inviteCode || "",
     providers: user.providers || prev.providers || [],
     emailVerified: user.emailVerified != null ? user.emailVerified : prev.emailVerified,
-    providerId: user.providerId || prev.providerId || ""
+    providerId: user.providerId || prev.providerId || "",
+    profile: { ...(prev.profile || {}), ...(user.profile || {}) }
   };
   if (i >= 0) list[i] = { ...prev, ...row };
   else list.push(row);
@@ -552,7 +554,29 @@ function completeStudentSession(user, message) {
   upsertUser(user);
   closeModals();
   toast(message || "Logged in");
+  afterAuthArrive();
+}
+
+function afterAuthArrive() {
+  const pending = sessionStorage.getItem("tradeshalaPendingBuy");
+  if (pending) {
+    location.href = "/course?id=" + encodeURIComponent(pending);
+    return;
+  }
+  const path = (location.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
+  if (path === "/" || path === "/index") {
+    location.href = "/dashboard";
+    return;
+  }
   location.reload();
+}
+
+function userInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "BG";
+  const a = parts[0][0] || "B";
+  const b = parts.length > 1 ? (parts[parts.length - 1][0] || "") : (parts[0][1] || "");
+  return (a + b).toUpperCase();
 }
 function makeOtp() { return String(Math.floor(100000 + Math.random() * 900000)); }
 function saveOtp(email, purpose) {
@@ -986,22 +1010,26 @@ function headerAuthHTML(place) {
   }
   const first = escapeHtml(user.name.split(" ")[0]);
   const role = staffAccessRole(user.email);
-  if (!role) {
-    return `<a class="btn btn-ghost" href="/dashboard">Hi, ${first}</a><button class="btn btn-ghost js-logout" type="button">Logout</button>`;
-  }
+  const initials = escapeHtml(userInitials(user.name));
   if (place === "mobile") {
-    return `<a class="btn btn-ghost" href="/dashboard">Hi, ${first}</a>
-      <a class="btn btn-primary js-open-admin" href="/admin">Admin panel</a>
+    return `<a class="btn btn-ghost" href="/dashboard">My Dashboard</a>
+      <a class="btn btn-primary" href="/learning">My Learning</a>
+      <a class="btn btn-ghost" href="/account">My Profile</a>
+      ${role ? `<a class="btn btn-primary js-open-admin" href="/admin">Admin panel</a>` : ""}
       <button class="btn btn-ghost js-logout" type="button">Logout</button>`;
   }
-  return `<div class="acct-wrap">
-    <button class="btn btn-ghost acct-btn" type="button" aria-haspopup="true" aria-expanded="false">Hi, ${first} <span class="acct-caret" aria-hidden="true">▾</span></button>
-    <div class="acct-menu" role="menu">
-      <a href="/dashboard">My learning</a>
-      <a class="js-open-admin" href="/admin">Admin panel</a>
-      <button type="button" class="js-logout">Logout</button>
-    </div>
-  </div>`;
+  return `<a class="btn btn-ghost hdr-learn" href="/learning">My Learning</a>
+    <div class="acct-wrap">
+      <button class="hdr-avatar acct-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="${first}">${initials}</button>
+      <div class="acct-menu" role="menu">
+        <a href="/dashboard">${iconSvg("chart")} My Dashboard</a>
+        <a href="/learning">${iconSvg("play")} My Learning</a>
+        <a href="/account">${iconSvg("users")} My Profile</a>
+        ${role ? `<a class="js-open-admin" href="/admin">${iconSvg("lock")} Admin panel</a>` : ""}
+        <a href="/contact">${iconSvg("headset")} Help</a>
+        <button type="button" class="js-logout">${iconSvg("share")} Logout</button>
+      </div>
+    </div>`;
 }
 
 function headerHTML() {
@@ -1013,6 +1041,7 @@ function headerHTML() {
       ${c.title}
     </a>`).join("");
   return `
+  <div class="site-top">
   <header class="header">
     <div class="container header-inner">
       <a class="logo" href="/">${brandLogoHTML("h")}</a>
@@ -1039,6 +1068,8 @@ function headerHTML() {
       </button>
     </div>
   </header>
+  <div class="promo-bar">Save up to 60% on classrooms. Offer ends today.</div>
+  </div>
   <div class="nav-scrim" id="navScrim"></div>
   <nav class="mobile-nav" id="mobileNav" aria-label="Menu">
     <form class="mnav-search" id="mobileSearchForm">
@@ -1049,7 +1080,8 @@ function headerHTML() {
     <a href="/live">Live classes</a>
     <a href="/reviews">Reviews</a>
     <a href="/about">About</a>
-    <a href="/dashboard">My learning</a>
+    <a href="/dashboard">My Dashboard</a>
+    <a href="/learning">My Learning</a>
     <a href="/contact">Contact</a>
     <div class="mnav-auth">${authMobile}</div>
   </nav>`;
@@ -1078,7 +1110,8 @@ function footerHTML() {
             <a href="/about">About</a>
             <a href="/reviews">Reviews</a>
             <a href="/contact">Contact</a>
-            <a href="/dashboard">My learning</a>
+            <a href="/dashboard">My Dashboard</a>
+            <a href="/learning">My Learning</a>
           </div>
         </nav>
       </div>
@@ -1289,7 +1322,7 @@ function bindChrome() {
     upsertUser(match);
     closeModals();
     toast("Logged in");
-    location.reload();
+    afterAuthArrive();
   });
   document.getElementById("signupForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -2017,62 +2050,273 @@ function renderCoursePage() {
   }
 }
 
-function renderDashboard() {
-  const grid = document.getElementById("myCourses");
-  if (!grid) return;
-  const user = getUser();
-  if (!user) {
-    grid.innerHTML = `<div class="empty"><h3>Login to see your classroom</h3><p class="muted">Your enrolled courses will appear here.</p><button class="btn btn-orange" data-open="signupModal" style="margin-top:12px">Start learning</button></div>`;
-    return;
-  }
-  document.getElementById("dashName").textContent = user.name;
-  const ids = enrolled();
-  const list = allCourses().filter((c) => ids.includes(c.id));
-  const myCalls = typeof callRequests === "function" ? callRequests().filter((c) => c.email === user.email) : [];
-  const aff = typeof affiliates === "function" ? affiliates().find((a) => a.email === user.email) : null;
-  const extra = `
-    <div class="dash-tools">
-      <div class="info-card">
-        <h3>Progress</h3>
-        ${list.length ? list.map((c) => {
-          const p = typeof courseCompletion === "function" ? courseCompletion(user.email, c.id) : { pct: 0 };
-          return `<div class="bar-row"><span>${c.title}</span><div class="bar-track"><i style="width:${p.pct}%"></i></div><b>${p.pct}%</b></div>
-            ${p.cert ? `<div class="cert-mini-links"><a href="/certificate?course=${c.id}">View certificate</a><button type="button" class="btn btn-primary" data-cert-download="${c.id}">Download</button></div>` : ""}`;
-        }).join("") : `<p class="muted">No classrooms yet.</p>`}
-      </div>
-      <div class="info-card">
-        <h3>1:1 sessions</h3>
-        ${myCalls.length ? myCalls.map((c) => `<p><strong>${c.topic}</strong> · ${c.date} ${c.time || ""} · ${c.status}${c.status === "approved" ? ` · <a href="${callJoinPath(c.id)}">Join</a>` : ""}</p>`).join("") : `<p class="muted">No calls booked. <a href="/live#call">Request a 1:1</a></p>`}
-      </div>
-      <div class="info-card">
-        <h3>Affiliate</h3>
-        ${aff
-          ? `<p>Code <strong>${aff.code}</strong> · ${aff.status}</p>
-             <p class="muted">Share: ${location.origin}/?ref=${aff.code}</p>
-             ${typeof affiliateBalance === "function" ? `<p>Due ${ "₹" + affiliateBalance(user.email).due.toLocaleString("en-IN") }</p>` : ""}`
-          : `<p class="muted">Turn students into ambassadors. Ask admin to activate your code, or apply below.</p>
-             <button class="btn btn-ghost" id="joinAffBtn" type="button">Apply as affiliate</button>`}
-      </div>
-    </div>`;
-  if (!list.length) {
-    grid.innerHTML = `<div class="empty"><h3>No courses yet</h3><p class="muted">Pick a course to start your first week of practice.</p><a class="btn btn-primary" href="/courses" style="margin-top:12px">Browse courses</a></div>` + extra;
-    bindDashAff();
-    return;
-  }
-  grid.innerHTML = `<div class="grid-3">${list.map((c) => courseCard(c, "grid-card")).join("")}</div>` + extra;
-  bindDashAff();
+function courseThumbHTML(c) {
+  const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title };
+  const photo = photoFor(c.instructor);
+  return `<div class="thumb" style="background:${art.bg}">
+    <img class="person" src="${photo}" alt="">
+    <div class="cover-copy"><h3>${art.title}</h3></div>
+  </div>`;
 }
 
-function bindDashAff() {
-  document.getElementById("joinAffBtn")?.addEventListener("click", () => {
-    const u = getUser();
-    if (!u || typeof affiliates !== "function") return;
-    const list = affiliates();
-    if (list.some((a) => a.email === u.email)) return;
-    list.push({ email: u.email, name: u.name, code: makeCode(u.name.slice(0, 4).toUpperCase()), rate: platformSettings().defaultCommission, status: "pending", created: new Date().toISOString() });
-    writeList(AFFILIATE_KEY, list);
-    toast("Affiliate application sent to admin");
-    renderDashboard();
+function resumeFor(email, courseId) {
+  const lessons = lessonsFor(courseId);
+  const p = typeof learnerProgress === "function" ? learnerProgress(email, courseId) : { lessons: {} };
+  const last = Number(p.lastIdx);
+  let i = Number.isInteger(last) && last >= 0 && last < lessons.length ? last : lessons.findIndex((_, n) => !p.lessons?.[n]);
+  if (i < 0) i = 0;
+  return { i, lesson: lessons[i] || lessons[0], done: Object.keys(p.lessons || {}).filter((k) => p.lessons[k]).length };
+}
+
+function timeLeftLabel(c, pct) {
+  const hours = Number(c.hours) || 0;
+  const left = Math.max(0, hours * (1 - (Number(pct) || 0) / 100));
+  if (left >= 1) return Math.round(left) + "h 00m left";
+  const mins = Math.max(1, Math.round(left * 60));
+  return mins + "m left";
+}
+
+function ownedCourses(email) {
+  const ids = enrolled();
+  return allCourses().filter((c) => ids.includes(c.id)).map((c) => {
+    const stats = typeof courseCompletion === "function" ? courseCompletion(email, c.id) : { pct: 0, cert: false };
+    return { c, stats, resume: resumeFor(email, c.id) };
+  });
+}
+
+function learnerGateHTML() {
+  return `<div class="ld"><div class="empty"><h3>Login to see your classroom</h3><p class="muted">Purchased courses show here after you sign in.</p><button class="btn btn-primary" data-open="loginModal" style="margin-top:12px">Login</button></div></div>`;
+}
+
+function renderDashboard() {
+  const root = document.getElementById("learnerHome") || document.getElementById("myCourses");
+  if (!root) return;
+  const user = getUser();
+  if (!user) {
+    root.innerHTML = learnerGateHTML();
+    return;
+  }
+  const mine = ownedCourses(user.email);
+  const cont = mine.find((x) => x.stats.pct < 100) || mine[0];
+  const rec = allCourses().filter((c) => !enrolled().includes(c.id)).slice(0, 8);
+  const continueHTML = cont
+    ? `<a class="ld-resume" href="/course?id=${encodeURIComponent(cont.c.id)}&lesson=${cont.resume.i}">
+        <div class="ld-shot">${courseThumbHTML(cont.c)}<span class="ld-play"><i><svg viewBox="0 0 10 10"><path d="M2 1.2v7.6L8.5 5Z"/></svg></i> Continue learning</span></div>
+        <h3>${escapeHtml(cont.c.title)}</h3>
+        <div class="ld-from">Resume from: ${escapeHtml(cont.resume.lesson?.t || "Lesson 1")}</div>
+        <div class="ld-meter"><div class="ld-track"><i style="width:${cont.stats.pct}%"></i></div><b>${cont.stats.pct}% · ${timeLeftLabel(cont.c, cont.stats.pct)}</b></div>
+      </a>`
+    : `<div class="empty" style="text-align:left;max-width:420px"><h3>No classroom yet</h3><p class="muted">Buy a course and it appears here to continue.</p><a class="btn btn-primary" href="/courses" style="margin-top:12px">Browse courses</a></div>`;
+  root.innerHTML = `<div class="ld">
+    <div class="ld-welcome">
+      <h1>Welcome back, ${escapeHtml(user.name)} 👋</h1>
+      <p>Continue where you left off.</p>
+    </div>
+    <div class="ld-continue">${continueHTML}</div>
+    <div class="ld-split">
+      <div>
+        <div class="ld-row-h"><h2>Recommended courses for you</h2><a href="/courses">View All ›</a></div>
+        <div class="ld-rec">${rec.map((c) => courseCard(c, "grid-card")).join("") || `<p class="muted">You already own the library.</p>`}</div>
+        <div class="ld-row-h" style="margin-top:28px"><h2>Explore by category</h2></div>
+        <div class="ld-cats">${CATEGORIES.map((cat) => `
+          <a class="ld-cat" href="/courses?cat=${courseFilterFromCat(cat.id)}#library">
+            <span style="background:${cat.tint};color:${cat.color}">${iconSvg(cat.icon)}</span>
+            <strong>${escapeHtml(cat.title)}</strong>
+          </a>`).join("")}</div>
+        <div class="ld-row-h"><h2>Explore Bizgarh</h2></div>
+        <div class="ld-ex">
+          <a href="/courses"><span class="ld-ex-ico">${iconSvg("layers")}</span><strong>Courses</strong><em>Setup-first classrooms for Indian traders</em><i class="go">›</i></a>
+          <a href="/live#webinars"><span class="ld-ex-ico">${iconSvg("wifi")}</span><strong>Live Webinars</strong><em>Live sessions with market desks</em><i class="go">›</i></a>
+          <a href="/live#mentorship"><span class="ld-ex-ico">${iconSvg("users")}</span><strong>Live Mentorships</strong><em>Guided programs with working traders</em><i class="go">›</i></a>
+          <a class="on" href="/live#call"><span class="ld-ex-ico">${iconSvg("headset")}</span><strong>1:1 Guidance</strong><em>Book a personal call with a mentor</em><i class="go">›</i></a>
+        </div>
+      </div>
+      <aside class="ld-side">
+        <div class="ld-promo">
+          <h3>Live rooms and 1:1s this week</h3>
+          <p>Sit with a working desk. No tip feed — just process.</p>
+          <a class="btn btn-primary" href="/live">Join live ›</a>
+        </div>
+        <div class="ld-quick">
+          <h3>Quick Actions</h3>
+          <a href="/learning">${iconSvg("play")} My Learning</a>
+          <a href="/account#certs">${iconSvg("badge")} My Certificates</a>
+          <a href="/contact">${iconSvg("headset")} Help</a>
+        </div>
+      </aside>
+    </div>
+  </div>`;
+}
+
+function myWebinars(email) {
+  const regs = readList(REGS_KEY).filter((r) => r.email === email);
+  return allWebinars().filter((w) => regs.some((r) => r.id === w.id)).map((w) => ({
+    w,
+    registered: true
+  }));
+}
+
+function renderMyLearning() {
+  const root = document.getElementById("myLearning");
+  if (!root) return;
+  const user = getUser();
+  if (!user) {
+    root.innerHTML = learnerGateHTML();
+    return;
+  }
+  const tab = (location.hash || "#courses").replace("#", "");
+  const chip = (root.dataset.chip || "ongoing");
+  const mine = ownedCourses(user.email);
+  const ongoing = mine.filter((x) => x.stats.pct < 100);
+  const done = mine.filter((x) => x.stats.pct >= 100);
+  const shown = tab === "webinars" ? [] : (chip === "completed" ? done : ongoing);
+  const webs = myWebinars(user.email);
+  const webChip = chip === "completed";
+  const webShown = webs.filter((x) => webChip ? x.w.status === "ended" : x.w.status !== "ended");
+  root.innerHTML = `<div class="ld">
+    <div class="ld-crumb"><a href="/">Home</a> · My Learning</div>
+    <h1 class="ld-title">My Learning</h1>
+    <div class="ld-tabs">
+      <button type="button" data-ltab="courses" class="${tab !== "webinars" ? "on" : ""}">${iconSvg("layers")} My Courses <b>${mine.length}</b></button>
+      <button type="button" data-ltab="webinars" class="${tab === "webinars" ? "on" : ""}">${iconSvg("wifi")} Webinars <b>${webs.length}</b></button>
+    </div>
+    ${tab === "webinars" ? `
+      <button class="ld-chip ${webChip ? "off" : ""}" data-lchip="ongoing" type="button">Ongoing</button>
+      <button class="ld-chip ${webChip ? "" : "off"}" data-lchip="completed" type="button">Completed</button>
+      <div class="ld-web">${webShown.length ? webShown.map((row, i) => `
+        <article>
+          ${webinarBannerHTML(row.w, i)}
+          <div class="body">
+            <small class="${row.w.status === "ended" ? "ended" : ""}">${row.w.status === "ended" ? "Ended" : (row.w.when || "Upcoming")}</small>
+            <h3>${escapeHtml(row.w.title)}</h3>
+            <p class="muted">by ${escapeHtml(row.w.by)}</p>
+          </div>
+        </article>`).join("") : `<div class="ld-empty"><p>No webinars in this list yet.</p><a class="btn btn-primary" href="/live">Browse live classes</a></div>`}</div>
+    ` : `
+      <button class="ld-chip ${chip === "completed" ? "off" : ""}" data-lchip="ongoing" type="button">Ongoing</button>
+      <button class="ld-chip ${chip === "completed" ? "" : "off"}" data-lchip="completed" type="button">Completed</button>
+      <div class="ld-learn-grid">${shown.length ? shown.map((x) => `
+        <a class="ld-own" href="/course?id=${encodeURIComponent(x.c.id)}&lesson=${x.resume.i}">
+          <div class="ld-shot">${courseThumbHTML(x.c)}
+            <span class="ld-own-meta">${x.stats.pct}% · ${timeLeftLabel(x.c, x.stats.pct)}</span>
+            <span class="ld-own-bar"><i style="width:${x.stats.pct}%"></i></span>
+          </div>
+          <h3>${escapeHtml(x.c.title)}</h3>
+          <small>by ${escapeHtml(x.c.instructor)}</small>
+          <span class="go">Continue watching ›</span>
+        </a>`).join("") : `<div class="ld-empty"><p>${chip === "completed" ? "No completed classrooms yet." : "No ongoing classrooms. Buy a course to start."}</p><a class="btn btn-primary" href="/courses">Browse courses</a></div>`}</div>
+    `}
+  </div>`;
+  root.dataset.chip = chip;
+  root.querySelectorAll("[data-ltab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      history.replaceState({}, "", "/learning#" + btn.dataset.ltab);
+      renderMyLearning();
+    });
+  });
+  root.querySelectorAll("[data-lchip]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      root.dataset.chip = btn.dataset.lchip;
+      renderMyLearning();
+    });
+  });
+}
+
+function renderAccountPage() {
+  const root = document.getElementById("accountRoot");
+  if (!root) return;
+  const user = getUser();
+  if (!user) {
+    root.innerHTML = learnerGateHTML();
+    return;
+  }
+  const row = (typeof findStudent === "function" ? findStudent(user.email) : null) || user;
+  const p = row.profile || {};
+  const hash = (location.hash || "#edit").replace("#", "") || "edit";
+  const mine = ownedCourses(user.email);
+  const certRows = mine.filter((x) => x.stats.cert || (typeof certFor === "function" && certFor(user.email, x.c.id)));
+  const buys = readList(ALL_ENROLL_KEY).filter((e) => e.email === user.email);
+  const tickets = readList(TICKETS_KEY).filter((t) => t.email === user.email);
+  const tkTab = root.dataset.tk || "open";
+  const tkMap = {
+    open: tickets.filter((t) => t.status === "OPEN"),
+    progress: tickets.filter((t) => t.status === "PENDING" || t.status === "IN_PROGRESS"),
+    closed: tickets.filter((t) => t.status === "CLOSED")
+  };
+  const panes = {
+    edit: `<h2>Account info</h2>
+      <form id="profileForm" class="form-card" style="max-width:none;box-shadow:none;border:0;padding:0">
+        <div class="field"><label>Name</label><input name="name" required value="${escapeHtml(row.name || "")}"></div>
+        <div class="field"><label>Phone number</label><input name="phone" value="${escapeHtml(p.phone || "")}"></div>
+        <div class="field"><label>Email ID</label><input name="email" value="${escapeHtml(row.email || "")}" disabled></div>
+        <div class="field"><label>Gender</label><div class="radios">
+          ${["Male", "Female", "Prefer not to say"].map((g) => `<label><input type="radio" name="gender" value="${g}" ${p.gender === g ? "checked" : ""}> ${g}</label>`).join("")}
+        </div></div>
+        <div class="field"><label>Date of birth</label><input name="dob" type="date" value="${escapeHtml(p.dob || "")}"></div>
+        <div class="field"><label>Interested in</label><div class="radios">
+          ${["Trading", "Investing", "Both"].map((g) => `<label><input type="radio" name="interest" value="${g}" ${p.interest === g ? "checked" : ""}> ${g}</label>`).join("")}
+        </div></div>
+        <div class="field"><label>Experience in the market</label><div class="radios">
+          ${["0-1 year", "1-3 years", "3+ years"].map((g) => `<label><input type="radio" name="marketExp" value="${g}" ${p.marketExp === g ? "checked" : ""}> ${g}</label>`).join("")}
+        </div></div>
+        <div class="field"><label>Country</label><input name="country" value="${escapeHtml(p.country || "India")}"></div>
+        <div class="field"><label>State</label><input name="state" value="${escapeHtml(p.state || "")}"></div>
+        <div class="field"><label>City</label><input name="city" value="${escapeHtml(p.city || "")}"></div>
+        <div class="field"><label>Pin code</label><input name="pin" value="${escapeHtml(p.pin || "")}"></div>
+        <button class="btn btn-primary btn-block">Save changes</button>
+      </form>`,
+    certs: `<h2>My certificates</h2>${certRows.length ? certRows.map((x) => `<div class="info-card" style="margin-bottom:12px"><strong>${escapeHtml(x.c.title)}</strong><div class="cert-mini-links" style="margin-top:8px"><a href="/certificate?course=${x.c.id}">View certificate</a> <button type="button" class="btn btn-primary" data-cert-download="${x.c.id}">Download</button></div></div>`).join("") : `<div class="ld-empty"><p>Finish a classroom to earn a certificate.</p><a class="btn btn-primary" href="/learning">My Learning</a></div>`}`,
+    purchases: `<h2>My purchases</h2>${buys.length || mine.length ? (buys.length ? buys : mine.map((x) => ({ courseId: x.c.id, at: "" }))).map((b) => {
+      const c = allCourses().find((x) => x.id === b.courseId);
+      return `<div class="info-card" style="margin-bottom:12px"><strong>${escapeHtml(c?.title || b.courseId)}</strong><p class="muted">${c ? "₹" + Number(c.price).toLocaleString("en-IN") : ""}${b.at ? " · " + new Date(b.at).toLocaleDateString("en-IN") : ""}</p><a href="/course?id=${encodeURIComponent(b.courseId)}">Open classroom</a></div>`;
+    }).join("") : `<div class="ld-empty"><p>No purchases yet.</p><a class="btn btn-primary" href="/courses">Browse courses</a></div>`}`,
+    tickets: `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="tk-tabs">
+          <button type="button" data-tk="open" class="${tkTab === "open" ? "on" : ""}">Open</button>
+          <button type="button" data-tk="progress" class="${tkTab === "progress" ? "on" : ""}">In Progress</button>
+          <button type="button" data-tk="closed" class="${tkTab === "closed" ? "on" : ""}">Closed</button>
+        </div>
+        <a class="btn btn-ghost" href="/contact">Raise a Ticket</a>
+      </div>
+      ${tkMap[tkTab]?.length ? tkMap[tkTab].map((t) => `<div class="info-card" style="margin:12px 0"><strong>${escapeHtml(t.title)}</strong><p class="muted">${escapeHtml(t.body || "")}</p></div>`).join("") : `<div class="ld-empty"><p>No queries yet</p><a class="btn btn-primary" href="/contact">Raise a Ticket</a></div>`}`
+  };
+  const pane = panes[hash] || panes.edit;
+
+  root.innerHTML = `<div class="ld-acct">
+    <nav>
+      <a href="/account#edit" class="${hash === "edit" ? "on" : ""}">Edit Profile</a>
+      <a href="/account#certs" class="${hash === "certs" ? "on" : ""}">My Certificates</a>
+      <a href="/account#purchases" class="${hash === "purchases" ? "on" : ""}">My Purchases</a>
+      <a href="/account#tickets" class="${hash === "tickets" ? "on" : ""}">My Tickets</a>
+    </nav>
+    <section>${pane}</section>
+  </div>`;
+  root.dataset.tk = tkTab;
+  document.getElementById("profileForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const profile = {
+      phone: f.phone.value.trim(),
+      gender: (f.gender?.value || p.gender || ""),
+      dob: f.dob.value,
+      interest: f.interest?.value || p.interest || "",
+      marketExp: f.marketExp?.value || p.marketExp || "",
+      country: f.country.value.trim(),
+      state: f.state.value.trim(),
+      city: f.city.value.trim(),
+      pin: f.pin.value.trim()
+    };
+    const next = { ...row, name: f.name.value.trim(), profile };
+    upsertUser(next);
+    setUser({ ...getUser(), name: next.name });
+    toast("Profile saved");
+    renderAccountPage();
+  });
+  root.querySelectorAll("[data-tk]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      root.dataset.tk = btn.dataset.tk;
+      renderAccountPage();
+    });
   });
 }
 
@@ -3013,6 +3257,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("learnRoot")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   renderDashboard();
+  renderMyLearning();
+  renderAccountPage();
+  window.addEventListener("hashchange", () => {
+    renderMyLearning();
+    renderAccountPage();
+  });
   renderLive();
   renderLiveRoom();
 
@@ -3038,7 +3288,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("contactForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    e.target.reset();
+    const f = e.target;
+    const u = getUser();
+    const list = readList(TICKETS_KEY);
+    list.push({
+      id: "tk-" + Date.now(),
+      title: String(f.message.value || "Support").trim().slice(0, 80),
+      body: String(f.message.value || "").trim(),
+      email: (u?.email || f.email.value).trim().toLowerCase(),
+      name: u?.name || f.name.value.trim(),
+      courseId: "",
+      status: "OPEN",
+      assignee: "",
+      replies: [],
+      at: new Date().toISOString()
+    });
+    writeList(TICKETS_KEY, list);
+    f.reset();
     document.getElementById("contactMsg").textContent = "Thanks. We’ll reply at your email within 1 working day.";
   });
 
