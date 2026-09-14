@@ -1041,7 +1041,6 @@ function headerHTML() {
       ${c.title}
     </a>`).join("");
   return `
-  <div class="site-top">
   <header class="header">
     <div class="container header-inner">
       <a class="logo" href="/">${brandLogoHTML("h")}</a>
@@ -1068,8 +1067,6 @@ function headerHTML() {
       </button>
     </div>
   </header>
-  <div class="promo-bar">Save up to 60% on classrooms. Offer ends today.</div>
-  </div>
   <div class="nav-scrim" id="navScrim"></div>
   <nav class="mobile-nav" id="mobileNav" aria-label="Menu">
     <form class="mnav-search" id="mobileSearchForm">
@@ -2085,7 +2082,7 @@ function ownedCourses(email) {
 }
 
 function learnerGateHTML() {
-  return `<div class="ld"><div class="empty"><h3>Login to see your classroom</h3><p class="muted">Purchased courses show here after you sign in.</p><button class="btn btn-primary" data-open="loginModal" style="margin-top:12px">Login</button></div></div>`;
+  return `<div class="ld"><div class="empty"><h3>Login to see your classroom</h3><p class="muted">Purchased courses appear here after login.</p><button class="btn btn-primary" data-open="loginModal" style="margin-top:12px">Login</button></div></div>`;
 }
 
 function renderDashboard() {
