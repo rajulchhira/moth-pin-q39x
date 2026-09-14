@@ -25,7 +25,7 @@ export function googleReady() {
 export function publicOrigin() {
   const env = envGet("APP_URL").replace(/\/$/, "");
   if (env) return env;
-  return "https://bizgarh.com";
+  return "https://www.bizgarh.com";
 }
 
 export function requestOrigin(event) {

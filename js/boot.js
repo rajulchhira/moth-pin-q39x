@@ -1,5 +1,9 @@
 (function () {
   try {
+    if (location.hostname === "bizgarh.com") {
+      location.replace("https://www.bizgarh.com" + location.pathname + location.search + location.hash);
+      return;
+    }
     var path = (location.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
     if (path === "/" || path === "/index") {
       var raw = localStorage.getItem("tradeshalaUser");

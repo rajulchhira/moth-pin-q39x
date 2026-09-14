@@ -19,7 +19,7 @@ function googleReady() {
 function publicOrigin() {
   const env = String(process.env.APP_URL || "").trim().replace(/\/$/, "");
   if (env) return env;
-  return "https://bizgarh.com";
+  return "https://www.bizgarh.com";
 }
 
 function requestOrigin(event) {
