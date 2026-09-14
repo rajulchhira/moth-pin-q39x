@@ -182,7 +182,7 @@ function paint() {
     courses: ["Courses", "Existing catalog — not rebuilt"],
     enrolls: ["Enrollments", "Access granted on the public site"],
     classroom: ["Classroom LMS", "Quizzes, assignments, certificates"],
-    live: ["Live sessions", "Webinars already on the site"],
+    live: ["Live sessions", "Webinars, live classes, and 1:1 rooms"],
     orders: ["Orders", "Paid enrollments"],
     payments: ["Payments", "No card numbers stored"],
     refunds: ["Refunds", "Reverses access and commission"],
@@ -463,19 +463,34 @@ const VIEWS = {
   live() {
     AdminCore.assert("live","view");
     const list = AdminCore.isOwner() ? allWebinars() : allWebinars().filter((w) => w.hostEmail === AdminCore.session().email || w.by === AdminCore.session().name);
+    const calls = (typeof callRequests === "function" ? callRequests() : []).filter((c) => AdminCore.isOwner() || c.mentorEmail === AdminCore.session().email || c.mentor === AdminCore.session().name);
     const form = AdminCore.can("live","create") ? `<form class="ad-card ad-form" id="addLiveForm" style="margin-bottom:14px;grid-template-columns:1fr 1fr">
       <input name="title" placeholder="Title" required>
       <input name="at" type="datetime-local" required>
       <input name="duration" value="60 min">
-      <input name="joinUrl" placeholder="Meet / Zoom URL">
+      <select name="kind"><option value="webinar">Webinar</option><option value="class">Live class</option></select>
       <select name="chat"><option value="1">Chat on</option><option value="0">Chat off</option></select>
       <select name="record"><option value="1">Record</option><option value="0">No record</option></select>
-      <input name="recordUrl" placeholder="Recording URL">
+      <input name="recordUrl" placeholder="Recording URL (optional)">
+      <input name="introUrl" placeholder="Intro video (YouTube or MP4 URL)">
       <textarea name="notes" placeholder="Notes"></textarea>
       <button class="btn btn-primary">Schedule</button></form>` : "";
-    return form + table(["When","Title","Host","Join"], list.map((w)=>`<tr>
-      <td>${adEsc(w.when||w.at)}</td><td>${adEsc(w.title)}</td><td>${adEsc(w.by)}</td>
-      <td>${w.joinUrl?`<a href="${adEsc(w.joinUrl)}" target="_blank">Join</a>`:"—"}</td></tr>`));
+    return form
+      + `<p class="muted" style="margin:0 0 8px">Rooms open inside Bizgarh on 100ms. No Meet / Zoom paste.</p>`
+      + table(["When","Type","Title","Host","Room"], list.map((w)=>`<tr>
+      <td>${adEsc(w.when||w.at)}</td><td>${adEsc(w.kind === "class" ? "Live class" : "Webinar")}</td><td>${adEsc(w.title)}</td><td>${adEsc(w.by)}</td>
+      <td><a href="/live-room?id=${adEsc(w.id)}">Open room</a></td></tr>`))
+      + `<h3 style="margin:22px 0 8px">1:1 calls</h3>`
+      + table(["Student","Topic","When","Mentor","Status",""], calls.slice().reverse().map((c)=>`<tr>
+      <td>${adEsc(c.name)}<div class="muted">${adEsc(c.email)}</div></td>
+      <td>${adEsc(c.topic)}</td>
+      <td>${adEsc(c.date)} ${adEsc(c.time||"")}</td>
+      <td>${adEsc(c.mentor||"—")}</td>
+      <td>${badge(c.status)}</td>
+      <td class="admin-actions">
+        ${c.status === "pending" && AdminCore.can("live","edit") ? `<button class="btn btn-ghost" data-call="${adEsc(c.id)}" data-status="approved">Approve</button>` : ""}
+        ${c.status === "approved" ? `<a class="btn btn-ghost" href="/live-room?type=call&id=${adEsc(c.id)}">Join</a>` : ""}
+      </td></tr>`));
   },
   analytics() {
     AdminCore.assert("analytics","view");
@@ -722,6 +737,19 @@ function bindApp() {
       AdminCore.audit("payout_status", po.dataset.po, "pending", st);
       paint(); return;
     }
+    const callBtn = e.target.closest("[data-call]");
+    if (callBtn) {
+      AdminCore.assert("live", "edit");
+      writeList(CALL_KEY, callRequests().map((c) => {
+        if (c.id !== callBtn.dataset.call) return c;
+        const next = { ...c, status: callBtn.dataset.status };
+        if (callBtn.dataset.status === "approved") next.meetUrl = "/live-room?type=call&id=" + c.id;
+        return next;
+      }));
+      toast("1:1 updated");
+      paint();
+      return;
+    }
     const refund = e.target.closest("[data-refund]");
     if (refund) { AdminCore.refundOrder(refund.dataset.refund); toast("Refunded · commission reversed"); paint(); return; }
     const flog = e.target.closest("[data-flog]");
@@ -902,7 +930,7 @@ function bindApp() {
       const s = AdminCore.session();
       const at = new Date(f.at.value);
       const list = allWebinars();
-      list.push({ id: "lv-"+Date.now(), title: f.title.value.trim(), by: s.name, hostEmail: s.email, at: at.toISOString(), when: at.toLocaleString("en-IN"), duration: f.duration.value, joinUrl: f.joinUrl.value, notes: f.notes.value, chat: f.chat.value==="1", record: f.record.value==="1", recordUrl: f.recordUrl.value, status: "scheduled" });
+      list.push({ id: "lv-"+Date.now(), title: f.title.value.trim(), by: s.name, hostEmail: s.email, at: at.toISOString(), when: at.toLocaleString("en-IN"), duration: f.duration.value, kind: f.kind?.value === "class" ? "class" : "webinar", joinUrl: "", introUrl: (f.introUrl?.value || "").trim(), notes: f.notes.value, chat: f.chat.value==="1", record: f.record.value==="1", recordUrl: f.recordUrl.value, status: "scheduled" });
       saveWebinars(list);
       toast("Live scheduled");
       paint();
@@ -951,7 +979,7 @@ function bindCourseOverlays() {
         <span class="cr-num">${String(i + 1).padStart(2, "0")}</span>
         <div>
           <strong>${escapeHtml(l.t)}</strong>
-          <div class="muted">${escapeHtml(l.dur || "video")} · ${l.fileKey ? "uploaded file" : "link"}</div>
+          <div class="muted">${escapeHtml(l.dur || "video")} · ${escapeHtml(lessonMediaLabel(l))}</div>
         </div>
         <button class="btn btn-ghost" type="button" data-del-video="${l.id}" data-course="${courseId}">Remove</button>
       </div>`).join("");
@@ -1005,28 +1033,29 @@ function bindCourseOverlays() {
     const id = f.courseId.value;
     const c = allCourses().find((x) => x.id === id) || COURSES.find((x) => x.id === id);
     if (!c || !canEditCourse(c)) return;
+    if (e._bizgarhLesson) return;
+    e._bizgarhLesson = true;
     const file = f.file.files[0];
     const src = f.src.value.trim();
-    if (!file && !src) { toast("Upload a video or paste an MP4 link"); return; }
+    const vdoId = (f.vdoId?.value || "").trim();
+    if (!file && !src && !vdoId) { toast("Add a VdoCipher video ID, an MP4 link, or a file"); return; }
     const btn = f.querySelector("button[type=submit]");
     btn.disabled = true;
     btn.textContent = "Saving…";
     try {
-      const lessonId = "v-" + Date.now();
-      const lesson = { id: lessonId, t: f.title.value.trim(), dur: f.dur.value.trim() || "video", src };
-      if (file) {
-        if (file.size > 180 * 1024 * 1024) { toast("File is too large (keep under 180 MB)"); return; }
-        lesson.fileKey = id + ":" + lessonId;
-        lesson.src = "";
-        await putVideoBlob(lesson.fileKey, file);
-      }
-      setCourseLessons(id, (courseVideosMap()[id] || []).concat(lesson));
+      await addClassroomLesson(id, {
+        title: f.title.value.trim(),
+        dur: f.dur.value.trim(),
+        src,
+        vdoId,
+        file
+      });
       f.reset();
       f.courseId.value = id;
       renderVideosList(id);
-      toast("Lesson added to classroom");
-    } catch {
-      toast("Could not save video");
+      toast(vdoId || parseVdoCipherId(src) ? "DRM lesson added" : "Lesson added to classroom");
+    } catch (err) {
+      toast(err.message || "Could not save video");
     } finally {
       btn.disabled = false;
       btn.textContent = "Add lesson";

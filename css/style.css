@@ -3992,6 +3992,51 @@ button.cd-topic {
   border: 1px solid rgba(255,255,255,.18);
 }
 .drm-chip.ghost { display: none; }
+.vdo-frame {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+  z-index: 4;
+}
+.drm-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px 24px;
+  text-align: center;
+  background: #0b0a12;
+  color: #e2e8f0;
+  font-size: 15px;
+  line-height: 1.5;
+  z-index: 5;
+}
+.drm-error[hidden] { display: none !important; }
+.player-shell.is-vdo {
+  cursor: default;
+  background: #0b0a12;
+}
+.player-shell.is-vdo .vdo-frame { display: block; }
+.player-shell.is-vdo video,
+.player-shell.is-vdo .drm-canvas,
+.player-shell.is-vdo .player-ui,
+.player-shell.is-vdo .yt-skip-side,
+.player-shell.is-vdo .yt-bigplay,
+.player-shell.is-vdo .yt-bezel,
+.player-shell.is-vdo .yt-cue {
+  display: none !important;
+}
+.player-shell.is-vdo .yt-top {
+  opacity: 1;
+  z-index: 8;
+  pointer-events: none;
+}
+.player-shell.is-vdo .player-load,
+.player-shell.is-vdo .yt-end { z-index: 9; }
 .yt-fs-title {
   display: none;
   font-size: 16px;
@@ -4635,4 +4680,14 @@ button.cd-topic {
 
 @media (min-width: 721px) and (max-width: 980px) {
   .course-card, .webinar-card { min-width: 240px; }
+}
+
+.hms-frame {
+  display: block;
+  width: 100%;
+  height: min(68vh, 620px);
+  margin: 18px 0;
+  border: 0;
+  border-radius: 16px;
+  background: #E6E0F4;
 }

@@ -292,7 +292,7 @@ function renderLiveAdmin() {
         <td><span class="live-status ${w.status || "scheduled"}">${w.status || "scheduled"}</span></td>
         <td>${n}</td>
         <td class="admin-actions">
-          ${host && w.status !== "ended" ? `<a class="btn btn-primary" href="/live-room?id=${w.id}">${w.status === "live" ? "Enter room" : "Go live"}</a>` : ""}
+          ${host && w.status !== "ended" ? `<a class="btn btn-primary" href="/live-room?id=${w.id}">${w.status === "live" ? "Enter room" : "Open room"}</a>` : ""}
           ${host || isOwner() ? `<button class="btn btn-ghost" data-del-live="${w.id}">Remove</button>` : ""}
         </td>
       </tr>`;
@@ -468,7 +468,7 @@ function renderCallsAdmin() {
       <td class="admin-actions">
         ${c.status === "pending" ? `<button class="btn btn-ghost" data-call="${c.id}" data-status="approved">Approve</button>` : ""}
         ${c.status !== "done" ? `<button class="btn btn-ghost" data-call="${c.id}" data-status="done">Mark done</button>` : ""}
-        ${c.meetUrl ? `<a class="btn btn-ghost" href="${c.meetUrl}" target="_blank" rel="noopener">Join</a>` : ""}
+        ${c.status === "approved" ? `<a class="btn btn-ghost" href="/live-room?type=call&id=${c.id}">Join</a>` : ""}
         <button class="btn btn-ghost" data-del-call="${c.id}">Remove</button>
       </td></tr>`)
   );
@@ -721,11 +721,13 @@ document.addEventListener("DOMContentLoaded", () => {
       at: at.toISOString(),
       when: formatLiveWhen(at.toISOString()),
       duration: f.duration.value.trim() || "60 min",
-      joinUrl: f.joinUrl.value.trim(),
+      kind: f.kind && f.kind.value === "class" ? "class" : "webinar",
+      joinUrl: f.joinUrl ? f.joinUrl.value.trim() : "",
       notes: f.notes.value.trim(),
       chat: f.chat.value === "1",
       record: f.record.value === "1",
       recordUrl: f.recordUrl.value.trim(),
+      introUrl: f.introUrl ? f.introUrl.value.trim() : "",
       status: "scheduled"
     };
     const list = allWebinars();
@@ -969,7 +971,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <span class="cr-num">${String(i + 1).padStart(2, "0")}</span>
         <div>
           <strong>${escapeHtml(l.t)}</strong>
-          <div class="muted">${escapeHtml(l.dur || "video")} · ${l.fileKey ? "uploaded file" : "link"}</div>
+          <div class="muted">${escapeHtml(l.dur || "video")} · ${escapeHtml(lessonMediaLabel(l))}</div>
         </div>
         <button class="btn btn-ghost" type="button" data-del-video="${l.id}" data-course="${courseId}">Remove</button>
       </div>`).join("");
@@ -994,41 +996,33 @@ document.addEventListener("DOMContentLoaded", () => {
     const id = f.courseId.value;
     const c = courseById(id);
     if (!c || !canEditCourse(c)) return;
+    if (e._bizgarhLesson) return;
+    e._bizgarhLesson = true;
     const file = f.file.files[0];
     const src = f.src.value.trim();
-    if (!file && !src) {
-      toast("Upload a video or paste an MP4 link");
+    const vdoId = (f.vdoId?.value || "").trim();
+    if (!file && !src && !vdoId) {
+      toast("Add a VdoCipher video ID, an MP4 link, or a file");
       return;
     }
     const btn = f.querySelector("button[type=submit]");
     btn.disabled = true;
     btn.textContent = "Saving…";
     try {
-      const lessonId = "v-" + Date.now();
-      const lesson = {
-        id: lessonId,
-        t: f.title.value.trim(),
-        dur: f.dur.value.trim() || "video",
-        src: src
-      };
-      if (file) {
-        if (file.size > 180 * 1024 * 1024) {
-          toast("File is too large (keep under 180 MB) or use a hosted MP4 link");
-          return;
-        }
-        lesson.fileKey = id + ":" + lessonId;
-        lesson.src = "";
-        await putVideoBlob(lesson.fileKey, file);
-      }
-      const current = courseVideosMap()[id] || [];
-      setCourseLessons(id, current.concat(lesson));
+      await addClassroomLesson(id, {
+        title: f.title.value.trim(),
+        dur: f.dur.value.trim(),
+        src,
+        vdoId,
+        file
+      });
       f.reset();
       f.courseId.value = id;
       renderVideosList(id);
-      toast("Lesson added to classroom");
+      toast(vdoId || parseVdoCipherId(src) ? "DRM lesson added" : "Lesson added to classroom");
       refreshAdmin();
     } catch (err) {
-      toast("Could not save video");
+      toast(err.message || "Could not save video");
     } finally {
       btn.disabled = false;
       btn.textContent = "Add lesson";
@@ -1110,7 +1104,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const callBtn = e.target.closest("[data-call]");
     if (callBtn) {
-      writeList(CALL_KEY, callRequests().map((c) => c.id === callBtn.dataset.call ? { ...c, status: callBtn.dataset.status } : c));
+      writeList(CALL_KEY, callRequests().map((c) => {
+        if (c.id !== callBtn.dataset.call) return c;
+        const next = { ...c, status: callBtn.dataset.status };
+        if (callBtn.dataset.status === "approved") next.meetUrl = "/live-room?type=call&id=" + c.id;
+        return next;
+      }));
       toast("Session updated");
       refreshAdmin();
     }

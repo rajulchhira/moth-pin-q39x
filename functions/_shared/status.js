@@ -1,4 +1,6 @@
 import { json, botToken, googleReady, publicOrigin } from "./auth.js";
+import { hmsReady } from "./hms.js";
+import { vdoReady } from "./vdocipher.js";
 
 export async function handler() {
   return json({
@@ -6,6 +8,8 @@ export async function handler() {
     appUrl: publicOrigin(),
     google: googleReady(),
     facebook: false,
-    telegram: Boolean(botToken())
+    telegram: Boolean(botToken()),
+    hms: hmsReady(),
+    vdocipher: vdoReady()
   });
 }

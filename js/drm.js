@@ -80,11 +80,13 @@ function renderLearnPage() {
       <section>
         <div class="player-shell show-ui" id="drmStage">
           <div class="yt-top" id="playerTop">
-            <span class="drm-chip">Protected</span>
+            <span class="drm-chip" id="drmChip">Protected</span>
             <span class="yt-fs-title" id="ytFsTitle">${escapeHtml(LESSONS[0].t)}</span>
           </div>
           <video id="drmVideo" playsinline preload="auto" disablePictureInPicture controlsList="nodownload noremoteplayback nofullscreen"></video>
+          <iframe id="vdoFrame" class="vdo-frame" hidden title="Protected lesson" allow="encrypted-media; autoplay; fullscreen" allowfullscreen></iframe>
           <canvas class="drm-canvas" id="drmCanvas"></canvas>
+          <div class="drm-error" id="drmError" hidden></div>
           <div class="player-load" id="playerLoad">${window.BizgarhLoader ? window.BizgarhLoader.html("bg-loader--md") : '<span class="bg-loader bg-loader--md" aria-hidden="true"></span>'}</div>
           <div class="drm-blackout" id="drmBlackout">
             <div>
@@ -183,11 +185,14 @@ function renderLearnPage() {
     list.innerHTML = LESSONS.map((l, i) => `
     <button class="cr-item${i === 0 ? " active" : ""}" data-lesson="${i}">
       <span class="cr-num">${String(i + 1).padStart(2, "0")}</span>
-      <span class="cr-item-body"><strong>${escapeHtml(l.t)}</strong><small>${escapeHtml(l.dur)} · encrypted</small></span>
+      <span class="cr-item-body"><strong>${escapeHtml(l.t)}</strong><small>${escapeHtml(l.dur)} · ${l.vdoId ? "Widevine DRM" : "encrypted"}</small></span>
     </button>`).join("");
   }
 
   const video = document.getElementById("drmVideo");
+  const vdoFrame = document.getElementById("vdoFrame");
+  const drmChip = document.getElementById("drmChip");
+  const drmError = document.getElementById("drmError");
   const canvas = document.getElementById("drmCanvas");
   const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
   const playBtn = document.getElementById("playBtn");
@@ -225,6 +230,7 @@ function renderLearnPage() {
     painting = false;
     clearInterval(wmTimer);
     clearTimeout(waitTimer);
+    clearVdo();
     drmCtl.abort();
   };
   let uiTimer;
@@ -490,6 +496,76 @@ function renderLearnPage() {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${ss}`;
   }
 
+  function clearVdo() {
+    stage.classList.remove("is-vdo");
+    if (drmChip) drmChip.textContent = "Protected";
+    if (vdoFrame) {
+      vdoFrame.removeAttribute("src");
+      vdoFrame.hidden = true;
+    }
+  }
+  function showDrmError(msg) {
+    if (!drmError) return;
+    drmError.hidden = false;
+    drmError.textContent = msg;
+  }
+  function hideDrmError() {
+    if (drmError) {
+      drmError.hidden = true;
+      drmError.textContent = "";
+    }
+  }
+  function finishLesson() {
+    ended = true;
+    setPlaying(false);
+    playBtn.innerHTML = ytIcon("replay");
+    let awarded = null;
+    if (typeof markLessonDone === "function") awarded = markLessonDone(user.email, c.id, currentLesson);
+    if (awarded) {
+      endCard.hidden = true;
+      renderCertAward(document.getElementById("certAward"), c, awarded);
+      const foot = document.querySelector("#courseOverview .cd-cert");
+      if (foot) {
+        foot.outerHTML = awardedCertFooterHTML(c, true);
+      }
+      document.getElementById("certAward")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      toast("Certificate ready · download it below");
+      return;
+    }
+    if (autoplay && currentLesson < LESSONS.length - 1) {
+      loadLesson(currentLesson + 1);
+      return;
+    }
+    if (currentLesson < LESSONS.length - 1) {
+      endCard.hidden = false;
+      document.getElementById("endTitle").textContent = LESSONS[currentLesson + 1].t;
+    }
+  }
+  async function loadVdoLesson(videoId) {
+    clearVdo();
+    hideDrmError();
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    stage.classList.add("is-vdo");
+    if (drmChip) drmChip.textContent = "Widevine";
+    const data = await fetchVdoOtp(videoId);
+    await ensureVdoPlayerApi();
+    const src = "https://player.vdocipher.com/v2/?otp=" + encodeURIComponent(data.otp)
+      + "&playbackInfo=" + encodeURIComponent(data.playbackInfo)
+      + "&primaryColor=4F46E5";
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error("DRM player timed out")), 20000);
+      vdoFrame.addEventListener("load", () => { clearTimeout(t); resolve(); }, { once: true });
+      vdoFrame.hidden = false;
+      vdoFrame.src = src;
+    });
+    try {
+      const player = window.VdoPlayer && window.VdoPlayer.getInstance(vdoFrame);
+      player?.video?.addEventListener("ended", finishLesson);
+    } catch { /* iframe still plays without API hooks */ }
+  }
+
   async function loadLesson(i) {
     if (i < 0 || i >= LESSONS.length) return;
     currentLesson = i;
@@ -506,8 +582,19 @@ function renderLearnPage() {
     document.getElementById("ytFsTitle").textContent = LESSONS[i].t;
     if (blobUrl) URL.revokeObjectURL(blobUrl);
     video.removeAttribute("src");
+    hideDrmError();
     loadEl.classList.add("show");
+    const vdoId = typeof parseVdoCipherId === "function"
+      ? parseVdoCipherId(LESSONS[i].vdoId || (!LESSONS[i].fileKey ? LESSONS[i].src : ""))
+      : "";
     try {
+      if (vdoId) {
+        await loadVdoLesson(vdoId);
+        loadEl.classList.remove("show");
+        showUi();
+        return;
+      }
+      clearVdo();
       if (LESSONS[i].fileKey) {
         const blob = await getVideoBlob(LESSONS[i].fileKey);
         if (!blob) throw new Error("missing file");
@@ -516,7 +603,14 @@ function renderLearnPage() {
       } else if (LESSONS[i].src) {
         video.src = LESSONS[i].src;
       }
-    } catch {
+    } catch (err) {
+      clearVdo();
+      if (vdoId) {
+        loadEl.classList.remove("show");
+        showDrmError(err.message || "This DRM lesson could not start.");
+        toast(err.message || "DRM lesson unavailable");
+        return;
+      }
       if (LESSONS[i].src) video.src = LESSONS[i].src;
     }
     const bounce = () => {
@@ -704,32 +798,7 @@ function renderLearnPage() {
   seekWrap.addEventListener("pointerup", () => { dragging = false; });
   seekWrap.addEventListener("pointerleave", () => { if (!dragging) seekWrap.classList.remove("tip"); });
 
-  video.addEventListener("ended", () => {
-    ended = true;
-    setPlaying(false);
-    playBtn.innerHTML = ytIcon("replay");
-    let awarded = null;
-    if (typeof markLessonDone === "function") awarded = markLessonDone(user.email, c.id, currentLesson);
-    if (awarded) {
-      endCard.hidden = true;
-      renderCertAward(document.getElementById("certAward"), c, awarded);
-      const foot = document.querySelector("#courseOverview .cd-cert");
-      if (foot) {
-        foot.outerHTML = awardedCertFooterHTML(c, true);
-      }
-      document.getElementById("certAward")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      toast("Certificate ready · download it below");
-      return;
-    }
-    if (autoplay && currentLesson < LESSONS.length - 1) {
-      loadLesson(currentLesson + 1);
-      return;
-    }
-    if (currentLesson < LESSONS.length - 1) {
-      endCard.hidden = false;
-      document.getElementById("endTitle").textContent = LESSONS[currentLesson + 1].t;
-    }
-  });
+  video.addEventListener("ended", finishLesson);
   video.addEventListener("play", () => {
     ended = false;
     setPlaying(true);
@@ -782,6 +851,7 @@ function renderLearnPage() {
   stage.addEventListener("pointerleave", () => { tip.hidden = true; });
 
   stage.addEventListener("click", (e) => {
+    if (stage.classList.contains("is-vdo")) return;
     if (e.target.closest(".player-ui") || e.target.closest(".yt-top") || e.target.closest(".yt-menu") || e.target.closest(".yt-end") || e.target.closest(".yt-bigplay")) return;
     const x = (e.clientX - stage.getBoundingClientRect().left) / stage.clientWidth;
     if (clickTimer) {
@@ -834,7 +904,7 @@ function renderLearnPage() {
   });
 
   const lock = () => {
-    video.pause();
+    if (!stage.classList.contains("is-vdo")) video.pause();
     blackout.classList.add("show");
   };
   const unlock = () => blackout.classList.remove("show");
@@ -867,6 +937,11 @@ function renderLearnPage() {
     }
     if (onCoursePage && !inClassroom(e.target) && !document.fullscreenElement) return;
     if (typeInField(e) || (e.ctrlKey && k !== "/") || e.metaKey || e.altKey) return;
+    if (stage.classList.contains("is-vdo")) {
+      if (e.shiftKey && k === "n") { e.preventDefault(); loadLesson(currentLesson + 1); }
+      if (e.shiftKey && k === "p") { e.preventDefault(); loadLesson(currentLesson - 1); }
+      return;
+    }
     if (e.key === "?" || (e.shiftKey && e.key === "/")) {
       e.preventDefault();
       const box = document.getElementById("ytKeys");

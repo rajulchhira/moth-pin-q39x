@@ -195,6 +195,126 @@ async function delVideoBlob(key) {
   });
 }
 
+function parseVdoCipherId(value) {
+  const s = String(value || "").trim();
+  if (!s || /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(s)) return "";
+  if (/^https?:\/\//i.test(s) && !/vdocipher\.com/i.test(s)) return "";
+  const fromUrl = s.match(/vdocipher\.com\/(?:dashboard\/)?videos?\/([A-Za-z0-9_-]+)/i)
+    || s.match(/[?&](?:videoId|id)=([A-Za-z0-9_-]{6,64})/i);
+  const id = (fromUrl && fromUrl[1]) || (/^[A-Za-z0-9_-]{6,64}$/.test(s) ? s : "");
+  if (!id || /^(watch|embed|shorts|http|https)$/i.test(id)) return "";
+  return id;
+}
+
+function lessonMediaLabel(lesson) {
+  if (lesson?.vdoId) return "VdoCipher DRM";
+  if (lesson?.fileKey) return "uploaded file";
+  return "link";
+}
+
+function ensureVdoPlayerApi() {
+  if (window.VdoPlayer) return Promise.resolve();
+  if (window.__vdoApiWait) return window.__vdoApiWait;
+  window.__vdoApiWait = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://player.vdocipher.com/v2/api.js";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => {
+      window.__vdoApiWait = null;
+      reject(new Error("Could not load the DRM player"));
+    };
+    document.head.appendChild(s);
+  });
+  return window.__vdoApiWait;
+}
+
+async function fetchVdoOtp(videoId) {
+  const u = typeof getUser === "function" ? getUser() : null;
+  const res = await fetch("/api/video/otp", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      videoId,
+      email: u?.email || "",
+      name: u?.name || ""
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!data.ok || !data.otp || !data.playbackInfo) {
+    throw new Error(data.error || "Could not unlock this DRM lesson. Add VDOCIPHER_API_SECRET on the server.");
+  }
+  return data;
+}
+
+async function fetchVdoUpload(title) {
+  let res;
+  try {
+    res = await fetch("/api/video/upload", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title || "Lesson" })
+    });
+  } catch {
+    const err = new Error("DRM upload is not ready");
+    err.code = "NO_DRM";
+    throw err;
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!data.ok || !data.videoId || !data.clientPayload) {
+    const err = new Error(data.error || "DRM upload is not ready");
+    err.code = (data.ready === false || res.status === 404 || res.status === 503) ? "NO_DRM" : "UPLOAD";
+    throw err;
+  }
+  return data;
+}
+
+async function uploadFileToVdo(payload, file) {
+  const p = payload.clientPayload || {};
+  const fd = new FormData();
+  ["policy", "key", "x-amz-signature", "x-amz-algorithm", "x-amz-date", "x-amz-credential"].forEach((k) => {
+    if (p[k] != null) fd.append(k, p[k]);
+  });
+  fd.append("success_action_status", "201");
+  fd.append("success_action_redirect", "");
+  fd.append("file", file);
+  const res = await fetch(p.uploadLink, { method: "POST", body: fd });
+  if (!res.ok && res.status !== 201) throw new Error("Could not upload this file to VdoCipher");
+}
+
+async function addClassroomLesson(courseId, fields) {
+  const vdoId = parseVdoCipherId(fields.vdoId || fields.src);
+  const src = String(fields.src || "").trim();
+  const file = fields.file;
+  if (!file && !src && !vdoId) throw new Error("Add a VdoCipher video ID, an MP4 link, or a file");
+  const lessonId = "v-" + Date.now();
+  const lesson = {
+    id: lessonId,
+    t: String(fields.title || "").trim(),
+    dur: String(fields.dur || "").trim() || "video",
+    src: vdoId ? "" : src
+  };
+  if (vdoId) lesson.vdoId = vdoId;
+  if (file && !lesson.vdoId) {
+    try {
+      const up = await fetchVdoUpload(lesson.t);
+      await uploadFileToVdo(up, file);
+      lesson.vdoId = String(up.videoId);
+      lesson.src = "";
+    } catch (err) {
+      if (err.code !== "NO_DRM") throw err;
+      if (file.size > 180 * 1024 * 1024) throw new Error("File is too large (keep under 180 MB) or connect VdoCipher");
+      lesson.fileKey = courseId + ":" + lessonId;
+      lesson.src = "";
+      await putVideoBlob(lesson.fileKey, file);
+    }
+  }
+  setCourseLessons(courseId, (courseVideosMap()[courseId] || []).concat(lesson));
+  return lesson;
+}
+
 const COURSES = [
   { id: "breakout", title: "Intraday Breakout Blueprint", instructor: "Aarav Mehta", learners: "12,480", rating: "4.8", price: 799, old: 1999, cat: "trending", cover: "breakout", hours: "6.5", lessons: 18 },
   { id: "income", title: "Weekly Options Income Playbook", instructor: "Neha Kapoor", learners: "28,910", rating: "4.9", price: 499, old: 1499, cat: "trending", cover: "income", hours: "8.0", lessons: 22 },
@@ -698,6 +818,7 @@ function seedLiveClasses() {
     hostEmail: w.by.split(" ")[0].toLowerCase() + "@bizgarh.in",
     when: formatLiveWhen(w.at),
     duration: "60 min",
+    kind: "webinar",
     joinUrl: "",
     notes: "Live market session with Q&A.",
     status: "scheduled"
@@ -1897,7 +2018,7 @@ function renderDashboard() {
       </div>
       <div class="info-card">
         <h3>1:1 sessions</h3>
-        ${myCalls.length ? myCalls.map((c) => `<p><strong>${c.topic}</strong> · ${c.date} ${c.time || ""} · ${c.status}${c.meetUrl ? ` · <a href="${c.meetUrl}" target="_blank">Join</a>` : ""}</p>`).join("") : `<p class="muted">No calls booked. <a href="/live#call">Request a 1:1</a></p>`}
+        ${myCalls.length ? myCalls.map((c) => `<p><strong>${c.topic}</strong> · ${c.date} ${c.time || ""} · ${c.status}${c.status === "approved" ? ` · <a href="${callJoinPath(c.id)}">Join</a>` : ""}</p>`).join("") : `<p class="muted">No calls booked. <a href="/live#call">Request a 1:1</a></p>`}
       </div>
       <div class="info-card">
         <h3>Affiliate</h3>
@@ -1937,30 +2058,148 @@ function liveActionBtn(w) {
   return `<button class="btn btn-primary" style="margin:8px 14px 14px" data-register="${w.id}">Register free</button>`;
 }
 
+function liveKindOf(w) {
+  return w && w.kind === "class" ? "class" : "webinar";
+}
+
+function callJoinPath(id) {
+  return "/live-room?type=call&id=" + encodeURIComponent(id);
+}
+
+function hmsApiUrl(path) {
+  return path;
+}
+
+function safeMediaUrl(url) {
+  try {
+    const u = new URL(String(url || "").trim());
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "";
+    return u.href;
+  } catch {
+    return "";
+  }
+}
+
+function youtubeIdFromUrl(url) {
+  const u = safeMediaUrl(url);
+  if (!u) return "";
+  const m = u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : "";
+}
+
+function introPlayerHTML(url) {
+  const raw = safeMediaUrl(url);
+  if (!raw) return `<div class="live-cam">Class starts soon. Stay on this page — the teacher will go live here.</div>`;
+  const yt = youtubeIdFromUrl(raw);
+  if (yt) {
+    return `<iframe class="hms-frame" title="Intro video" src="https://www.youtube.com/embed/${yt}?rel=0&modestbranding=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
+  }
+  if (/\.(mp4|webm|ogg)(\?|#|$)/i.test(raw)) {
+    return `<video class="hms-frame" src="${escapeHtml(raw)}" controls playsinline preload="metadata"></video>`;
+  }
+  return `<iframe class="hms-frame" title="Intro video" src="${escapeHtml(raw)}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+}
+
+async function mountHmsFrame(el, opts) {
+  if (!el) return;
+  el.innerHTML = `<div class="live-cam">Connecting classroom…</div>`;
+  try {
+    const res = await fetch(hmsApiUrl("/api/live/room"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: opts.kind,
+        id: opts.id,
+        title: opts.title,
+        duration: opts.duration,
+        asHost: !!opts.asHost
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!data.ok || !data.joinUrl) throw new Error(data.error || "Could not open the live room");
+    const src = data.joinUrl + (data.joinUrl.includes("?") ? "&" : "?") + "userName=" + encodeURIComponent(opts.userName || "Guest");
+    el.innerHTML = `<iframe class="hms-frame" title="Live classroom" src="${src}" allow="camera *; microphone *; fullscreen *; display-capture *; autoplay *; clipboard-write *" allowfullscreen></iframe>`;
+  } catch (err) {
+    el.innerHTML = `<div class="live-cam">${escapeHtml(err.message || "Live room unavailable")}</div>`;
+  }
+}
+
 function renderLive() {
+  const webinars = allWebinars().filter((w) => liveKindOf(w) === "webinar");
+  const classes = allWebinars().filter((w) => liveKindOf(w) === "class");
   const list = document.getElementById("liveList");
-  if (!list) return;
-  list.innerHTML = allWebinars().map((w, i) => webinarCardHTML(w, i)).join("");
+  if (list) {
+    list.innerHTML = webinars.map((w, i) => webinarCardHTML(w, i)).join("") || `<p class="muted">No webinars scheduled.</p>`;
+  }
+  const classList = document.getElementById("classList");
+  if (classList) {
+    classList.innerHTML = classes.map((w, i) => webinarCardHTML(w, i)).join("") || `<p class="muted">No live classes scheduled.</p>`;
+  }
 }
 
 function renderLiveRoom() {
   const root = document.getElementById("liveRoom");
   if (!root) return;
-  const id = new URLSearchParams(location.search).get("id");
+  const qs = new URLSearchParams(location.search);
+  const type = qs.get("type") === "call" ? "call" : "live";
+  const id = qs.get("id");
+  const user = getUser();
+  const staff = getStaffSession();
+
+  if (type === "call") {
+    const session = typeof callRequests === "function" ? callRequests().find((c) => c.id === id) : null;
+    if (!session) {
+      root.innerHTML = `<div class="empty"><h3>Call not found</h3><a class="btn btn-primary" href="/live#call" style="margin-top:12px">Book a 1:1</a></div>`;
+      return;
+    }
+    const isHost = staff && (staff.email === session.mentorEmail || staff.name === session.mentor);
+    const isGuest = user && user.email === session.email;
+    document.title = `${session.topic} | 1:1 | ${BRAND}`;
+    const canJoin = session.status === "approved" && (isHost || isGuest);
+    root.innerHTML = `
+      <div class="live-room">
+        <div class="live-stage">
+          <span class="live-dot ${session.status === "approved" ? "live" : "scheduled"}">${(session.status || "pending").toUpperCase()}</span>
+          <h1>${escapeHtml(session.topic)}</h1>
+          <p>${escapeHtml(session.date)} ${escapeHtml(session.time || "")} • ${escapeHtml(session.mentor || "Mentor")} with ${escapeHtml(session.name)}</p>
+          <div id="hmsMount">${canJoin ? `<div class="live-cam">Connecting 1:1 room…</div>` : `<div class="live-cam">${session.status === "pending" ? "Waiting for mentor approval" : "This 1:1 is private to the booked student and mentor"}</div>`}</div>
+          <div class="live-host-actions">
+            ${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
+            <a class="btn btn-ghost" href="/live#call">All 1:1 calls</a>
+            ${isHost ? `<a class="btn btn-ghost" href="/admin">Back to dashboard</a>` : ""}
+          </div>
+        </div>
+        <aside class="live-side">
+          <h3>1:1 details</h3>
+          <p class="muted">${escapeHtml(session.notes || "Bring your journal and the setup you want reviewed.")}</p>
+          <p class="muted" style="margin-top:8px">Camera and mic open for both of you inside Bizgarh.</p>
+        </aside>
+      </div>`;
+    if (canJoin) {
+      mountHmsFrame(document.getElementById("hmsMount"), {
+        kind: "call",
+        id: session.id,
+        title: session.topic,
+        duration: "60 min",
+        asHost: isHost,
+        userName: (isHost ? staff.name : user.name) || "Guest"
+      });
+    }
+    return;
+  }
+
   const session = allWebinars().find((w) => w.id === id);
   if (!session) {
     root.innerHTML = `<div class="empty"><h3>Class not found</h3><a class="btn btn-primary" href="/live" style="margin-top:12px">All live classes</a></div>`;
     return;
   }
-  const staff = getStaffSession();
   const isHost = staff && staff.email === session.hostEmail;
-  const user = getUser();
   const regs = readList(REGS_KEY).filter((r) => r.id === session.id);
   const registered = user && regs.some((r) => r.email === user.email);
   document.title = `${session.title} | Live | ${BRAND}`;
-
-  if (isHost && session.status === "scheduled") updateLive(id, { status: "live" });
   const live = allWebinars().find((w) => w.id === id);
+  const showIntro = !isHost && registered && live.status === "scheduled";
+  const canJoinHms = live.status !== "ended" && (isHost || (registered && live.status === "live"));
 
   root.innerHTML = `
     <div class="live-room">
@@ -1968,20 +2207,26 @@ function renderLiveRoom() {
         <span class="live-dot ${live.status || "scheduled"}">${(live.status || "scheduled").toUpperCase()}</span>
         <h1>${live.title}</h1>
         <p>${live.when} • ${live.by} • ${live.duration || "60 min"}</p>
-        <div class="live-cam">${isHost ? "You are teaching this room · camera / screen share via your Meet link" : "Waiting for the instructor feed"}</div>
-        ${live.joinUrl ? `<a class="btn btn-primary" href="${live.joinUrl}" target="_blank" rel="noopener">Open live video / screen share</a>` : ""}
+        <div id="hmsMount">${
+          canJoinHms
+            ? `<div class="live-cam">Connecting classroom…</div>`
+            : showIntro
+              ? introPlayerHTML(live.introUrl)
+              : `<div class="live-cam">${live.status === "ended" ? "This class has ended" : "Register, then wait here. The teacher will start the class in this room."}</div>`
+        }</div>
         ${live.recordUrl ? `<a class="btn btn-ghost" href="${live.recordUrl}" target="_blank" rel="noopener">Watch recording</a>` : ""}
         ${isHost ? `
-          <form id="hostLinkForm" class="live-host-form">
-            <input name="joinUrl" placeholder="Paste Google Meet / Zoom / stream link" value="${live.joinUrl || ""}">
-            <button class="btn btn-ghost">Save link</button>
+          <form id="hostIntroForm" class="live-host-form">
+            <input name="introUrl" placeholder="Intro video before class (YouTube or MP4 URL)" value="${escapeHtml(live.introUrl || "")}">
+            <button class="btn btn-ghost">Save intro</button>
           </form>
           <form id="hostRecForm" class="live-host-form">
             <input name="recordUrl" placeholder="Paste recording URL after class" value="${live.recordUrl || ""}">
             <button class="btn btn-ghost">Save recording</button>
           </form>
           <div class="live-host-actions">
-            ${live.status !== "ended" ? `<button class="btn btn-primary" id="endLiveBtn">End class</button>` : ""}
+            ${live.status === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Start class</button>` : ""}
+            ${live.status !== "ended" && live.status !== "scheduled" ? `<button class="btn btn-primary" id="endLiveBtn">End class</button>` : ""}
             <a class="btn btn-ghost" href="/admin">Back to dashboard</a>
           </div>` : `
           <div class="live-host-actions">
@@ -1994,14 +2239,29 @@ function renderLiveRoom() {
         <h3>${isHost ? "Students in this class" : "Class details"}</h3>
         ${isHost
           ? (regs.length ? `<ul class="live-students">${regs.map((r) => `<li>${r.name}<small>${r.email}</small></li>`).join("")}</ul>` : `<p class="muted">No registrations yet.</p>`)
-          : `<p class="muted">${live.notes || "Bring your journal. Q&A at the end."}</p><p class="muted" style="margin-top:8px">${regs.length} learners registered.${live.chat === false ? " Chat is off for this session." : " Chat is on in the Meet room."}</p>`}
+          : `<p class="muted">${live.notes || "Bring your journal. Q&A at the end."}</p><p class="muted" style="margin-top:8px">${regs.length} learners registered.${live.chat === false ? " Chat is off for this session." : " Chat is on in the live room."}</p>`}
       </aside>
     </div>`;
 
-  document.getElementById("hostLinkForm")?.addEventListener("submit", (e) => {
+  if (canJoinHms) {
+    mountHmsFrame(document.getElementById("hmsMount"), {
+      kind: liveKindOf(live),
+      id: live.id,
+      title: live.title,
+      duration: live.duration,
+      asHost: isHost,
+      userName: (isHost ? staff.name : (user && user.name)) || "Guest"
+    });
+  }
+  document.getElementById("hostIntroForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    updateLive(id, { joinUrl: e.target.joinUrl.value.trim() });
-    toast("Join link saved");
+    updateLive(id, { introUrl: e.target.introUrl.value.trim() });
+    toast("Intro video saved · students see it until you start class");
+    renderLiveRoom();
+  });
+  document.getElementById("startLiveBtn")?.addEventListener("click", () => {
+    updateLive(id, { status: "live" });
+    toast("Class is live · registered students can join now");
     renderLiveRoom();
   });
   document.getElementById("hostRecForm")?.addEventListener("submit", (e) => {
@@ -2010,9 +2270,16 @@ function renderLiveRoom() {
     toast("Recording link saved");
     renderLiveRoom();
   });
-  document.getElementById("endLiveBtn")?.addEventListener("click", () => {
+  document.getElementById("endLiveBtn")?.addEventListener("click", async () => {
     updateLive(id, { status: "ended" });
-    toast("Class ended");
+    try {
+      await fetch(hmsApiUrl("/api/live/end"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: liveKindOf(live), id: live.id })
+      });
+    } catch {}
+    toast("Class ended · everyone is kicked from the room");
     renderLiveRoom();
   });
 }
