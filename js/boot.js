@@ -1,4 +1,16 @@
 (function () {
+  try {
+    var path = (location.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
+    if (path === "/" || path === "/index") {
+      var raw = localStorage.getItem("tradeshalaUser");
+      var user = raw ? JSON.parse(raw) : null;
+      if (user && user.email) {
+        location.replace("/dashboard");
+        return;
+      }
+    }
+  } catch (e) { /* stay on public home */ }
+
   var BOOT = "bgBoot";
   var WAIT = "bgWait";
   var hidden = false;

@@ -580,6 +580,23 @@ function sendLoggedInHomeToDashboard() {
   if (path === "/" || path === "/index") location.replace("/dashboard");
 }
 
+function homeHref() {
+  return getUser() ? "/dashboard" : "/";
+}
+
+function isPublicHomeHref(href) {
+  const raw = String(href || "").trim();
+  if (!raw || raw.startsWith("#") || raw.startsWith("mailto:") || raw.startsWith("tel:")) return false;
+  try {
+    const u = new URL(raw, location.origin);
+    if (u.origin !== location.origin) return false;
+    const p = (u.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
+    return p === "/" || p === "/index";
+  } catch {
+    return raw === "/" || raw === "/index" || raw === "/index.html";
+  }
+}
+
 function userInitials(name) {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "BG";
@@ -1052,7 +1069,7 @@ function headerHTML() {
   return `
   <header class="header">
     <div class="container header-inner">
-      <a class="logo" href="/">${brandLogoHTML("h")}</a>
+      <a class="logo" href="${homeHref()}">${brandLogoHTML("h")}</a>
       <nav class="nav">
         <div class="nav-item mega">
           <a class="nav-link" href="/courses">Courses</a>
@@ -1099,7 +1116,7 @@ function footerHTML() {
     <div class="container">
       <div class="footer-main">
         <div class="footer-brand">
-          <a class="logo" href="/">${brandLogoHTML()}</a>
+          <a class="logo" href="${homeHref()}">${brandLogoHTML()}</a>
           <p>A classroom for Indian traders and long-term investors. Setups, risk, and process — not a tip feed.</p>
           <a class="footer-mail" href="mailto:desk@bizgarh.com">desk@bizgarh.com</a>
         </div>
@@ -1283,6 +1300,17 @@ function bindChrome() {
       location.href = "/";
     }
   });
+  document.addEventListener("click", (e) => {
+    if (!getUser()) return;
+    const a = e.target.closest("a[href]");
+    if (!a || a.classList.contains("js-logout")) return;
+    if (isPublicHomeHref(a.getAttribute("href"))) {
+      e.preventDefault();
+      location.href = "/dashboard";
+    }
+  }, true);
+  window.addEventListener("popstate", sendLoggedInHomeToDashboard);
+  window.addEventListener("pageshow", sendLoggedInHomeToDashboard);
   document.querySelectorAll(".overlay").forEach((o) => o.addEventListener("click", (e) => { if (e.target === o) closeModals(); }));
 
   const search = document.getElementById("searchInput");
@@ -1902,7 +1930,7 @@ function renderCoursePage() {
     <div class="cd-layout${owned ? " is-owned" : ""}">
       <div class="cd-head">
         <nav class="cd-crumb">
-          <a href="/">Home</a><span>/</span>
+          <a href="${homeHref()}">Home</a><span>/</span>
           <a href="/courses">All Courses</a><span>/</span>
           <b>${c.title}</b>
         </nav>
@@ -2180,7 +2208,7 @@ function renderMyLearning() {
   const webChip = chip === "completed";
   const webShown = webs.filter((x) => webChip ? x.w.status === "ended" : x.w.status !== "ended");
   root.innerHTML = `<div class="ld">
-    <div class="ld-crumb"><a href="/">Home</a> · My Learning</div>
+    <div class="ld-crumb"><a href="${homeHref()}">Home</a> · My Learning</div>
     <h1 class="ld-title">My Learning</h1>
     <div class="ld-tabs">
       <button type="button" data-ltab="courses" class="${tab !== "webinars" ? "on" : ""}">${iconSvg("layers")} My Courses <b>${mine.length}</b></button>
