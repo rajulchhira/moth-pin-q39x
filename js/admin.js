@@ -1002,30 +1002,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const src = f.src.value.trim();
     const vdoId = (f.vdoId?.value || "").trim();
     if (!file && !src && !vdoId) {
-      toast("Add a VdoCipher video ID, an MP4 link, or a file");
+      toast("Choose a video file to upload");
       return;
     }
     const btn = f.querySelector("button[type=submit]");
     btn.disabled = true;
-    btn.textContent = "Saving…";
+    btn.textContent = file ? "Uploading…" : "Saving…";
+    setAdminUploadProgress(f, file ? 0.01 : 0);
     try {
-      await addClassroomLesson(id, {
+      const lesson = await addClassroomLesson(id, {
         title: f.title.value.trim(),
         dur: f.dur.value.trim(),
         src,
         vdoId,
         file
-      });
+      }, (p) => setAdminUploadProgress(f, p));
       f.reset();
       f.courseId.value = id;
+      setAdminUploadProgress(f, 0);
       renderVideosList(id);
-      toast(vdoId || parseVdoCipherId(src) ? "DRM lesson added" : "Lesson added to classroom");
+      toast(lesson.vdoId ? "DRM lesson uploaded. Play after encoding (a few minutes)." : "Lesson added to classroom");
       refreshAdmin();
     } catch (err) {
       toast(err.message || "Could not save video");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Add lesson";
+      btn.textContent = "Upload lesson";
     }
   });
 

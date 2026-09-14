@@ -2669,6 +2669,44 @@ body.drm-lock, body.drm-lock *,
 }
 .admin-form-edit { grid-template-columns: 1fr 1fr; }
 .admin-form input[type=file] { grid-column: 1 / -1; background: #f8fafc; }
+.admin-file-field,
+.admin-video-extra,
+.admin-upload-bar { grid-column: 1 / -1; }
+.admin-file-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+.admin-file-field input[type=file] { margin: 0; }
+.admin-upload-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+.admin-upload-bar[hidden] { display: none !important; }
+.admin-upload-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #4f46e5, #e11d74);
+  transition: width .15s linear;
+}
+.admin-video-extra {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.admin-video-extra summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+}
+.admin-video-extra input { margin-top: 8px; }
 .video-admin-item {
   display: flex;
   align-items: center;

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=drm1">
+  <link rel="stylesheet" href="css/style.css?v=drm3">
   <link rel="stylesheet" href="css/admin.css?v=spd2">
   <script src="js/boot.js?v=spin1"></script>
 </head>
@@ -101,24 +101,31 @@
     <div class="modal" style="width:min(640px,100%)">
       <button class="close-x" type="button" id="closeVideos">×</button>
       <h3 id="videosTitle">Course videos</h3>
-      <p class="muted" style="margin:6px 0 12px">Best: upload on VdoCipher, then paste the video ID. MP4 file/link is only a fallback without Widevine.</p>
+      <p class="muted" style="margin:6px 0 12px">Pick an MP4 from this computer. It goes straight to VdoCipher DRM from here. Encoding takes a few minutes, then students play it encrypted.</p>
       <div id="videosList"></div>
       <form id="addVideoForm" class="admin-form admin-form-edit" style="margin-top:16px">
         <input type="hidden" name="courseId">
         <input name="title" placeholder="Lesson title" required>
         <input name="dur" placeholder="Duration (05:20)">
-        <input name="vdoId" placeholder="VdoCipher video ID (DRM)">
-        <input name="src" placeholder="Direct MP4 / WebM URL (no DRM)">
-        <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
-        <button class="btn btn-primary" type="submit">Add lesson</button>
+        <label class="admin-file-field">
+          <span>Lesson video (from this computer)</span>
+          <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
+        </label>
+        <div class="admin-upload-bar" data-upload-bar hidden><i data-upload-fill></i></div>
+        <details class="admin-video-extra">
+          <summary>Already on VdoCipher? Paste ID</summary>
+          <input name="vdoId" placeholder="VdoCipher video ID">
+          <input name="src" placeholder="Direct MP4 URL (no DRM, fallback only)">
+        </details>
+        <button class="btn btn-primary" type="submit">Upload lesson</button>
       </form>
     </div>
   </div>
 
-  <script src="js/app.js?v=drm1"></script>
+  <script src="js/app.js?v=drm3"></script>
   <script src="js/lms.js"></script>
   <script src="js/admin-core.js?v=spd2"></script>
-  <script src="js/admin.js?v=drm1"></script>
-  <script src="js/admin-app.js?v=drm1"></script>
+  <script src="js/admin.js?v=drm3"></script>
+  <script src="js/admin-app.js?v=drm3"></script>
 </body>
 </html>

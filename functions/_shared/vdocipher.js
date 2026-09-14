@@ -41,7 +41,10 @@ export async function createUpload(title) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.videoId || !data.clientPayload || !data.clientPayload.uploadLink) {
-    const err = new Error(data.message || data.error || "Could not start DRM upload");
+    const msg = res.status === 403
+      ? "VdoCipher key needs Uploader permission"
+      : (data.message || data.error || "Could not start DRM upload");
+    const err = new Error(msg);
     err.status = res.status >= 400 ? res.status : 502;
     throw err;
   }

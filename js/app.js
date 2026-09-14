@@ -258,37 +258,63 @@ async function fetchVdoUpload(title) {
       body: JSON.stringify({ title: title || "Lesson" })
     });
   } catch {
-    const err = new Error("DRM upload is not ready");
+    const err = new Error("DRM upload needs the live Bizgarh server");
     err.code = "NO_DRM";
     throw err;
   }
   const data = await res.json().catch(() => ({}));
   if (!data.ok || !data.videoId || !data.clientPayload) {
-    const err = new Error(data.error || "DRM upload is not ready");
+    const err = new Error(data.error || "Could not start VdoCipher upload");
     err.code = (data.ready === false || res.status === 404 || res.status === 503) ? "NO_DRM" : "UPLOAD";
     throw err;
   }
   return data;
 }
 
-async function uploadFileToVdo(payload, file) {
+function uploadFileToVdo(payload, file, onProgress) {
   const p = payload.clientPayload || {};
+  if (!p.uploadLink) return Promise.reject(new Error("Missing VdoCipher upload link"));
   const fd = new FormData();
-  ["policy", "key", "x-amz-signature", "x-amz-algorithm", "x-amz-date", "x-amz-credential"].forEach((k) => {
-    if (p[k] != null) fd.append(k, p[k]);
+  Object.keys(p).forEach((k) => {
+    if (k === "uploadLink" || p[k] == null || p[k] === "") return;
+    if (typeof p[k] === "object") return;
+    fd.append(k, String(p[k]));
   });
-  fd.append("success_action_status", "201");
-  fd.append("success_action_redirect", "");
-  fd.append("file", file);
-  const res = await fetch(p.uploadLink, { method: "POST", body: fd });
-  if (!res.ok && res.status !== 201) throw new Error("Could not upload this file to VdoCipher");
+  fd.append("file", file, file.name || "lesson.mp4");
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", p.uploadLink);
+    xhr.onload = () => {
+      if (xhr.status === 200 || xhr.status === 201 || xhr.status === 204) resolve();
+      else reject(new Error("Could not upload this file to VdoCipher"));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed. Check the file and try again."));
+    xhr.onabort = () => reject(new Error("Upload cancelled"));
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+    }
+    xhr.send(fd);
+  });
 }
 
-async function addClassroomLesson(courseId, fields) {
+function setAdminUploadProgress(form, fraction) {
+  const bar = form.querySelector("[data-upload-bar]");
+  const fill = form.querySelector("[data-upload-fill]");
+  const btn = form.querySelector("button[type=submit]");
+  const pct = Math.max(0, Math.min(100, Math.round(Number(fraction || 0) * 100)));
+  if (bar) bar.hidden = pct <= 0;
+  if (fill) fill.style.width = pct + "%";
+  if (btn && pct > 0 && pct < 100) btn.textContent = "Uploading " + pct + "%";
+  if (btn && pct >= 100) btn.textContent = "Saving…";
+}
+
+async function addClassroomLesson(courseId, fields, onProgress) {
   const vdoId = parseVdoCipherId(fields.vdoId || fields.src);
   const src = String(fields.src || "").trim();
   const file = fields.file;
-  if (!file && !src && !vdoId) throw new Error("Add a VdoCipher video ID, an MP4 link, or a file");
+  if (!file && !src && !vdoId) throw new Error("Choose a video file to upload");
   const lessonId = "v-" + Date.now();
   const lesson = {
     id: lessonId,
@@ -298,18 +324,16 @@ async function addClassroomLesson(courseId, fields) {
   };
   if (vdoId) lesson.vdoId = vdoId;
   if (file && !lesson.vdoId) {
-    try {
-      const up = await fetchVdoUpload(lesson.t);
-      await uploadFileToVdo(up, file);
-      lesson.vdoId = String(up.videoId);
-      lesson.src = "";
-    } catch (err) {
-      if (err.code !== "NO_DRM") throw err;
-      if (file.size > 180 * 1024 * 1024) throw new Error("File is too large (keep under 180 MB) or connect VdoCipher");
-      lesson.fileKey = courseId + ":" + lessonId;
-      lesson.src = "";
-      await putVideoBlob(lesson.fileKey, file);
+    const kind = String(file.type || "").toLowerCase();
+    const name = String(file.name || "").toLowerCase();
+    if (kind && !kind.startsWith("video/") && !/\.(mp4|webm|mov|m4v|mkv)$/.test(name)) {
+      throw new Error("Choose an MP4 or similar video file");
     }
+    const up = await fetchVdoUpload(lesson.t || file.name);
+    if (onProgress) onProgress(0.02);
+    await uploadFileToVdo(up, file, onProgress);
+    lesson.vdoId = String(up.videoId);
+    lesson.src = "";
   }
   setCourseLessons(courseId, (courseVideosMap()[courseId] || []).concat(lesson));
   return lesson;
