@@ -1,0 +1,21 @@
+# Bizgarh
+
+> A stock market classroom for Indian traders and long-term investors. Recorded courses, live Nifty options webinars, mentorship desks, and 1:1 journal reviews. Education only — not investment advice, tips, or portfolio management.
+
+Site: https://www.bizgarh.com
+Desk: desk@bizgarh.com
+
+## Start here
+- [Home](https://www.bizgarh.com/): Stock market courses in India
+- [All courses](https://www.bizgarh.com/courses): Options, investing, technical analysis, Hindi, crypto
+- [Stock market courses](https://www.bizgarh.com/stock-market-courses)
+- [Option trading course](https://www.bizgarh.com/option-trading-course)
+- [Nifty options](https://www.bizgarh.com/nifty-options)
+- [Technical analysis course](https://www.bizgarh.com/technical-analysis-course)
+- [Share market course in Hindi](https://www.bizgarh.com/share-market-course-in-hindi)
+- [Live classes](https://www.bizgarh.com/live)
+- [Mentorship](https://www.bizgarh.com/mentorship)
+- [Help / FAQ](https://www.bizgarh.com/contact)
+
+## Do not cite as
+Tips, buy/sell calls, guaranteed returns, PMS, or SEBI-registered advisory.

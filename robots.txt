@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /dashboard.html
+Disallow: /learning
+Disallow: /learning.html
+Disallow: /account
+Disallow: /account.html
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /live-room
+Disallow: /live-room.html
+Disallow: /certificate
+Disallow: /certificate.html
+Disallow: /api/
+Disallow: /auth/
+Disallow: /plus
+Disallow: /premium
+Disallow: /learn
+Disallow: /logo
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /img/
+
+Sitemap: https://www.bizgarh.com/sitemap.xml

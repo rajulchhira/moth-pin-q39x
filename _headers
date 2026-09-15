@@ -6,3 +6,55 @@
 
 /img/*
   Cache-Control: public, max-age=31536000, immutable
+
+/robots.txt
+  Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+  Content-Type: application/xml; charset=utf-8
+
+/llms.txt
+  Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
+
+/*
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+
+/dashboard
+  X-Robots-Tag: noindex, nofollow
+
+/dashboard.html
+  X-Robots-Tag: noindex, nofollow
+
+/learning
+  X-Robots-Tag: noindex, nofollow
+
+/learning.html
+  X-Robots-Tag: noindex, nofollow
+
+/account
+  X-Robots-Tag: noindex, nofollow
+
+/account.html
+  X-Robots-Tag: noindex, nofollow
+
+/admin
+  X-Robots-Tag: noindex, nofollow
+
+/admin.html
+  X-Robots-Tag: noindex, nofollow
+
+/live-room
+  X-Robots-Tag: noindex, nofollow
+
+/live-room.html
+  X-Robots-Tag: noindex, nofollow
+
+/certificate
+  X-Robots-Tag: noindex, nofollow
+
+/certificate.html
+  X-Robots-Tag: noindex, nofollow

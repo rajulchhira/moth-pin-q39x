@@ -2,3 +2,13 @@ https://bizgarh.com/* https://www.bizgarh.com/:splat 301
 /learn /course 301
 /index / 301
 /index.html / 301
+/options /option-trading-course 301
+/option-trading /option-trading-course 301
+/nifty /nifty-options 301
+/banknifty /nifty-options 301
+/hindi /share-market-course-in-hindi 301
+/ta /technical-analysis-course 301
+/technical-analysis /technical-analysis-course 301
+/share-market /stock-market-courses 301
+/stock-market /stock-market-courses 301
+/trading-course /stock-market-courses 301

@@ -162,6 +162,17 @@ function issueCert(email, name, courseId) {
   list.push(row);
   writeList(CERT_KEY, list);
   patchProgress(email, courseId, { cert: true });
+  if (typeof pushNote === "function") {
+    const course = typeof allCourses === "function" ? allCourses().find((c) => c.id === courseId) : null;
+    pushNote({
+      key: "cert:" + courseId,
+      kind: "cert",
+      title: "Certificate ready",
+      body: (course?.title || "Your classroom") + " is ready to download.",
+      href: "/certificate?course=" + encodeURIComponent(courseId),
+      email
+    });
+  }
   return row;
 }
 

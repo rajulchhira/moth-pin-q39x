@@ -421,7 +421,8 @@ function iconSvg(name) {
     play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5-6-3.5Z" fill="currentColor" stroke="none"/>',
     clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.4 1.6"/>',
     check: '<path d="m6.5 12.2 3.4 3.4 7.6-7.6"/>',
-    gift: '<rect x="3" y="10" width="18" height="11" rx="2"/><path d="M12 7v14"/><path d="M3 10h18"/><path d="M12 7c-2.2-3.4-5.5-1.4-4.2 1.2C9.2 10 12 7 12 7Z"/><path d="M12 7c2.2-3.4 5.5-1.4 4.2 1.2C14.8 10 12 7 12 7Z"/>'
+    gift: '<rect x="3" y="10" width="18" height="11" rx="2"/><path d="M12 7v14"/><path d="M3 10h18"/><path d="M12 7c-2.2-3.4-5.5-1.4-4.2 1.2C9.2 10 12 7 12 7Z"/><path d="M12 7c2.2-3.4 5.5-1.4 4.2 1.2C14.8 10 12 7 12 7Z"/>',
+    bell: '<path d="M6.4 16h11.2"/><path d="M7 16v-5.1a5 5 0 0 1 10 0V16"/><path d="M10.2 16.2a1.8 1.8 0 0 0 3.6 0"/><path d="M12 4.2V6"/>'
   };
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.chart}</svg>`;
 }
@@ -486,6 +487,132 @@ function setEnrolled(ids) { localStorage.setItem(ENROLL_KEY, JSON.stringify(ids)
 function isEnrolled(id) { return enrolled().includes(id); }
 function readList(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; } }
 function writeList(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+const NOTE_KEY = "tradeshalaNotes";
+function notesAll() { return readList(NOTE_KEY); }
+function notesSave(list) { writeList(NOTE_KEY, list.slice(0, 100)); }
+function myNotes(email) {
+  const mail = email || getUser()?.email;
+  if (!mail) return [];
+  return notesAll().filter((n) => n.email === mail).sort((a, b) => new Date(b.at) - new Date(a.at));
+}
+function noteWhen(at) {
+  const t = new Date(at).getTime();
+  if (!Number.isFinite(t)) return "";
+  const d = Date.now() - t;
+  if (d < 45000) return "Just now";
+  if (d < 3600000) return Math.max(1, Math.floor(d / 60000)) + "m ago";
+  if (d < 86400000) return Math.max(1, Math.floor(d / 3600000)) + "h ago";
+  return new Date(at).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+function pushNote(note) {
+  const mail = note.email || getUser()?.email;
+  if (!mail || !note.title) return null;
+  const list = notesAll();
+  if (note.key && list.some((n) => n.email === mail && n.key === note.key)) return null;
+  const row = {
+    id: "nt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+    email: mail,
+    key: note.key || ("nt-" + Date.now()),
+    kind: note.kind || "desk",
+    title: note.title,
+    body: note.body || "",
+    href: note.href || "/dashboard",
+    at: note.at || new Date().toISOString(),
+    read: !!note.read
+  };
+  list.unshift(row);
+  notesSave(list);
+  if (!note.silent) paintNoteBell(true);
+  else paintNoteBell(false);
+  return row;
+}
+function markNotesRead(email) {
+  const mail = email || getUser()?.email;
+  if (!mail) return;
+  notesSave(notesAll().map((n) => n.email === mail ? { ...n, read: true } : n));
+  paintNoteBell(false);
+}
+function noteBellHTML() {
+  if (!getUser()) return "";
+  return `<div class="note-wrap">
+    <button class="note-btn" type="button" aria-label="Notifications" aria-expanded="false">${iconSvg("bell")}<em class="note-dot" hidden>0</em></button>
+    <div class="note-panel" role="menu">
+      <div class="note-head"><b>Notifications</b><button type="button" data-note-read>Mark all read</button></div>
+      <div class="note-list"></div>
+    </div>
+  </div>`;
+}
+function paintNoteBell(ring) {
+  const wrap = document.querySelector(".note-wrap");
+  if (!wrap) return;
+  const user = getUser();
+  if (!user) return;
+  const rows = myNotes(user.email);
+  const unread = rows.filter((n) => !n.read).length;
+  const dot = wrap.querySelector(".note-dot");
+  const btn = wrap.querySelector(".note-btn");
+  const list = wrap.querySelector(".note-list");
+  if (dot) {
+    dot.hidden = !unread;
+    dot.textContent = unread > 9 ? "9+" : String(unread);
+  }
+  btn?.classList.toggle("has-unread", !!unread);
+  if (ring && unread) {
+    wrap.classList.remove("is-ring");
+    void wrap.offsetWidth;
+    wrap.classList.add("is-ring");
+    setTimeout(() => wrap.classList.remove("is-ring"), 1400);
+  }
+  if (list) {
+    list.innerHTML = rows.length
+      ? rows.slice(0, 16).map((n) => `
+        <a class="note-item${n.read ? "" : " is-new"}" href="${escapeHtml(n.href)}" data-note-id="${n.id}">
+          <span class="note-ico ${n.kind}">${iconSvg(n.kind === "cert" ? "badge" : n.kind === "live" || n.kind === "webinar" ? "wifi" : n.kind === "mentor" ? "users" : n.kind === "call" ? "headset" : n.kind === "course" ? "play" : n.kind === "ticket" ? "chat" : "bell")}</span>
+          <span>
+            <b>${escapeHtml(n.title)}</b>
+            <small>${escapeHtml(n.body)}</small>
+            <em>${escapeHtml(noteWhen(n.at))}</em>
+          </span>
+        </a>`).join("")
+      : `<p class="note-empty">No notifications yet. Enroll, join a desk, or finish a classroom and they appear here.</p>`;
+  }
+}
+function syncNotesFromAccount() {
+  const u = getUser();
+  if (!u) return;
+  pushNote({ key: "welcome:" + u.email, kind: "welcome", title: "Welcome to Bizgarh", body: "Your dashboard, classrooms, and live desks are ready.", href: "/dashboard", silent: true });
+  if (typeof ownedCourses === "function") {
+    ownedCourses(u.email).forEach((x) => {
+      pushNote({ key: "course:" + x.c.id, kind: "course", title: "Classroom unlocked", body: x.c.title + " is in My Learning.", href: "/course?id=" + encodeURIComponent(x.c.id), at: x.c.at, read: true, silent: true });
+      if (x.stats?.cert || (typeof certFor === "function" && certFor(u.email, x.c.id))) {
+        pushNote({ key: "cert:" + x.c.id, kind: "cert", title: "Certificate ready", body: x.c.title + " is ready to download.", href: "/certificate?course=" + encodeURIComponent(x.c.id), read: true, silent: true });
+      }
+    });
+  }
+  if (typeof myWebinars === "function") {
+    myWebinars(u.email).forEach((row) => {
+      const w = row.w;
+      pushNote({ key: "webinar:" + w.id, kind: "webinar", title: "Webinar enrolled", body: w.title + " · " + (w.when || "See details"), href: webinarHref(w.id), read: true, silent: true });
+      const start = typeof webinarStart === "function" ? webinarStart(w) : null;
+      const soon = start && start.getTime() - Date.now() < 36 * 3600000 && start.getTime() > Date.now() - 3600000;
+      if (w.status === "live") {
+        pushNote({ key: "livenow:" + w.id, kind: "live", title: "Live now", body: w.title + " is in session. Join the room.", href: "/live-room?id=" + encodeURIComponent(w.id), silent: true });
+      } else if (soon && w.status !== "ended") {
+        pushNote({ key: "livesoon:" + w.id, kind: "live", title: "Live session soon", body: w.title + " starts " + (w.when || "soon") + ".", href: webinarHref(w.id), silent: true });
+      }
+    });
+  }
+  if (typeof myMentorships === "function") {
+    myMentorships(u.email).forEach((p) => {
+      pushNote({ key: "mentor:" + p.id, kind: "mentor", title: "Mentorship enrolled", body: p.title + " by " + p.by + ".", href: mentorHref(p.id), read: true, silent: true });
+      if (mentorPhase(p) === "upcoming") {
+        pushNote({ key: "mentorsoon:" + p.id, kind: "live", title: "First session coming up", body: p.title + " starts " + webinarDateLabel(p) + ".", href: mentorHref(p.id), silent: true });
+      }
+    });
+  }
+  paintNoteBell(false);
+}
 function upsertUser(user) {
   const list = readList(USERS_KEY);
   const i = list.findIndex((x) => x.email === user.email);
@@ -1080,19 +1207,26 @@ function renderHelpPage() {
   const all = helpFaqItems();
   const input = document.getElementById("helpFaqQ");
   const q = (input?.value || "").trim().toLowerCase();
-  const items = all.filter((f) => !q || f.q.toLowerCase().includes(q) || f.a.toLowerCase().includes(q));
+  const matched = all.filter((f) => !q || f.q.toLowerCase().includes(q) || f.a.toLowerCase().includes(q));
+  const topN = 8;
+  const items = q ? matched : matched.slice(0, topN);
   const list = root.querySelector("[data-help-list]");
   const count = root.querySelector("[data-help-count]");
-  if (count) count.textContent = q
-    ? (items.length ? `${items.length} match${items.length === 1 ? "" : "es"}` : "No match")
-    : `${all.length} questions`;
+  if (count) {
+    count.textContent = q
+      ? (matched.length ? `${matched.length} match${matched.length === 1 ? "" : "es"}` : "No match")
+      : `Top ${Math.min(topN, all.length)} of ${all.length}`;
+  }
   if (list) {
+    const hint = !q && all.length > topN
+      ? `<p class="help-faq-hint">Showing the top ${topN}. Type above to find the rest.</p>`
+      : "";
     list.innerHTML = items.length
       ? items.map((f, i) => `
         <article class="wb-faq${q && i === 0 ? " open" : ""}">
           <button type="button" data-faq>${escapeHtml(f.q)}<i></i></button>
           <div class="ans"><p>${escapeHtml(f.a)}</p></div>
-        </article>`).join("")
+        </article>`).join("") + hint
       : `<p class="muted help-faq-empty">No FAQ matches that search. Try enroll, live desk, certificate, or journal.</p>`;
   }
   bindFaqs(root);
@@ -1516,6 +1650,8 @@ function enrollMentorProgram(id) {
     }
     list.push({ id, name: u.name, email: u.email, at: new Date().toISOString() });
     writeList(MENTOR_ENROLL_KEY, list);
+    const p = allMentorPrograms().find((x) => x.id === id);
+    pushNote({ key: "mentor:" + id, kind: "mentor", title: "You're in the mentorship desk", body: (p?.title || "Mentorship") + " is now in My Mentorship.", href: mentorHref(id) });
     sessionStorage.setItem("tradeshalaMentorPop", "1");
     toast("You're in the mentorship desk");
     if (document.getElementById("programRoot")) renderMentorProgramPage();
@@ -1546,6 +1682,7 @@ function requestMentorCallback(id) {
       at: new Date().toISOString()
     });
     writeList(key, list);
+    pushNote({ key: "callback:" + id + ":" + Date.now(), kind: "call", title: "Callback requested", body: "The desk will reach you about " + (p?.title || "this mentorship") + ".", href: mentorHref(id) });
     toast("Callback requested · the desk will reach you");
   });
 }
@@ -1595,7 +1732,8 @@ function renderMentorListing() {
   const ongoing = programs.filter((p) => mentorPhase(p) === "ongoing");
   const listHTML = (rows) => rows.map(mentorCardHTML).join("") || `<p class="muted">None in this list right now.</p>`;
   if (root) {
-    document.title = `Mentorship Programs | ${BRAND}`;
+    if (window.BizgarhSeo) window.BizgarhSeo.apply();
+    else document.title = `Mentorship Programs | ${BRAND}`;
     root.innerHTML = `<div class="container">
       <div class="wb-crumb wb-in"><a href="${homeHref()}">Home</a> · Mentorship Programs</div>
       <div class="mp-head wb-in">
@@ -1637,7 +1775,8 @@ function renderMentorProgramPage() {
   if (just) sessionStorage.removeItem("tradeshalaMentorPop");
   const seats = mentorSeatsLeft(p);
   const start = webinarStart(p);
-  document.title = `${p.title} | Mentorship | ${BRAND}`;
+  if (window.BizgarhSeo) window.BizgarhSeo.apply();
+  else document.title = `${p.title} | Mentorship | ${BRAND}`;
   root.innerHTML = `<div class="container">
     <div class="wb-crumb wb-in"><a href="${homeHref()}">Home</a> · <a href="/mentorship">Mentorship Programs</a> · ${escapeHtml(p.title)}</div>
     <section class="mp-hero${just ? " wb-just-in" : ""}">
@@ -1885,6 +2024,7 @@ function headerAuthHTML(place) {
       <button class="btn btn-ghost js-logout" type="button">Logout</button>`;
   }
   return `<a class="btn btn-ghost hdr-learn" href="/learning">My Learning</a>
+    ${noteBellHTML()}
     <div class="acct-wrap">
       <button class="hdr-avatar acct-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="${first}">${initials}</button>
       <div class="acct-menu" role="menu">
@@ -1963,10 +2103,14 @@ function footerHTML() {
         <nav class="footer-nav" aria-label="Footer">
           <div>
             <h4>Classroom</h4>
-            <a href="/courses">All courses</a>
-            <a href="/live">Live rooms</a>
-            <a href="/mentorship">Mentorship</a>
-            <a href="/courses?cat=hindi">Hindi library</a>
+            <a href="/stock-market-courses">Stock market courses in India</a>
+            <a href="/courses">All stock market courses</a>
+            <a href="/option-trading-course">Option trading course</a>
+            <a href="/nifty-options">Nifty options</a>
+            <a href="/technical-analysis-course">Technical analysis</a>
+            <a href="/share-market-course-in-hindi">Share market in Hindi</a>
+            <a href="/live">Live webinars</a>
+            <a href="/mentorship">Trading mentorship</a>
           </div>
           <div>
             <h4>Company</h4>
@@ -2090,16 +2234,51 @@ function bindChrome() {
     if (e.key === "Escape") {
       setMobileNav(false);
       closeModals();
-      document.querySelectorAll(".acct-wrap").forEach((el) => el.classList.remove("open"));
+      document.querySelectorAll(".acct-wrap, .note-wrap, .nav-item.mega").forEach((el) => el.classList.remove("open"));
+      document.body.classList.remove("nav-dim");
     }
   });
   window.addEventListener("resize", () => {
     if (window.innerWidth > 980) setMobileNav(false);
   });
+  const finePointer = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const closeDeskMenus = (except) => {
+    document.querySelectorAll(".nav-item.mega, .acct-wrap, .note-wrap").forEach((el) => {
+      if (el === except) return;
+      el.classList.remove("open");
+      el.querySelector(".acct-btn, .note-btn")?.setAttribute("aria-expanded", "false");
+    });
+    if (!except?.classList.contains("mega")) document.body.classList.remove("nav-dim");
+  };
+  const armHoverDesk = (el, onOpen) => {
+    if (!el) return;
+    const openNow = () => {
+      clearTimeout(el._deskT);
+      closeDeskMenus(el);
+      el.classList.add("open");
+      el.querySelector(".acct-btn, .note-btn")?.setAttribute("aria-expanded", "true");
+      onOpen?.(el);
+    };
+    const closeSoon = () => {
+      clearTimeout(el._deskT);
+      el._deskT = setTimeout(() => {
+        el.classList.remove("open");
+        el.querySelector(".acct-btn, .note-btn")?.setAttribute("aria-expanded", "false");
+        if (el.classList.contains("mega")) document.body.classList.remove("nav-dim");
+      }, 280);
+    };
+    el.addEventListener("mouseenter", () => {
+      if (finePointer()) openNow();
+    });
+    el.addEventListener("mouseleave", () => {
+      if (finePointer()) closeSoon();
+    });
+  };
   document.querySelectorAll(".nav-item.mega").forEach((item) => {
-    item.addEventListener("mouseenter", () => document.body.classList.add("nav-dim"));
-    item.addEventListener("mouseleave", () => document.body.classList.remove("nav-dim"));
+    armHoverDesk(item, () => document.body.classList.add("nav-dim"));
   });
+  armHoverDesk(document.querySelector(".note-wrap"), () => paintNoteBell(false));
+  armHoverDesk(document.querySelector(".acct-wrap"));
   document.body.addEventListener("click", (e) => {
     const opener = e.target.closest("[data-open]");
     if (opener) openModal(opener.dataset.open);
@@ -2114,23 +2293,38 @@ function bindChrome() {
       openAdminDesk();
       return;
     }
+    const noteBtn = e.target.closest(".note-btn");
+    if (noteBtn) {
+      if (finePointer()) return;
+      const wrap = noteBtn.closest(".note-wrap");
+      const open = !wrap.classList.contains("open");
+      closeDeskMenus(open ? wrap : null);
+      wrap.classList.toggle("open", open);
+      noteBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) paintNoteBell(false);
+      return;
+    }
+    if (e.target.closest("[data-note-read]")) {
+      markNotesRead();
+      return;
+    }
+    const noteItem = e.target.closest("[data-note-id]");
+    if (noteItem) {
+      const id = noteItem.getAttribute("data-note-id");
+      notesSave(notesAll().map((n) => n.id === id ? { ...n, read: true } : n));
+    }
     const acctBtn = e.target.closest(".acct-btn");
     if (acctBtn) {
+      if (finePointer()) return;
       const wrap = acctBtn.closest(".acct-wrap");
       const open = !wrap.classList.contains("open");
-      document.querySelectorAll(".acct-wrap").forEach((el) => {
-        el.classList.remove("open");
-        el.querySelector(".acct-btn")?.setAttribute("aria-expanded", "false");
-      });
+      closeDeskMenus(open ? wrap : null);
       wrap.classList.toggle("open", open);
       acctBtn.setAttribute("aria-expanded", open ? "true" : "false");
       return;
     }
-    if (!e.target.closest(".acct-wrap")) {
-      document.querySelectorAll(".acct-wrap").forEach((el) => {
-        el.classList.remove("open");
-        el.querySelector(".acct-btn")?.setAttribute("aria-expanded", "false");
-      });
+    if (!e.target.closest(".acct-wrap") && !e.target.closest(".note-wrap") && !e.target.closest(".nav-item.mega")) {
+      closeDeskMenus(null);
     }
     if (e.target.closest(".js-logout")) {
       localStorage.removeItem(USER_KEY);
@@ -2365,10 +2559,12 @@ function requireAuth(next) {
 
 function unlockCourse(id, opts = {}) {
   const ids = enrolled();
-  if (!ids.includes(id)) {
+    if (!ids.includes(id)) {
     ids.push(id);
     setEnrolled(ids);
     logEnroll(id);
+    const c = allCourses().find((x) => x.id === id);
+    pushNote({ key: "course:" + id, kind: "course", title: "Classroom unlocked", body: (c?.title || "Course") + " is now in My Learning.", href: "/course?id=" + encodeURIComponent(id) });
   }
   if (!opts.silent) toast("Classroom unlocked on this page");
   const here = document.getElementById("courseDetail");
@@ -2771,7 +2967,8 @@ function renderCoursePage() {
   const points = learnPoints(c);
   const watchers = 11 + (c.title.length * 3) % 37;
   const photo = photoFor(c.instructor);
-  document.title = `${c.title} | ${BRAND}`;
+  if (window.BizgarhSeo) window.BizgarhSeo.apply();
+  else document.title = `${c.title} | ${BRAND}`;
 
   box.innerHTML = `
     <div class="cd-layout${owned ? " is-owned" : ""}">
@@ -3354,7 +3551,7 @@ function renderLive() {
       <div class="container">
         <div class="wb-crumb wb-in"><a href="${homeHref()}">Home</a> · Live Webinars</div>
         <div class="wb-list-head wb-in">
-          <h1>Live Webinars</h1>
+          <h1>Live stock market webinars</h1>
           <p>${iconSvg("wifi")} ${upcoming.length} webinar${upcoming.length === 1 ? "" : "s"}</p>
         </div>
         <h2 class="wb-list-kicker wb-in" data-wb>Upcoming Webinars</h2>
@@ -3391,6 +3588,8 @@ function registerForWebinar(id) {
     }
     regs.push({ id, name: u.name, email: u.email, at: new Date().toISOString() });
     writeList(REGS_KEY, regs);
+    const w = allWebinars().find((x) => x.id === id);
+    pushNote({ key: "webinar:" + id, kind: "webinar", title: "Webinar enrolled", body: (w?.title || "Live session") + " · Join from the webinar page.", href: webinarHref(id) });
     sessionStorage.setItem("tradeshalaWebinarPop", "1");
     toast("You're enrolled");
     if (document.getElementById("webinarRoot")) renderWebinarPage();
@@ -3446,7 +3645,8 @@ function renderWebinarPage() {
   while (faces.length < 3) faces.push(photoFor(w.by));
   const start = webinarStart(w);
   const idx = list.findIndex((x) => x.id === w.id);
-  document.title = `${w.title} | Webinar | ${BRAND}`;
+  if (window.BizgarhSeo) window.BizgarhSeo.apply();
+  else document.title = `${w.title} | Webinar | ${BRAND}`;
   const priceHTML = meta.price
     ? `<div class="wb-price"><b>₹${Number(meta.price).toLocaleString("en-IN")}</b></div>`
     : `<div class="wb-price"><b>FREE</b><s>₹${Number(meta.listPrice).toLocaleString("en-IN")}</s><em>100% OFF</em></div>`;
@@ -4312,6 +4512,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (mountH) mountH.innerHTML = headerHTML();
   if (mountF) mountF.innerHTML = footerHTML();
   bindChrome();
+  syncNotesFromAccount();
+  paintNoteBell(false);
   applySignupGate();
   const oauthed = await consumeOAuth();
   if (!oauthed) await restoreOAuthSession();
@@ -4474,6 +4676,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       at: new Date().toISOString()
     });
     writeList(TICKETS_KEY, list);
+    if (u?.email) {
+      pushNote({ key: "ticket:" + list[list.length - 1].id, kind: "ticket", title: "Help note sent", body: "The desk will reply within one working day.", href: "/contact", email: u.email });
+    }
     f.reset();
     document.getElementById("contactMsg").textContent = "Thanks. We’ll reply at your email within 1 working day.";
   });
@@ -4501,6 +4706,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         at: new Date().toISOString()
       });
       writeList(CALL_KEY, list);
+      pushNote({ key: "call:" + list[list.length - 1].id, kind: "call", title: "1:1 call requested", body: (f.topic.value || "Guidance") + " is with the desk for approval.", href: "/live#call" });
       f.reset();
       toast("1:1 call request sent to the mentor");
     });
