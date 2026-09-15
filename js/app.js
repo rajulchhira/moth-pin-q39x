@@ -70,8 +70,9 @@ function ensureBrandFont() {
   if (!document.querySelector('link[rel="icon"]')) {
     const icon = document.createElement("link");
     icon.rel = "icon";
-    icon.type = "image/svg+xml";
-    icon.href = "img/bizgarh-mark.svg?v=orbit5";
+    icon.type = "image/png";
+    icon.sizes = "48x48";
+    icon.href = "img/favicon-48.png?v=logo2";
     document.head.appendChild(icon);
   }
 }

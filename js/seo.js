@@ -2,8 +2,8 @@
   var ORIGIN = "https://www.bizgarh.com";
   var BRAND = "Bizgarh";
   var IMG = ORIGIN + "/img/bizgarh-lockup.png";
-  var ICON = ORIGIN + "/img/bizgarh-icon.png";
-  var LOGO = ORIGIN + "/img/bizgarh-mark.svg";
+  var ICON = ORIGIN + "/img/favicon-512.png?v=logo2";
+  var LOGO = ORIGIN + "/img/bizgarh-mark.svg?v=logo2";
 
   function pathOf() {
     var p = (location.pathname || "/").replace(/\.html$/i, "").replace(/\/+$/, "");
@@ -33,7 +33,7 @@
     }
     setAttr(el, key, val, kind);
   }
-  function upsertLink(rel, href, extra) {
+  function upsertLink(rel, href, extra, attrs) {
     if (!href) return;
     var el = document.head.querySelector('link[rel="' + rel + '"]' + (extra || ""));
     if (!el) {
@@ -42,6 +42,11 @@
       document.head.appendChild(el);
     }
     el.setAttribute("href", href);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (attrs[k]) el.setAttribute(k, attrs[k]);
+      });
+    }
   }
   function ld(data) {
     var old = document.getElementById("bizgarh-jsonld");
@@ -349,9 +354,12 @@
     upsert("name", "twitter:description", desc);
     upsert("name", "twitter:image", IMG);
     upsertLink("canonical", info.url);
-    upsertLink("icon", ICON);
-    upsertLink("apple-touch-icon", ICON);
-    upsertLink("manifest", "/site.webmanifest");
+    upsertLink("icon", ORIGIN + "/favicon.ico?v=logo2", '[sizes="48x48"]', { type: "image/x-icon", sizes: "48x48" });
+    upsertLink("icon", ORIGIN + "/img/favicon-48.png?v=logo2", '[type="image/png"][sizes="48x48"]', { type: "image/png", sizes: "48x48" });
+    upsertLink("icon", ORIGIN + "/img/favicon-96.png?v=logo2", '[sizes="96x96"]', { type: "image/png", sizes: "96x96" });
+    upsertLink("icon", LOGO, '[type="image/svg+xml"]', { type: "image/svg+xml" });
+    upsertLink("apple-touch-icon", ORIGIN + "/img/favicon-192.png?v=logo2", "", { sizes: "192x192" });
+    upsertLink("manifest", "/site.webmanifest?v=logo2");
     if (info.path === "/share-market-course-in-hindi" || info.path === "/stock-market-courses" || info.path === "/courses") {
       var hi = document.head.querySelector('link[rel="alternate"][hreflang="hi-IN"]') || document.head.appendChild(document.createElement("link"));
       hi.rel = "alternate"; hi.hreflang = "hi-IN"; hi.href = abs("/share-market-course-in-hindi");
