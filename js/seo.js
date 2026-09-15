@@ -325,6 +325,7 @@
     document.title = title;
     document.documentElement.lang = info.path.indexOf("hindi") !== -1 || info.path === "/share-market-course-in-hindi" ? "hi-IN" : "en-IN";
     upsert("name", "description", desc);
+    upsert("name", "google-site-verification", "Sd1V3IA8UHbg7EO0ROMnjlC0RZZ_Y8mQN3KOXKmsxnQ");
     upsert("name", "robots", info.robots);
     upsert("name", "googlebot", info.robots);
     upsert("name", "author", "Bizgarh Learning Pvt Ltd");
