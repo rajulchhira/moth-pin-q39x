@@ -5332,6 +5332,54 @@ button.cd-topic {
 .ld .faq-block h2,
 .cd-body .faq-block h2 { font-size: 22px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 16px; }
 .cert-page .faq-block { max-width: 720px; margin: 36px auto 24px; }
+.help-page .container { max-width: 760px; }
+.help-kicker {
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #4f46e5;
+  margin-bottom: 8px;
+}
+.help-hero h1 { font-size: clamp(32px, 5vw, 42px); font-weight: 800; letter-spacing: -.04em; }
+.help-faq { margin: 28px 0 48px; }
+.help-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 4px 16px;
+  box-shadow: 0 10px 28px rgba(17, 24, 39, .06);
+}
+.help-search svg { color: #64748b; flex: 0 0 20px; }
+.help-search input {
+  flex: 1;
+  border: 0;
+  background: 0;
+  font: 700 16px/1.4 Nunito, sans-serif;
+  padding: 14px 0;
+  outline: none;
+  min-width: 0;
+}
+.help-faq-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 22px 0 12px;
+}
+.help-faq-meta h2 { font-size: 22px; font-weight: 800; letter-spacing: -.03em; }
+.help-faq-meta small { color: #94a3b8; font-weight: 800; }
+.help-faq-empty { padding: 18px 4px; }
+.help-form-wrap h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+.help-form-wrap .form-card { margin-top: 16px; }
+@media (max-width: 720px) {
+  .help-search { border-radius: 14px; }
+  .help-faq-meta { flex-direction: column; gap: 4px; }
+}
 .wb-side {
   position: sticky;
   top: 88px;

@@ -1070,6 +1070,47 @@ function mountStaticFaqs() {
   });
 }
 
+function helpFaqItems() {
+  return Array.isArray(window.HELP_FAQS) ? window.HELP_FAQS : [];
+}
+
+function renderHelpPage() {
+  const root = document.getElementById("helpFaqRoot");
+  if (!root) return;
+  const all = helpFaqItems();
+  const input = document.getElementById("helpFaqQ");
+  const q = (input?.value || "").trim().toLowerCase();
+  const items = all.filter((f) => !q || f.q.toLowerCase().includes(q) || f.a.toLowerCase().includes(q));
+  const list = root.querySelector("[data-help-list]");
+  const count = root.querySelector("[data-help-count]");
+  if (count) count.textContent = q
+    ? (items.length ? `${items.length} match${items.length === 1 ? "" : "es"}` : "No match")
+    : `${all.length} questions`;
+  if (list) {
+    list.innerHTML = items.length
+      ? items.map((f, i) => `
+        <article class="wb-faq${q && i === 0 ? " open" : ""}">
+          <button type="button" data-faq>${escapeHtml(f.q)}<i></i></button>
+          <div class="ans"><p>${escapeHtml(f.a)}</p></div>
+        </article>`).join("")
+      : `<p class="muted help-faq-empty">No FAQ matches that search. Try enroll, live desk, certificate, or journal.</p>`;
+  }
+  bindFaqs(root);
+}
+
+function bindHelpFaqSearch() {
+  const input = document.getElementById("helpFaqQ");
+  if (!input) return;
+  input.addEventListener("input", () => renderHelpPage());
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      input.value = "";
+      renderHelpPage();
+    }
+  });
+  renderHelpPage();
+}
+
 const FAQ_SETS = {
   home: [
     { q: "What is Bizgarh?", a: "Bizgarh is an education classroom for Indian traders and long-term investors. You get recorded courses, live webinars, mentorship desks, and optional 1:1 calls. We teach process, risk, and journals — not tips." },
@@ -1079,7 +1120,7 @@ const FAQ_SETS = {
     { q: "How do I start if I am new?", a: "Open Courses, pick a beginner or Hindi classroom, or sit in a live webinar first. Mentorships are better once you already have a journal." },
     { q: "Can I learn on my phone?", a: "Yes. The site, classroom player, mentorship pages, and live rooms are built for mobile browsers." },
     { q: "What language are the classrooms in?", a: "Most desks run in English and Hindi. Each course or live page lists the language." },
-    { q: "Where do I get help?", a: "Use Contact or write to desk@bizgarh.com. For a program you already joined, use the community room for follow-ups." }
+    { q: "Where do I get help?", a: "Open Help and search the FAQ, or write to desk@bizgarh.com. For a program you already joined, use the community room for follow-ups." }
   ],
   mentorList: [
     { q: "What is a live mentorship program?", a: "A guided multi-week desk with a working trader. You enroll, join live sessions inside Bizgarh, use the community room, and review recordings when they are uploaded." },
@@ -1107,7 +1148,7 @@ const FAQ_SETS = {
     { q: "Can I attend on mobile?", a: "Yes. Enroll, join the desk, and watch recordings in your mobile browser. Keep the phone charged for live sessions." },
     { q: "What language is the desk in?", a: "Mentors teach in English and Hindi as needed. Curriculum text on this page is in English." },
     { q: "What if seats are full?", a: "The page shows seats left. If a batch is full, request a callback and we will tell you about the next desk." },
-    { q: "Who do I write to for billing or access issues?", a: "Email desk@bizgarh.com or use the Contact page. Mention this program title and the email on your account." }
+    { q: "Who do I write to for access issues?", a: "Email desk@bizgarh.com or use Help. Mention this program title and the email on your account." }
   ],
   webinarList: [
     { q: "Are webinars free?", a: "Most Bizgarh webinars are listed as free for registered learners. The detail page shows the price if a session is paid." },
@@ -1188,8 +1229,7 @@ const FAQ_SETS = {
   ],
   contact: [
     { q: "How fast will you reply?", a: "We reply to desk@bizgarh.com and this form within one working day." },
-    { q: "What should I include?", a: "Your login email, the course or program title, and what is broken: enroll, player, live room, or certificate." },
-    { q: "Is this the right place for refund or billing questions?", a: "Yes. Write billing in the message. Do not send passwords or OTPs." },
+    { q: "What should I include?", a: "Your login email, the course or program title, and what is broken: enroll, player, live room, or certificate. Do not send passwords or OTPs." },
     { q: "Can I ask a trading doubt here?", a: "Use the community room or a 1:1 for process questions. This form is for access and account help." }
   ]
 };
@@ -1905,7 +1945,7 @@ function headerHTML() {
     <a href="/about">About</a>
     <a href="/dashboard">My Dashboard</a>
     <a href="/learning">My Learning</a>
-    <a href="/contact">Contact</a>
+    <a href="/contact">Help</a>
     <div class="mnav-auth">${authMobile}</div>
   </nav>`;
 }
@@ -1932,7 +1972,7 @@ function footerHTML() {
             <h4>Company</h4>
             <a href="/about">About</a>
             <a href="/reviews">Reviews</a>
-            <a href="/contact">Contact</a>
+            <a href="/contact">Help</a>
             <a href="/dashboard">My Dashboard</a>
             <a href="/learning">My Learning</a>
           </div>
@@ -4476,5 +4516,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   renderCertificatePage();
   mountStaticFaqs();
+  bindHelpFaqSearch();
   window.BizgarhLoader?.done?.();
 });

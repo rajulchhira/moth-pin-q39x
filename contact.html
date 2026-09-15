@@ -3,34 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Contact | Bizgarh</title>
+  <title>Help | Bizgarh</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=dash9">
+  <link rel="stylesheet" href="css/style.css?v=dash10">
   <script src="js/boot.js?v=home2"></script>
 </head>
 <body>
   <div id="bgBoot" aria-busy="true" aria-label="Loading Bizgarh"></div>
   <div id="site-header"></div>
-  <main class="page">
-    <section class="page-hero">
+  <main class="page help-page">
+    <section class="page-hero help-hero">
       <div class="container">
-        <h1>Contact</h1>
-        <p class="muted">Course access or classroom help — write to <a href="mailto:desk@bizgarh.com">desk@bizgarh.com</a> or send a note.</p>
-        <form class="form-card" id="contactForm" style="margin-top:18px">
-          <div class="field"><label>Name</label><input name="name" required></div>
-          <div class="field"><label>Email</label><input name="email" type="email" required></div>
-          <div class="field"><label>Message</label><textarea name="message" rows="4" required></textarea></div>
-          <button class="btn btn-primary">Send message</button>
-          <p class="msg" id="contactMsg"></p>
-        </form>
-        <div data-faq-set="contact" style="margin-top:28px"></div>
+        <p class="help-kicker">Help centre</p>
+        <h1>How can we help?</h1>
+        <p class="muted">Search the FAQ first. If you still need the desk, send a note below.</p>
+        <div id="helpFaqRoot" class="help-faq">
+          <label class="help-search" for="helpFaqQ">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="helpFaqQ" type="search" placeholder="Search FAQs — enroll, live desk, certificate, journal…" autocomplete="off">
+          </label>
+          <div class="help-faq-meta">
+            <h2>Frequently Asked Questions</h2>
+            <small data-help-count></small>
+          </div>
+          <div class="wb-faqs" data-help-list></div>
+        </div>
+        <div class="help-form-wrap">
+          <h2>Still need the desk?</h2>
+          <p class="muted">Course access or classroom help — write to <a href="mailto:desk@bizgarh.com">desk@bizgarh.com</a> or send a note.</p>
+          <form class="form-card" id="contactForm">
+            <div class="field"><label>Name</label><input name="name" required></div>
+            <div class="field"><label>Email</label><input name="email" type="email" required></div>
+            <div class="field"><label>Message</label><textarea name="message" rows="4" required></textarea></div>
+            <button class="btn btn-primary">Send message</button>
+            <p class="msg" id="contactMsg"></p>
+          </form>
+        </div>
       </div>
     </section>
   </main>
   <div id="site-footer"></div>
-  <script src="js/app.js?v=dash9"></script>
+  <script src="js/help-faqs.js?v=faq1"></script>
+  <script src="js/app.js?v=dash10"></script>
   <script src="js/lms.js"></script>
 </body>
 </html>
