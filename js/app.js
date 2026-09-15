@@ -87,9 +87,206 @@ const MENTOR_ENROLL_KEY = "tradeshalaMentorEnroll";
 const TICKETS_KEY = "tradeshalaTickets";
 const EXTRA_COURSES_KEY = "tradeshalaExtraCourses";
 const HIDDEN_COURSES_KEY = "tradeshalaHiddenCourses";
+const EXTRA_MENTORS_KEY = "tradeshalaExtraMentors";
+const HIDDEN_MENTORS_KEY = "tradeshalaHiddenMentors";
+const MENTOR_EDITS_KEY = "tradeshalaMentorEdits";
+const MENTOR_ROOMS_KEY = "tradeshalaMentorRooms";
 const STAFF_KEY = "tradeshalaStaff";
 const STAFF_SESSION_KEY = "tradeshalaStaffSession";
 const COURSE_OWNERS_KEY = "tradeshalaCourseOwners";
+const FOOTER_SOCIAL_KEY = "tradeshalaFooterSocial";
+const FOOTER_SOCIAL_DEFAULTS = {
+  facebook: "https://www.facebook.com/bizgarh",
+  instagram: "https://www.instagram.com/bizgarh",
+  youtube: "https://www.youtube.com/@bizgarh",
+  x: "https://x.com/bizgarh",
+  telegram: "https://t.me/bizgarh",
+  linkedin: "https://www.linkedin.com/company/bizgarh"
+};
+const FOOTER_SOCIAL_FIELDS = [
+  { id: "facebook", label: "Facebook", placeholder: "https://www.facebook.com/bizgarh" },
+  { id: "instagram", label: "Instagram", placeholder: "https://www.instagram.com/bizgarh" },
+  { id: "youtube", label: "YouTube", placeholder: "https://www.youtube.com/@bizgarh" },
+  { id: "x", label: "X", placeholder: "https://x.com/bizgarh" },
+  { id: "telegram", label: "Telegram", placeholder: "https://t.me/bizgarh" },
+  { id: "linkedin", label: "LinkedIn", placeholder: "https://www.linkedin.com/company/bizgarh" }
+];
+function sanitizeSocialUrl(url) {
+  let raw = String(url || "").trim();
+  if (!raw) return "";
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(raw)) raw = "https://" + raw;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === "http:" || u.protocol === "https:") return u.href;
+  } catch { /* ignore */ }
+  return "";
+}
+function footerSocialLinks() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(FOOTER_SOCIAL_KEY) || "{}") || {}; } catch { saved = {}; }
+  const out = {};
+  FOOTER_SOCIAL_FIELDS.forEach((f) => {
+    out[f.id] = sanitizeSocialUrl(saved[f.id]) || FOOTER_SOCIAL_DEFAULTS[f.id] || "";
+  });
+  return out;
+}
+function saveFooterSocialLinks(next) {
+  const out = {};
+  FOOTER_SOCIAL_FIELDS.forEach((f) => { out[f.id] = sanitizeSocialUrl(next && next[f.id]); });
+  localStorage.setItem(FOOTER_SOCIAL_KEY, JSON.stringify(out));
+  return out;
+}
+function footerSocialSvg(id) {
+  const paths = {
+    facebook: '<path d="M14.6 8.4h-1.5c-.6 0-.9.3-.9.9v1.5h2.3l-.3 2.4h-2V20H10v-6.8H8.2v-2.4H10V9c0-2 1.2-3.5 3.4-3.5.7 0 1.5.1 1.7.1v2.8z"/>',
+    instagram: '<path d="M8.3 4h7.4A4.3 4.3 0 0 1 20 8.3v7.4A4.3 4.3 0 0 1 15.7 20H8.3A4.3 4.3 0 0 1 4 15.7V8.3A4.3 4.3 0 0 1 8.3 4zm7.4 1.6H8.3A2.7 2.7 0 0 0 5.6 8.3v7.4a2.7 2.7 0 0 0 2.7 2.7h7.4a2.7 2.7 0 0 0 2.7-2.7V8.3a2.7 2.7 0 0 0-2.7-2.7zM12 8.5A3.5 3.5 0 1 1 8.5 12 3.5 3.5 0 0 1 12 8.5zm0 1.5A2 2 0 1 0 14 12a2 2 0 0 0-2-2zm4.1-2.7a.85.85 0 1 1-.85.85.85.85 0 0 1 .85-.85z"/>',
+    youtube: '<path d="M19.7 8.3a2.2 2.2 0 0 0-1.55-1.56C16.6 6.4 12 6.4 12 6.4s-4.6 0-6.15.34A2.2 2.2 0 0 0 4.3 8.3 22 22 0 0 0 4 12a22 22 0 0 0 .3 3.7 2.2 2.2 0 0 0 1.55 1.56C7.4 17.6 12 17.6 12 17.6s4.6 0 6.15-.34A2.2 2.2 0 0 0 19.7 15.7 22 22 0 0 0 20 12a22 22 0 0 0-.3-3.7zM10.5 14.6V9.4L15 12z"/>',
+    x: '<path d="M16.9 4h2.5l-5.5 6.3L20.2 20h-4.6l-3.6-4.7L7.3 20H4.7l5.8-6.6L4.2 4h4.7l3.3 4.4zm-.8 14.3h1.4L8.1 5.6H6.6z"/>',
+    telegram: '<path d="M19.8 5.3 4.1 11.3c-1 .4-1 1-.2 1.3l4 1.2 1.5 4.7c.2.5.6.6 1 .4l2.2-1.8 4.2 3.1c.8.4 1.3.2 1.5-.7l2.7-13c.3-1.1-.4-1.6-1.2-1.2zM8.8 13l8.2-5.2c.4-.2.7 0 .4.3l-7 6.4-.2 2.8z"/>',
+    linkedin: '<path d="M7.3 9.2H4.9V19h2.4zM7.5 5.8a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0zM19 13c0-2.8-1.5-4.1-3.5-4.1-1.6 0-2.3.9-2.7 1.5V9.2h-2.4V19h2.4v-5.3c0-.3 0-.6.1-.8.2-.6.9-1.2 1.8-1.2 1.3 0 1.8 1 1.8 2.4V19H19z"/>'
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[id] || ""}</svg>`;
+}
+const DESK_ROOMS_KEY = "tradeshalaDeskRooms";
+const COURSE_ROOMS_KEY = "tradeshalaCourseRooms";
+const DESK_ROOM_TYPES = [
+  { id: "whatsapp", label: "WhatsApp", blurb: "Student WhatsApp group", placeholder: "https://chat.whatsapp.com/...", icon: "wa" },
+  { id: "discord", label: "Discord", blurb: "Discord server", placeholder: "https://discord.gg/...", icon: "discord" },
+  { id: "youtube", label: "YouTube", blurb: "Classroom YouTube", placeholder: "https://www.youtube.com/@bizgarh", icon: "youtube" },
+  { id: "telegram", label: "Telegram", blurb: "Telegram room", placeholder: "https://t.me/bizgarh", icon: "telegram" }
+];
+const DESK_ROOM_DEFAULTS = {
+  whatsapp: { live: false, url: "" },
+  discord: { live: false, url: "" },
+  youtube: { live: true, url: "https://www.youtube.com/@bizgarh" },
+  telegram: { live: true, url: "https://t.me/bizgarh" }
+};
+function deskRoomsMap() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(DESK_ROOMS_KEY) || "{}") || {}; } catch { saved = {}; }
+  const out = {};
+  DESK_ROOM_TYPES.forEach((t) => {
+    const row = saved[t.id] || {};
+    out[t.id] = {
+      live: row.live === true || row.live === "1",
+      url: sanitizeSocialUrl(row.url) || ""
+    };
+    if (saved[t.id] == null && DESK_ROOM_DEFAULTS[t.id]) {
+      out[t.id] = {
+        live: DESK_ROOM_DEFAULTS[t.id].live,
+        url: sanitizeSocialUrl(DESK_ROOM_DEFAULTS[t.id].url)
+      };
+    }
+  });
+  return out;
+}
+function setDeskRoomsMap(next) {
+  const out = {};
+  DESK_ROOM_TYPES.forEach((t) => {
+    const row = (next && next[t.id]) || {};
+    out[t.id] = {
+      live: row.live === true || row.live === "1",
+      url: sanitizeSocialUrl(row.url)
+    };
+  });
+  localStorage.setItem(DESK_ROOMS_KEY, JSON.stringify(out));
+  return out;
+}
+function liveDeskRooms() {
+  const map = deskRoomsMap();
+  return DESK_ROOM_TYPES.map((t) => ({ ...t, ...map[t.id] })).filter((r) => r.live && r.url);
+}
+function primaryDeskRoomUrl() {
+  const rooms = liveDeskRooms();
+  const prefer = ["telegram", "whatsapp", "discord", "youtube"];
+  for (const id of prefer) {
+    const hit = rooms.find((r) => r.id === id);
+    if (hit) return hit.url;
+  }
+  return rooms[0]?.url || "";
+}
+function communityRoomIcon(id) {
+  if (id === "youtube" || id === "telegram") return footerSocialSvg(id);
+  return iconSvg(id === "whatsapp" ? "wa" : id === "discord" ? "discord" : "chat");
+}
+function deskRoomCardHTML(room, canJoin) {
+  const state = canJoin ? "Join" : (room.state || "Locked");
+  const inner = `
+    <span class="cd-room-ico cd-room-${escapeHtml(room.id)}">${communityRoomIcon(room.id)}</span>
+    <span class="cd-room-copy"><b>${escapeHtml(room.label)}</b><small>${escapeHtml(room.blurb)}</small></span>
+    <em>${escapeHtml(state)}</em>`;
+  if (canJoin && room.url) {
+    return `<a class="cd-room" href="${escapeHtml(room.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+  }
+  return `<div class="cd-room is-off">${inner}</div>`;
+}
+function courseRoomsMap() {
+  try { return JSON.parse(localStorage.getItem(COURSE_ROOMS_KEY) || "{}") || {}; } catch { return {}; }
+}
+function setCourseRooms(courseId, next) {
+  const all = courseRoomsMap();
+  const out = {};
+  DESK_ROOM_TYPES.forEach((t) => {
+    const row = (next && next[t.id]) || {};
+    out[t.id] = {
+      live: row.live === true || row.live === "1",
+      url: typeof sanitizeSocialUrl === "function" ? sanitizeSocialUrl(row.url) : String(row.url || "").trim()
+    };
+  });
+  all[courseId] = out;
+  localStorage.setItem(COURSE_ROOMS_KEY, JSON.stringify(all));
+  return out;
+}
+function courseRoomsOf(courseId) {
+  const own = courseRoomsMap()[courseId];
+  if (own && typeof own === "object") return own;
+  return deskRoomsMap();
+}
+function mentorRoomsMap() {
+  try { return JSON.parse(localStorage.getItem(MENTOR_ROOMS_KEY) || "{}") || {}; } catch { return {}; }
+}
+function setMentorRooms(programId, next) {
+  const all = mentorRoomsMap();
+  const out = {};
+  DESK_ROOM_TYPES.forEach((t) => {
+    const row = (next && next[t.id]) || {};
+    out[t.id] = {
+      live: row.live === true || row.live === "1",
+      url: typeof sanitizeSocialUrl === "function" ? sanitizeSocialUrl(row.url) : String(row.url || "").trim()
+    };
+  });
+  all[programId] = out;
+  localStorage.setItem(MENTOR_ROOMS_KEY, JSON.stringify(all));
+  return out;
+}
+function mentorRoomsOf(programId) {
+  const own = mentorRoomsMap()[programId];
+  if (own && typeof own === "object") return own;
+  return deskRoomsMap();
+}
+function visibleDeskRooms(roomsMap) {
+  const map = roomsMap || deskRoomsMap();
+  return DESK_ROOM_TYPES.map((t) => ({ ...t, ...(map[t.id] || {}) })).filter((r) => r.live && r.url);
+}
+function deskRoomsGridHTML(open, lockCopy, roomsMap) {
+  const rooms = visibleDeskRooms(roomsMap);
+  if (!rooms.length) return "";
+  const names = rooms.map((r) => r.label).join(", ");
+  return `<div class="cd-rooms${open ? "" : " is-locked"}">${rooms.map((r) => deskRoomCardHTML(r, open)).join("")}</div>
+    ${open ? "" : `<p class="cd-rooms-lock">${escapeHtml(lockCopy || ("Buy this classroom to open " + names + "."))}</p>`}`;
+}
+
+function footerSocialHTML() {
+  const links = footerSocialLinks();
+  return FOOTER_SOCIAL_FIELDS.map((f) => {
+    const href = links[f.id];
+    const icon = footerSocialSvg(f.id);
+    if (href) {
+      return `<a class="ft-soc" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" aria-label="${f.label}">${icon}</a>`;
+    }
+    return `<span class="ft-soc ft-soc-off" title="${f.label} link not set" aria-label="${f.label}">${icon}</span>`;
+  }).join("");
+}
 const SUPER_ADMINS = [
   { email: "rajulchhira1@gmail.com", name: "Rajul Chhira" },
   { email: "bizgarh@gmail.com", name: "Bizgarh" }
@@ -108,6 +305,33 @@ function grantedAdminEmails() {
   } catch {
     return [];
   }
+}
+function staffCoursePreview() {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get("preview") !== "1") return "";
+  const u = typeof getUser === "function" ? getUser() : null;
+  if (!u || !staffAccessRole(u.email)) return "";
+  return qs.get("view") === "owned" ? "owned" : "buy";
+}
+function courseOwnedForPage(c) {
+  const preview = staffCoursePreview();
+  if (preview === "owned") return true;
+  if (preview === "buy") return false;
+  const logged = Boolean(typeof getUser === "function" && getUser());
+  return logged && typeof isEnrolled === "function" && isEnrolled(c.id);
+}
+function staffMentorPreview() {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get("preview") !== "1") return "";
+  const u = typeof getUser === "function" ? getUser() : null;
+  if (!u || !staffAccessRole(u.email)) return "";
+  return qs.get("view") === "owned" ? "owned" : "buy";
+}
+function mentorOwnedForPage(p) {
+  const preview = staffMentorPreview();
+  if (preview === "owned") return true;
+  if (preview === "buy") return false;
+  return typeof isMentorEnrolled === "function" && isMentorEnrolled(p.id);
 }
 function staffAccessRole(email) {
   const e = normEmail(email);
@@ -138,6 +362,10 @@ function openAdminDesk() {
 const LIVE_KEY = "tradeshalaLives";
 const COURSE_EDITS_KEY = "tradeshalaCourseEdits";
 const COURSE_VIDEOS_KEY = "tradeshalaCourseVideos";
+const COURSE_SYLLABUS_KEY = "tradeshalaCourseSyllabus";
+const NEXT_PATH_KEY = "tradeshalaNextPath";
+const MENTOR_LESSONS_KEY = "tradeshalaMentorLessons";
+const LEARNER_REVIEWS_KEY = "tradeshalaLearnerReviews";
 
 const DEFAULT_LESSONS = [
   { t: "Welcome & how this classroom works", dur: "00:15", src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" },
@@ -151,17 +379,89 @@ function courseVideosMap() {
   try { return JSON.parse(localStorage.getItem(COURSE_VIDEOS_KEY) || "{}"); } catch { return {}; }
 }
 function setCourseVideosMap(map) { localStorage.setItem(COURSE_VIDEOS_KEY, JSON.stringify(map)); }
-function lessonsFor(courseId) {
+function lessonsAll(courseId) {
   const custom = courseVideosMap()[courseId];
-  if (custom && custom.length) return custom;
-  return DEFAULT_LESSONS.map((l) => ({ ...l }));
+  const list = Array.isArray(custom) ? custom : DEFAULT_LESSONS.map((l) => ({ ...l }));
+  return list.map((l, i) => ({
+    ...l,
+    id: l.id || (courseId + "-l" + i),
+    kind: l.kind || ((l.src || l.vdoId || l.fileKey) ? "video" : (l.pdf ? "pdf" : (l.notes ? "article" : "video"))),
+    published: l.published !== false,
+    drm: (l.kind || "video") === "video" ? l.drm !== false : false
+  }));
 }
-function setCourseLessons(courseId, lessons) {
+function lessonsFor(courseId, opts) {
+  const list = lessonsAll(courseId);
+  if (opts && opts.all) return list;
+  return list.filter((l) => l.published !== false);
+}
+function setCourseLessons(courseId, lessons, keepEmpty) {
   const map = courseVideosMap();
-  if (!lessons.length) delete map[courseId];
+  if (!lessons.length && !keepEmpty) delete map[courseId];
   else map[courseId] = lessons;
   setCourseVideosMap(map);
-  applyCoursePatch(courseId, { lessons: lessons.length || DEFAULT_LESSONS.length });
+  applyCoursePatch(courseId, { lessons: lessons.length || 0 });
+}
+function courseSyllabusMap() {
+  try { return JSON.parse(localStorage.getItem(COURSE_SYLLABUS_KEY) || "{}"); } catch { return {}; }
+}
+function derivedSyllabus(courseId) {
+  const lessons = lessonsAll(courseId);
+  const titles = ["Introduction", "Core ideas", "The setup", "Risk & journal", "Managing trades"];
+  const sections = [];
+  for (let i = 0; i < lessons.length; i += 3) {
+    const slice = lessons.slice(i, i + 3);
+    const gi = Math.floor(i / 3);
+    sections.push({
+      id: "sec-" + courseId + "-" + gi,
+      title: titles[gi] || ("Section " + (gi + 1)),
+      items: slice.map((l) => ({
+        lessonId: l.id,
+        kind: l.kind || "video",
+        published: l.published !== false
+      }))
+    });
+  }
+  if (!sections.length) {
+    sections.push({ id: "sec-" + courseId + "-0", title: "Introduction", items: [] });
+  }
+  return { sections };
+}
+function syllabusFor(courseId) {
+  const stored = courseSyllabusMap()[courseId];
+  if (stored && Array.isArray(stored.sections) && stored.sections.length) return stored;
+  return derivedSyllabus(courseId);
+}
+function syncLessonsFromSyllabus(courseId, syllabus) {
+  const all = lessonsAll(courseId);
+  const byId = Object.fromEntries(all.map((l) => [l.id, l]));
+  const ordered = [];
+  (syllabus.sections || []).forEach((sec) => {
+    (sec.items || []).forEach((it) => {
+      const lesson = byId[it.lessonId];
+      if (lesson) {
+        ordered.push({
+          ...lesson,
+          kind: it.kind || lesson.kind || "video",
+          published: it.published !== false,
+          sectionId: sec.id
+        });
+      }
+    });
+  });
+  setCourseLessons(courseId, ordered, true);
+}
+function setCourseSyllabus(courseId, syllabus) {
+  const map = courseSyllabusMap();
+  map[courseId] = syllabus;
+  localStorage.setItem(COURSE_SYLLABUS_KEY, JSON.stringify(map));
+  syncLessonsFromSyllabus(courseId, syllabus);
+}
+function ensureCourseSyllabus(courseId) {
+  const lessons = lessonsAll(courseId);
+  if (!courseVideosMap()[courseId]?.length) setCourseLessons(courseId, lessons, true);
+  if (!courseSyllabusMap()[courseId]) setCourseSyllabus(courseId, derivedSyllabus(courseId));
+  return syllabusFor(courseId);
 }
 function videoDb() {
   return new Promise((resolve, reject) => {
@@ -323,7 +623,10 @@ async function addClassroomLesson(courseId, fields, onProgress) {
     id: lessonId,
     t: String(fields.title || "").trim(),
     dur: String(fields.dur || "").trim() || "video",
-    src: vdoId ? "" : src
+    src: vdoId ? "" : src,
+    kind: fields.kind || "video",
+    published: fields.published !== false,
+    drm: fields.drm !== false
   };
   if (vdoId) lesson.vdoId = vdoId;
   if (file && !lesson.vdoId) {
@@ -338,8 +641,24 @@ async function addClassroomLesson(courseId, fields, onProgress) {
     lesson.vdoId = String(up.videoId);
     lesson.src = "";
   }
+  if (fields.notes) lesson.notes = String(fields.notes || "").trim();
+  if (fields.pdf) lesson.pdf = String(fields.pdf || "").trim();
+  if (fields.pdfName) lesson.pdfName = String(fields.pdfName || "").trim();
   setCourseLessons(courseId, (courseVideosMap()[courseId] || []).concat(lesson));
   return lesson;
+}
+
+function nextPathMap() {
+  try { return JSON.parse(localStorage.getItem(NEXT_PATH_KEY) || "{}"); } catch { return {}; }
+}
+function setNextPathMap(map) { localStorage.setItem(NEXT_PATH_KEY, JSON.stringify(map)); }
+function mentorLessonsMap() {
+  try { return JSON.parse(localStorage.getItem(MENTOR_LESSONS_KEY) || "{}"); } catch { return {}; }
+}
+function setMentorLessons(programId, lessons) {
+  const map = mentorLessonsMap();
+  map[programId] = Array.isArray(lessons) ? lessons : [];
+  localStorage.setItem(MENTOR_LESSONS_KEY, JSON.stringify(map));
 }
 
 const COURSES = [
@@ -417,13 +736,15 @@ function iconSvg(name) {
     cal: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
     globe: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4a12 12 0 0 1 0 16M12 4a12 12 0 0 0 0 16"/>',
     wa: '<path d="M12 4a8 8 0 0 0-6.9 12L4 20l4.1-1.1A8 8 0 1 0 12 4Z"/><path d="M9.2 9.4c.2-.4.4-.4.6-.4h.5c.2 0 .3.1.4.3l.6 1.4c.1.2 0 .4-.1.5l-.4.4c-.1.1-.1.3 0 .5.3.5.8 1 1.3 1.3.2.1.4.1.5 0l.4-.4c.2-.2.4-.2.5-.1l1.4.6c.2.1.3.2.3.4v.5c0 .2 0 .4-.4.6A5.2 5.2 0 0 1 9.2 9.4Z"/>',
+    discord: '<path d="M8.2 8.4c1.7-.8 3.3-1 3.3-1l.2.3A11 11 0 0 0 8 9s.8-.4 2.5-.8C12 7.8 13.6 8 13.6 8A12 12 0 0 1 16 9s.4 4.2-.8 6.4c-1.3 2.3-3.4 2.4-3.4 2.4l-.5-.7c1 .3 2.2.4 3.3-.3.3-.2.5-.4.5-.4a6.6 6.6 0 0 1-5.5 0s.2.2.5.4c1.1.7 2.3.6 3.3.3l-.5.7s-2.1-.1-3.4-2.4C7.6 13.2 8 9 8 9c.7-.4 1.5-.7 2.3-.9L10 7.8s1.6.2 3.3 1C8.8 8.4 8.2 8.4 8.2 8.4ZM10 13.2c.5 0 .9-.4.9-1s-.4-1-.9-1-.9.4-.9 1 .4 1 .9 1Zm4 0c.5 0 .9-.4.9-1s-.4-1-.9-1-.9.4-.9 1 .4 1 .9 1Z"/>',
     download: '<path d="M12 4v10"/><path d="m8 10 4 4 4-4"/><path d="M5 18h14"/>',
     flag: '<path d="M5 21V4"/><path d="M5 4h12l-2.2 4L17 12H5"/>',
     play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5-6-3.5Z" fill="currentColor" stroke="none"/>',
     clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.4 1.6"/>',
     check: '<path d="m6.5 12.2 3.4 3.4 7.6-7.6"/>',
     gift: '<rect x="3" y="10" width="18" height="11" rx="2"/><path d="M12 7v14"/><path d="M3 10h18"/><path d="M12 7c-2.2-3.4-5.5-1.4-4.2 1.2C9.2 10 12 7 12 7Z"/><path d="M12 7c2.2-3.4 5.5-1.4 4.2 1.2C14.8 10 12 7 12 7Z"/>',
-    bell: '<path d="M6.4 16h11.2"/><path d="M7 16v-5.1a5 5 0 0 1 10 0V16"/><path d="M10.2 16.2a1.8 1.8 0 0 0 3.6 0"/><path d="M12 4.2V6"/>'
+    bell: '<path d="M6.4 16h11.2"/><path d="M7 16v-5.1a5 5 0 0 1 10 0V16"/><path d="M10.2 16.2a1.8 1.8 0 0 0 3.6 0"/><path d="M12 4.2V6"/>',
+    file: '<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/>'
   };
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.chart}</svg>`;
 }
@@ -1016,12 +1337,59 @@ function applyCoursePatch(id, fields) {
   edits[id] = { ...(edits[id] || {}), ...fields };
   setCourseEdits(edits);
 }
+function courseBannerOf(c) {
+  return String(c?.banner || "").trim();
+}
+function readImageAsBanner(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      reject(new Error("Pick a banner image"));
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const max = 1400;
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+      if (w > max) {
+        h = Math.round((h * max) / w);
+        w = max;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read that image"));
+    };
+    img.src = url;
+  });
+}
+async function resolveCourseBanner(form, current) {
+  if (form?.bannerClear?.checked) return "";
+  const file = form?.bannerFile?.files?.[0];
+  if (file) return readImageAsBanner(file);
+  const url = String(form?.banner?.value || "").trim();
+  if (url) return url;
+  return current || "";
+}
 function allCourses() {
   const hidden = hiddenCourseIds();
   const edits = courseEdits();
-  return COURSES.filter((c) => !hidden.includes(c.id))
+  const u = typeof getUser === "function" ? getUser() : null;
+  const preview = /(?:\?|&)preview=1(?:&|$)/.test(location.search)
+    && u
+    && typeof staffAccessRole === "function"
+    && staffAccessRole(u.email);
+  const extras = extraCourses().filter((c) => preview || (!c.unpublished && c.status !== "unlisted"));
+  return COURSES.filter((c) => preview || !hidden.includes(c.id))
     .map((c) => ({ ...c, ...(edits[c.id] || {}) }))
-    .concat(extraCourses());
+    .concat(extras);
 }
 function formatLiveWhen(iso) {
   const d = new Date(iso);
@@ -1055,7 +1423,8 @@ function allWebinars() {
 function ensureCatalogWebinars() {
   const list = readList(LIVE_KEY);
   const extra = [
-    { id: "w4", title: "Opening Range Playbook", by: "Kabir Joshi", at: "2026-09-30T20:00:00", duration: "90 min", kind: "webinar", notes: "Index open, first hour, and defined invalidation." }
+    { id: "w4", title: "Opening Range Playbook", by: "Kabir Joshi", at: "2026-09-30T20:00:00", duration: "90 min", kind: "webinar", notes: "Index open, first hour, and defined invalidation." },
+    { id: "w0", title: "Gap & Go Replay Desk", by: "Aarav Mehta", at: "2026-09-08T11:00:00", duration: "60 min", kind: "webinar", notes: "Ended replay of the gap desk. Review opens after you register.", status: "ended" }
   ];
   let changed = false;
   extra.forEach((w) => {
@@ -1065,7 +1434,7 @@ function ensureCatalogWebinars() {
       hostEmail: w.by.split(" ")[0].toLowerCase() + "@bizgarh.in",
       when: formatLiveWhen(w.at),
       joinUrl: "",
-      status: "scheduled"
+      status: w.status || "scheduled"
     });
     changed = true;
   });
@@ -1156,8 +1525,9 @@ function startWbCountdown(root = document) {
   window.__wbTick = setInterval(tick, 1000);
 }
 function bindWbMotion(root) {
+  const reveal = () => root?.querySelectorAll("[data-wb]")?.forEach((el) => el.classList.add("wb-on"));
   if (!root || !("IntersectionObserver" in window)) {
-    root?.querySelectorAll("[data-wb]")?.forEach((el) => el.classList.add("wb-on"));
+    reveal();
     return;
   }
   const io = new IntersectionObserver((ents) => {
@@ -1166,13 +1536,20 @@ function bindWbMotion(root) {
       e.target.classList.add("wb-on");
       io.unobserve(e.target);
     });
-  }, { threshold: 0.12, rootMargin: "0px 0px -40px" });
+  }, { threshold: 0.01, rootMargin: "120px 0px 80px" });
   root.querySelectorAll("[data-wb]").forEach((el) => io.observe(el));
+  requestAnimationFrame(() => {
+    root.querySelectorAll("[data-wb]").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight + 80) el.classList.add("wb-on");
+    });
+  });
+  setTimeout(reveal, 160);
 }
 
 function faqSectionHTML(items, title) {
   if (!items || !items.length) return "";
-  return `<section class="wb-block faq-block" data-wb>
+  return `<section class="wb-block faq-block">
     <h2>${escapeHtml(title || "Frequently Asked Questions")}</h2>
     <div class="wb-faqs">${items.map((f, i) => `
       <article class="wb-faq${i === 0 ? " open" : ""}">
@@ -1342,8 +1719,8 @@ const FAQ_SETS = {
   ],
   dashboard: [
     { q: "What is Continue learning?", a: "The classroom you last opened that is not finished. Tap it to resume the same lesson." },
-    { q: "Where are my live sessions?", a: "Your upcoming webinar appears under Your upcoming live sessions. Mentorships appear under My Mentorship." },
-    { q: "How do I open My Mentorship?", a: "Use the card on this page, Quick Actions → My Mentorship, or My Learning → My Mentorship." },
+    { q: "Where are my live sessions?", a: "Your upcoming webinar and mentorship desk appear under Your upcoming live sessions. Open My Learning for the full list." },
+    { q: "How do I open My Mentorship?", a: "Use the mentorship card under Your upcoming live sessions, or open My Learning → My Mentorship." },
     { q: "Where are my certificates?", a: "Quick Actions → My Certificates, or My Learning → My Certificates. Finish every lesson in a course to issue one." },
     { q: "Why did I land here after login?", a: "Logged-in learners open the dashboard so you can continue, instead of the public homepage." }
   ],
@@ -1375,9 +1752,7 @@ function isWebinarRegistered(id, email) {
   return readList(REGS_KEY).some((r) => r.id === id && r.email === mail);
 }
 function webinarCommunityUrl(w) {
-  const channels = typeof telegramChannels === "function" ? telegramChannels() : [];
-  const hit = channels.find((x) => x.creatorEmail === w.hostEmail) || channels[0];
-  return hit?.url || "https://t.me/bizgarh_breakout";
+  return primaryDeskRoomUrl() || "https://t.me/bizgarh";
 }
 function webinarProfile(w) {
   const mentor = MENTORS.find((m) => m.name === w.by) || {};
@@ -1506,10 +1881,50 @@ const MENTOR_PROGRAMS = [
   { id: "mp-port", title: "Portfolio Construction Lab", by: "Ananya Rao", at: "2026-09-02T10:00:00", weeks: 4, sessions: 8, hours: 10, price: 9999, old: 18999, seats: 24, tint: "#BAE6FD", tag: "Investing", blurb: "Build a 10-year book: SIP, allocation, and a review you can run each quarter." },
   { id: "mp-opt0", title: "Options from Zero Mentorship", by: "Meera Iyer", at: "2026-08-18T19:30:00", weeks: 6, sessions: 14, hours: 16, price: 11999, old: 21999, seats: 20, tint: "#FED7AA", tag: "Options", blurb: "Calls, puts, expiry, and defined risk before you size up." },
   { id: "mp-sip", title: "SIP & Allocation Mentorship", by: "Priya Nair", at: "2026-08-04T19:30:00", weeks: 8, sessions: 12, hours: 14, price: 8999, old: 16999, seats: 25, tint: "#FECACA", tag: "Long-term", blurb: "A patient desk for SIP, rebalance, and what not to chase." },
-  { id: "mp-pa", title: "Price Action Mentorship", by: "Vikram Singh", at: "2026-08-20T19:00:00", weeks: 5, sessions: 10, hours: 12, price: 10999, old: 19999, seats: 18, tint: "#A5F3FC", tag: "Charts", blurb: "Read the chart without the indicator pile. Structure, then size." }
+  { id: "mp-pa", title: "Price Action Mentorship", by: "Vikram Singh", at: "2026-08-20T19:00:00", weeks: 5, sessions: 10, hours: 12, price: 10999, old: 19999, seats: 18, tint: "#A5F3FC", tag: "Charts", blurb: "Read the chart without the indicator pile. Structure, then size." },
+  { id: "mp-closed", title: "Intraday Journal Cohort", by: "Aarav Mehta", at: "2026-06-02T19:00:00", weeks: 4, sessions: 12, hours: 14, price: 12999, old: 22999, seats: 16, tint: "#E0E7FF", tag: "Closed", blurb: "A finished batch of the journal desk. Recordings stay open for members who sat through it." }
 ];
 
-function allMentorPrograms() { return MENTOR_PROGRAMS; }
+function mentorEdits() {
+  try { return JSON.parse(localStorage.getItem(MENTOR_EDITS_KEY) || "{}"); } catch { return {}; }
+}
+function setMentorEdits(map) { localStorage.setItem(MENTOR_EDITS_KEY, JSON.stringify(map)); }
+function extraMentorPrograms() { return readList(EXTRA_MENTORS_KEY); }
+function hiddenMentorIds() { return readList(HIDDEN_MENTORS_KEY); }
+function applyMentorPatch(id, fields) {
+  const extra = extraMentorPrograms();
+  const i = extra.findIndex((p) => p.id === id);
+  if (i >= 0) {
+    extra[i] = { ...extra[i], ...fields };
+    writeList(EXTRA_MENTORS_KEY, extra);
+    return extra[i];
+  }
+  const edits = mentorEdits();
+  edits[id] = { ...(edits[id] || {}), ...fields };
+  setMentorEdits(edits);
+  return edits[id];
+}
+function mentorCatalogAll() {
+  const hidden = hiddenMentorIds();
+  const edits = mentorEdits();
+  return MENTOR_PROGRAMS.map((p) => ({
+    ...p,
+    ...(edits[p.id] || {}),
+    unpublished: hidden.includes(p.id) || Boolean((edits[p.id] || {}).unpublished)
+  })).concat(extraMentorPrograms().map((p) => ({
+    ...p,
+    unpublished: Boolean(p.unpublished || p.status === "unlisted")
+  })));
+}
+function mentorProgramById(id) {
+  return mentorCatalogAll().find((p) => p.id === id) || null;
+}
+function allMentorPrograms() {
+  const u = typeof getUser === "function" ? getUser() : null;
+  const preview = (typeof staffMentorPreview === "function" && staffMentorPreview())
+    || (/(?:\?|&)preview=1(?:&|$)/.test(location.search) && u && typeof staffAccessRole === "function" && staffAccessRole(u.email));
+  return mentorCatalogAll().filter((p) => preview || !p.unpublished);
+}
 function mentorHref(id) { return "/program?id=" + encodeURIComponent(id); }
 function mentorEnrolls() { return readList(MENTOR_ENROLL_KEY); }
 function isMentorEnrolled(id, email) {
@@ -1537,9 +1952,33 @@ function mentorSeatsLeft(p) {
   return Math.max(0, (p.seats || 20) - mentorEnrolls().filter((r) => r.id === p.id).length);
 }
 function mentorCommunityUrl(p) {
-  const channels = typeof telegramChannels === "function" ? telegramChannels() : [];
-  const host = (p.by || "").split(" ")[0].toLowerCase() + "@bizgarh.in";
-  return (channels.find((x) => x.creatorEmail === host) || channels[0])?.url || "https://t.me/bizgarh_breakout";
+  const rooms = typeof mentorRoomsOf === "function" ? mentorRoomsOf(p.id) : null;
+  const live = visibleDeskRooms(rooms);
+  return live[0]?.url || primaryDeskRoomUrl() || "https://t.me/bizgarh";
+}
+function mentorLiveRooms(p) {
+  return visibleDeskRooms(typeof mentorRoomsOf === "function" ? mentorRoomsOf(p.id) : deskRoomsMap());
+}
+function mentorBannerOf(p) {
+  return String(p?.banner || "").trim();
+}
+function mentorShotHTML(p, extraClass) {
+  const banner = mentorBannerOf(p);
+  const hero = extraClass && /mp-hero-shot/.test(extraClass);
+  const cls = `${hero ? extraClass : ("mp-shot" + (extraClass ? " " + extraClass : ""))}${banner ? " has-banner" : ""}`;
+  if (banner) {
+    return `<div class="${cls}" style="background-image:url('${String(banner).replace(/'/g, "%27")}')">
+      <span class="mp-live"><i></i> Live on Bizgarh</span>
+      <span class="wb-chip">Bizgarh</span>
+    </div>`;
+  }
+  return `<div class="${cls}" style="--mp:${escapeHtml(p.tint || "#C7D2FE")}">
+    <span class="mp-live"><i></i> Live on Bizgarh</span>
+    <span class="wb-chip">Bizgarh</span>
+    <h3>${escapeHtml(p.title)}</h3>
+    <p>by ${escapeHtml(p.by)}</p>
+    <img src="${photoFor(p.by)}" alt="">
+  </div>`;
 }
 function mentorPack(p) {
   const packs = {
@@ -1555,14 +1994,17 @@ function mentorPack(p) {
     }
   }[p.id] || {};
   const mentor = MENTORS.find((m) => m.name === p.by) || {};
+  const clean = (arr) => (Array.isArray(arr) ? arr.map((x) => String(x || "").trim()).filter(Boolean) : []);
+  const whoOf = (arr) => (Array.isArray(arr) ? arr.map((x) => ({ t: String(x.t || "").trim(), d: String(x.d || "").trim() })).filter((x) => x.t) : []);
+  const stepsOf = (arr) => (Array.isArray(arr) ? arr.map((x, i) => ({ n: String(x.n || String(i + 1).padStart(2, "0")), t: String(x.t || "").trim(), d: String(x.d || "").trim() })).filter((x) => x.t) : []);
   return {
-    learn: packs.learn || [
+    learn: clean(p.learn).length ? clean(p.learn) : (packs.learn || [
       "A written setup you can run after each live desk",
       "Invalidation and size before the first click",
       "Weekly review with the mentor",
       "A journal that survives a bad week"
-    ],
-    curriculum: packs.curriculum || [
+    ]),
+    curriculum: clean(p.curriculum).length ? clean(p.curriculum) : (packs.curriculum || [
       "How the desk is run each week",
       "Setup selection on a live chart",
       "Entry, invalidation, targets",
@@ -1570,26 +2012,26 @@ function mentorPack(p) {
       "Journal template walkthrough",
       "Common mistakes to skip",
       "A process you can repeat"
-    ],
-    outcomes: packs.outcomes || [
+    ]),
+    outcomes: clean(p.outcomes).length ? clean(p.outcomes) : (packs.outcomes || [
       "Identify high-probability setups",
       "Read the chart or chain with context",
       "Use time and size with a plan",
       "Manage risk without copying trades"
-    ],
-    prep: [
+    ]),
+    prep: clean(p.prep).length ? clean(p.prep) : [
       "Familiarity with stocks or indices helps",
       "Know calls, puts, and expiry if this is an options desk",
       "A basic read of OI or volume is useful, not required",
       "Bring a journal and the broker you already use"
     ],
-    who: [
+    who: whoOf(p.who).length ? whoOf(p.who) : [
       { t: "Beginners who want a desk", d: "Sit with a process instead of a tip feed." },
       { t: "Working professionals", d: "A timed program you can finish around work." },
       { t: "Traders adding a new book", d: "Learn one process, then journal it." },
       { t: "Long-term learners", d: "Use the recordings and the weekly review." }
     ],
-    steps: [
+    steps: stepsOf(p.steps).length ? stepsOf(p.steps) : [
       { n: "01", t: "Join the desk community", d: "You get the Telegram room for program notes and session reminders." },
       { n: "02", t: "Attend live inside Bizgarh", d: "Sessions run in the Bizgarh classroom. Join from this page or My Learning." },
       { n: "03", t: "Review the recording", d: "If a recording is uploaded, registered learners see it here within a day." }
@@ -1600,8 +2042,8 @@ function mentorPack(p) {
       { q: "Will I get to ask doubts?", a: "Yes. Live Q&A is part of each session. The community room is for follow-ups, not for calls." },
       { q: "Is this investment advice?", a: "No. Bizgarh classrooms are education. You write your own process and size." }
     ],
-    bio: `${p.by} hosts this mentorship on Bizgarh. ${mentor.role || "Working trader"}. The desk is process, invalidation, and journal work — not a tip feed.`,
-    role: mentor.tag || mentor.role || "Mentor"
+    bio: String(p.bio || "").trim() || `${p.by} hosts this mentorship on Bizgarh. ${mentor.role || "Working trader"}. The desk is process, invalidation, and journal work — not a tip feed.`,
+    role: String(p.role || "").trim() || mentor.tag || mentor.role || "Mentor"
   };
 }
 
@@ -1612,13 +2054,7 @@ function mentorPriceHTML(p) {
 function mentorCardHTML(p) {
   const enrolled = isMentorEnrolled(p.id);
   return `<a class="mp-card wb-in" href="${mentorHref(p.id)}">
-    <div class="mp-shot" style="--mp:${p.tint}">
-      <span class="mp-live"><i></i> Live on Bizgarh</span>
-      <span class="wb-chip">Bizgarh</span>
-      <h3>${escapeHtml(p.title)}</h3>
-      <p>by ${escapeHtml(p.by)}</p>
-      <img src="${photoFor(p.by)}" alt="">
-    </div>
+    ${mentorShotHTML(p)}
     <div class="mp-body">
       <small>${escapeHtml(webinarWhenShort(p))}</small>
       <h3>${escapeHtml(p.title)}</h3>
@@ -1630,9 +2066,10 @@ function mentorCardHTML(p) {
 }
 
 function mentorCtaHTML(p, enrolled) {
+  const hasComm = mentorLiveRooms(p).length > 0;
   if (enrolled) {
     return `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(p.id)}">Join desk ›</a>
-      <a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(mentorCommunityUrl(p))}" target="_blank" rel="noopener">${iconSvg("wa")} Join community</a>`;
+      ${hasComm ? `<a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(mentorCommunityUrl(p))}" target="_blank" rel="noopener">${iconSvg("chat")} Join community</a>` : ""}`;
   }
   return `<button type="button" class="btn btn-primary wb-cta" data-mentor-enroll="${p.id}">Enroll Now ›</button>
     <button type="button" class="btn btn-ghost wb-cta" data-mentor-call="${p.id}">Request a callback</button>`;
@@ -1764,14 +2201,18 @@ function renderMentorProgramPage() {
   const root = document.getElementById("programRoot");
   if (!root) return;
   const id = new URLSearchParams(location.search).get("id");
-  const p = allMentorPrograms().find((x) => x.id === id) || allMentorPrograms()[0];
-  if (!p) {
+  const preview = typeof staffMentorPreview === "function" ? staffMentorPreview() : "";
+  const p = (typeof mentorProgramById === "function" ? mentorProgramById(id) : null)
+    || allMentorPrograms().find((x) => x.id === id)
+    || (!id ? allMentorPrograms()[0] : null);
+  if (!p || (p.unpublished && !preview)) {
     root.innerHTML = `<div class="container"><div class="empty"><h3>Program not found</h3><a class="btn btn-primary" href="/mentorship" style="margin-top:12px">All programs</a></div></div>`;
     return;
   }
   ensureMentorLive(p);
   const pack = mentorPack(p);
-  const enrolled = isMentorEnrolled(p.id);
+  const enrolled = typeof mentorOwnedForPage === "function" ? mentorOwnedForPage(p) : isMentorEnrolled(p.id);
+  const liveRooms = mentorLiveRooms(p);
   const just = sessionStorage.getItem("tradeshalaMentorPop") === "1";
   if (just) sessionStorage.removeItem("tradeshalaMentorPop");
   const seats = mentorSeatsLeft(p);
@@ -1795,13 +2236,7 @@ function renderMentorProgramPage() {
         ${mentorPriceHTML(p)}
         <div class="wb-hero-ctas">${mentorCtaHTML(p, enrolled)}</div>
       </div>
-      <div class="mp-hero-shot wb-in" style="--mp:${p.tint}">
-        <span class="mp-live"><i></i> Live on Bizgarh</span>
-        <span class="wb-chip">Bizgarh</span>
-        <h3>${escapeHtml(p.title)}</h3>
-        <p>by ${escapeHtml(p.by)}</p>
-        <img src="${photoFor(p.by)}" alt="">
-      </div>
+      ${mentorShotHTML(p, "mp-hero-shot wb-in")}
     </section>
     <div class="mp-strip" data-wb>
       <span>${iconSvg("clock")} ${p.hours}+ hours of teaching</span>
@@ -1809,6 +2244,17 @@ function renderMentorProgramPage() {
       <span>${iconSvg("chat")} Exclusive desk community</span>
       <span>${iconSvg("play")} 1 year access to recordings</span>
     </div>
+    <div id="mpPlayer" class="mp-player" hidden></div>
+    ${mentorOverviewCardHTML(p, enrolled)}
+    ${liveRooms.length ? `<section class="cd-card cd-community-card cd-community ${enrolled ? "is-open" : "is-locked"}" id="deskRooms">
+      <div class="cd-ov-head">
+        <h2>Community</h2>
+        <p class="cd-ov-meta">${enrolled ? `<span class="cd-comm-open">Members only</span>` : `<span class="cd-lock-badge">${iconSvg("lock")} Locked</span>`}</p>
+      </div>
+      ${deskRoomsGridHTML(enrolled, "Enroll to open " + liveRooms.map((r) => r.label).join(", ") + ".", mentorRoomsOf(p.id))}
+    </section>` : ""}
+    ${itemReviewsBlockHTML("mentor", p.id)}
+    ${mentorPhase(p) === "ended" ? pathNudgeHTML(p.title, "mentor", p.id, "live-end") : ""}
     <section class="wb-block" data-wb>
       <h2>What you will learn</h2>
       <div class="mp-learn">${pack.learn.map((x) => `<p>${iconSvg("check")} <span>${escapeHtml(x)}</span></p>`).join("")}</div>
@@ -1881,6 +2327,26 @@ function renderMentorProgramPage() {
   bindWbMotion(root);
   startWbCountdown(root);
   bindFaqs(root);
+  bindOverviewExtras(root);
+  root.querySelectorAll(".cd-sec-h").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const sec = btn.parentElement;
+      const open = !sec.classList.contains("open");
+      sec.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+  root.querySelectorAll("[data-mp-lesson]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lesson = mentorLessonsFor(p.id)[Number(btn.dataset.mpLesson)];
+      if (!lesson) return;
+      if ((lesson.mode || "live") === "live") {
+        location.href = "/live-room?id=" + encodeURIComponent(p.id);
+        return;
+      }
+      playMentorRecording(lesson);
+    });
+  });
   root.querySelector("[data-curr]")?.addEventListener("click", () => downloadMentorCurriculum(p.id));
 }
 
@@ -1937,18 +2403,12 @@ function savePct(c) {
 }
 
 function courseCard(c, extra = "") {
-  const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title, sub: c.instructor };
-  const photo = photoFor(c.instructor);
   const href = `/course?id=${c.id}`;
   const pct = savePct(c);
   const rupee = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
   const priceRow = `<div class="price">${rupee(c.price)}${c.old ? ` <s>${rupee(c.old)}</s>` : ""}${pct ? ` <span class="save">SAVE ${pct}%</span>` : ""}</div>`;
   return `<a class="course-card ${extra}" href="${href}">
-    <div class="thumb" style="background:${art.bg}">
-      <img class="person" src="${photo}" alt="">
-      <div class="cover-copy"><h3>${art.title}</h3></div>
-      <span class="brand-badge" aria-hidden="true">${brandMarkSVG()}</span>
-    </div>
+    ${courseThumbHTML(c)}
     <div class="course-body">
       <div class="course-head">
         <div class="course-title">${c.title}</div>
@@ -2123,9 +2583,15 @@ function footerHTML() {
           </div>
         </nav>
       </div>
-      <div class="footer-bottom">
-        <p>© 2026 Bizgarh Learning Pvt Ltd</p>
-        <p>Educational content only. Not investment advice.</p>
+      <div class="footer-bar">
+        <div class="footer-bottom">
+          <p>© 2026 Bizgarh Learning Pvt Ltd</p>
+          <p>Educational content only. Not investment advice.</p>
+        </div>
+        <div class="footer-follow">
+          <span>Follow us</span>
+          <nav class="footer-soc" aria-label="Social">${footerSocialHTML()}</nav>
+        </div>
       </div>
     </div>
   </footer>
@@ -2604,6 +3070,228 @@ function enroll(id) {
   });
 }
 
+const COURSE_NEXT = {
+  "first-month": ["charts-101", "opt-start", "candles"],
+  "charts-101": ["candles", "price-action", "levels"],
+  "candles": ["levels", "price-action", "breakout"],
+  "levels": ["price-action", "breakout"],
+  "mf-guide": ["sip", "long-term"],
+  "sip": ["long-term", "mf-guide"],
+  "long-term": ["sip", "opt-start"],
+  "opt-start": ["income", "spreads"],
+  "income": ["spreads", "opening-range"],
+  "spreads": ["opening-range", "income"],
+  "breakout": ["opening-range", "price-action"],
+  "price-action": ["breakout", "opening-range"],
+  "opening-range": ["breakout", "spreads"],
+  "hindi-ta": ["hindi-swing", "candles"],
+  "hindi-swing": ["hindi-ta", "price-action"],
+  "crypto-lab": ["opt-start", "first-month"],
+  "ema-swing": ["price-action", "vwap"],
+  "vwap": ["breakout", "opening-range"]
+};
+
+function resolveNextTarget(kind, id) {
+  if (kind === "webinar") {
+    const w = allWebinars().find((x) => x.id === id);
+    if (!w) return null;
+    return { kind, id, title: w.title, by: w.by, price: 0, old: 0, href: webinarHref(w.id), label: "Enroll next webinar →", owned: isWebinarRegistered(w.id) };
+  }
+  if (kind === "mentor") {
+    const p = allMentorPrograms().find((x) => x.id === id);
+    if (!p) return null;
+    return { kind, id, title: p.title, by: p.by, price: p.price, old: p.old, href: mentorHref(p.id), label: "Enroll next desk →", owned: isMentorEnrolled(p.id) };
+  }
+  const c = allCourses().find((x) => x.id === id);
+  if (!c) return null;
+  return { kind: "course", id, title: c.title, by: c.instructor, price: c.price, old: c.old, href: "/course?id=" + encodeURIComponent(c.id), learners: c.learners, owned: enrolled().includes(c.id), label: "Enroll next classroom →" };
+}
+
+function defaultNextCourseId(fromId) {
+  const own = new Set(enrolled());
+  const catalog = allCourses();
+  const from = catalog.find((c) => c.id === fromId);
+  for (const id of (COURSE_NEXT[fromId] || [])) {
+    const hit = catalog.find((c) => c.id === id);
+    if (hit && !own.has(hit.id)) return { kind: "course", id: hit.id };
+  }
+  const pool = catalog.filter((c) => c.id !== fromId && !own.has(c.id));
+  if (!pool.length) return null;
+  const related = pool.filter((c) => from && c.cat === from.cat && Number(c.price) >= Number(from.price || 0));
+  const pick = (related.length ? related : pool).slice().sort((a, b) => Number(a.price) - Number(b.price))[0];
+  return pick ? { kind: "course", id: pick.id } : null;
+}
+
+function nextOffer(kind, fromId) {
+  const saved = nextPathMap()[kind + ":" + fromId];
+  const mapped = saved?.id ? resolveNextTarget(saved.kind || "course", saved.id) : null;
+  if (mapped && !mapped.owned) return mapped;
+  if (kind === "course") {
+    const fb = defaultNextCourseId(fromId);
+    return fb ? resolveNextTarget(fb.kind, fb.id) : null;
+  }
+  if (kind === "webinar" || kind === "mentor") {
+    const host = kind === "webinar"
+      ? allWebinars().find((w) => w.id === fromId)?.by
+      : allMentorPrograms().find((p) => p.id === fromId)?.by;
+    const pool = allCourses().filter((c) => !enrolled().includes(c.id));
+    const same = pool.find((c) => c.instructor === host);
+    const fallback = same || pool.slice().sort((a, b) => Number(a.price) - Number(b.price))[0];
+    return fallback ? resolveNextTarget("course", fallback.id) : null;
+  }
+  return null;
+}
+
+function nextCourseOffer(fromId) {
+  const offer = nextOffer("course", fromId);
+  if (!offer || offer.kind !== "course") return offer ? { title: offer.title, instructor: offer.by, price: offer.price, old: offer.old, id: offer.id, learners: offer.learners || "", _offer: offer } : null;
+  return allCourses().find((c) => c.id === offer.id) || null;
+}
+
+function takeNextOffer(kind, id) {
+  if (kind === "webinar") registerForWebinar(id);
+  else if (kind === "mentor") enrollMentorProgram(id);
+  else enroll(id);
+}
+
+function courseNudgeCopy(fromTitle, next, reason) {
+  if (reason === "done" || reason === "live-end") {
+    return {
+      kicker: reason === "live-end" ? "Session ended. The next desk is open." : "Certificate unlocked. Momentum is rare.",
+      title: "Don't stop at the finish line",
+      body: `You just finished ${fromTitle}. ${next.title} is the next written process — same desk language, next setup.`
+    };
+  }
+  if (reason === "dash") {
+    return {
+      kicker: "You bought the first classroom. Most people stall here.",
+      title: "Open the next desk before the first one goes cold",
+      body: `${next.title} is the step learners take after ${fromTitle}, so the first buy turns into a process — not a one-off video.`
+    };
+  }
+  return {
+    kicker: "You opened the door. Keep the chain.",
+    title: "This one got you in. The next one makes it stick.",
+    body: `You started with ${fromTitle}. ${next.title} is the natural next setup, so you do not leave the first step unused.`
+  };
+}
+
+function pathNudgeHTML(fromTitle, fromKind, fromId, reason) {
+  const next = nextOffer(fromKind, fromId);
+  if (!next) return "";
+  const copy = courseNudgeCopy(fromTitle, next, reason);
+  const save = next.old && next.price ? Math.max(0, Math.round((1 - Number(next.price) / Number(next.old)) * 100)) : 0;
+  return `<section class="cd-nudge" data-nudge="${escapeHtml(next.id)}">
+    <div class="cd-nudge-copy">
+      <span class="cd-nudge-kicker">${escapeHtml(copy.kicker)}</span>
+      <h3>${escapeHtml(copy.title)}</h3>
+      <p>${escapeHtml(copy.body)}</p>
+      <div class="cd-nudge-path" aria-hidden="true">
+        <em>You have</em><b>${escapeHtml(fromTitle)}</b>
+        <i>→</i>
+        <em>Next</em><strong>${escapeHtml(next.title)}</strong>
+      </div>
+    </div>
+    <div class="cd-nudge-offer">
+      <small>by ${escapeHtml(next.by || "")}${next.learners ? ` · ${escapeHtml(next.learners)} learners` : ""}</small>
+      <div class="cd-nudge-price">${next.price ? `₹${Number(next.price).toLocaleString("en-IN")}` : "Free"}${next.old ? ` <s>₹${Number(next.old).toLocaleString("en-IN")}</s>` : ""}${save ? ` <span>SAVE ${save}%</span>` : ""}</div>
+      <div class="cd-nudge-actions">
+        <button type="button" class="btn btn-primary" data-nudge-kind="${escapeHtml(next.kind)}" data-nudge-id="${escapeHtml(next.id)}">${escapeHtml(next.label)}</button>
+        <a class="btn btn-ghost" href="${escapeHtml(next.href)}">See the syllabus</a>
+      </div>
+    </div>
+  </section>`;
+}
+
+function courseNudgeHTML(from, reason) {
+  return pathNudgeHTML(from.title, "course", from.id, reason);
+}
+
+function offerBannerHTML(next) {
+  if (!next?.id) return "";
+  if (next.kind === "webinar") {
+    const w = allWebinars().find((x) => x.id === next.id);
+    return w ? `<div class="yt-upsell-banner">${webinarBannerHTML(w)}</div>` : "";
+  }
+  if (next.kind === "mentor") {
+    const p = allMentorPrograms().find((x) => x.id === next.id);
+    if (!p) return "";
+    return `<div class="yt-upsell-banner yt-upsell-mentor" style="--mp:${p.tint || "#4f46e5"}">
+      <span class="wb-chip">Bizgarh</span>
+      <div class="web-banner-copy"><small>Mentorship</small><b>${escapeHtml(p.title)}</b></div>
+      <img src="${photoFor(p.by)}" alt="">
+    </div>`;
+  }
+  const c = allCourses().find((x) => x.id === next.id);
+  if (!c) return "";
+  return courseThumbHTML(c);
+}
+
+function courseNudgePlayerHTML(from, nextCourse, awarded) {
+  const next = nextOffer("course", from.id) || (nextCourse ? resolveNextTarget("course", nextCourse.id) : null);
+  if (next) {
+    const copy = courseNudgeCopy(from.title, next, awarded ? "done" : "buy");
+    return `<div class="yt-upsell">
+      <span class="yt-upsell-pill">${awarded ? "Classroom complete" : "Keep the streak"}</span>
+      <h3>${escapeHtml(copy.title)}</h3>
+      <p>${escapeHtml(copy.body)}</p>
+      <div class="yt-upsell-next">
+        ${offerBannerHTML(next)}
+        <div class="yt-upsell-meta">
+          <b>${escapeHtml(next.title)}</b>
+          <small>${next.price ? `₹${Number(next.price).toLocaleString("en-IN")}` : "Free"} · by ${escapeHtml(next.by || "")}</small>
+        </div>
+      </div>
+      <div class="yt-end-actions">
+        <button type="button" class="yt-end-play" data-nudge-kind="${escapeHtml(next.kind)}" data-nudge-id="${escapeHtml(next.id)}">Enroll next →</button>
+        ${awarded ? `<button type="button" data-cert-download="${escapeHtml(from.id)}">Download certificate</button>` : ""}
+        <a href="${escapeHtml(next.href)}">See syllabus</a>
+        <button type="button" id="endCancel">Close</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="yt-upsell">
+    <span class="yt-upsell-pill">${awarded ? "Classroom complete" : "Finished"}</span>
+    <h3>${awarded ? "Certificate unlocked" : "You reached the last lesson"}</h3>
+    <p>${awarded ? "Download it, then open another classroom so the finish does not go cold." : "Browse the next classroom while this one is still fresh."}</p>
+    <div class="yt-end-actions">
+      ${awarded ? `<button type="button" class="yt-end-play" data-cert-download="${escapeHtml(from.id)}">Download certificate</button>` : ""}
+      <a class="yt-end-play" href="/courses">Browse classrooms</a>
+      <button type="button" id="endCancel">Close</button>
+    </div>
+  </div>`;
+}
+
+function bindCourseNudge(root = document) {
+  root.querySelectorAll("[data-nudge-id]").forEach((btn) => {
+    if (btn.dataset.boundNudge) return;
+    btn.dataset.boundNudge = "1";
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      takeNextOffer(btn.dataset.nudgeKind || "course", btn.dataset.nudgeId);
+    });
+  });
+  root.querySelectorAll("[data-nudge-buy]").forEach((btn) => {
+    if (btn.dataset.boundNudge) return;
+    btn.dataset.boundNudge = "1";
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      enroll(btn.dataset.nudgeBuy);
+    });
+  });
+}
+
+function dashboardPathNudgeHTML(user) {
+  const mine = ownedCourses(user.email);
+  if (!mine.length) return "";
+  const cheapest = mine.slice().sort((a, b) => Number(a.c.price) - Number(b.c.price))[0];
+  const onlyStarter = mine.length === 1 || mine.every((x) => Number(x.c.price) <= 499);
+  if (!onlyStarter && mine.length > 2) return "";
+  return courseNudgeHTML(cheapest.c, "dash");
+}
+
 function webinarCardHTML(w, i) {
   const meta = webinarProfile(w);
   const enrolled = isWebinarRegistered(w.id);
@@ -2628,8 +3316,171 @@ function escapeHtml(s) {
   }[ch]));
 }
 
+function learnerReviews() {
+  return readList(LEARNER_REVIEWS_KEY);
+}
+function setLearnerReviews(list) { writeList(LEARNER_REVIEWS_KEY, list); }
+function reviewTargetTitle(kind, id) {
+  if (kind === "webinar") return allWebinars().find((x) => x.id === id)?.title || id;
+  if (kind === "mentor") return allMentorPrograms().find((x) => x.id === id)?.title || id;
+  return allCourses().find((x) => x.id === id)?.title || id;
+}
+function canReview(kind, id) {
+  const u = getUser();
+  if (!u) return false;
+  if (kind === "course") return isEnrolled(id) && typeof certFor === "function" && !!certFor(u.email, id);
+  if (kind === "webinar") {
+    const w = allWebinars().find((x) => x.id === id);
+    return isWebinarRegistered(id) && w && w.status === "ended";
+  }
+  if (kind === "mentor") {
+    const p = allMentorPrograms().find((x) => x.id === id);
+    return isMentorEnrolled(id) && p && mentorPhase(p) === "ended";
+  }
+  return false;
+}
+function myReview(kind, id) {
+  const u = getUser();
+  if (!u) return null;
+  return learnerReviews().find((r) => r.email === u.email && r.kind === kind && r.targetId === id) || null;
+}
+function reviewsFor(kind, id) {
+  return allReviews().filter((r) => (r.kind || "course") === kind && (r.targetId === id || r.courseId === id));
+}
+function ratingStats(kind, id) {
+  const list = reviewsFor(kind, id);
+  const count = list.length;
+  const avg = count ? (list.reduce((s, r) => s + Number(r.stars || 0), 0) / count).toFixed(1) : "0.0";
+  return { count, avg };
+}
+function submitLearnerReview(kind, id, fields) {
+  const u = getUser();
+  if (!u || !canReview(kind, id)) return null;
+  const text = String(fields.text || "").trim();
+  if (!text) return null;
+  const stars = Math.min(5, Math.max(1, Number(fields.stars) || 5));
+  const title = reviewTargetTitle(kind, id);
+  const row = {
+    id: "lr-" + Date.now(),
+    kind,
+    targetId: id,
+    name: u.name || "Learner",
+    email: u.email,
+    city: String(fields.city || "").trim() || "India",
+    photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || "Learner")}&background=eef2ff&color=4f46e5&size=128`,
+    stars,
+    text,
+    course: title,
+    courseId: kind === "course" ? id : "",
+    when: "Just now",
+    lang: /[\u0900-\u097F]/.test(text) ? "hi" : "en",
+    at: new Date().toISOString(),
+    source: "learner"
+  };
+  setLearnerReviews([row, ...learnerReviews().filter((r) => !(r.email === u.email && r.kind === kind && r.targetId === id))]);
+  return row;
+}
+function reviewFormHTML(kind, id) {
+  const mine = myReview(kind, id);
+  const ready = canReview(kind, id);
+  const user = getUser();
+  const label = kind === "webinar" ? "webinar" : kind === "mentor" ? "desk" : "classroom";
+  const stars = mine ? Number(mine.stars) : 5;
+  let gate = "";
+  if (!user) gate = "Login to put your name on this review.";
+  else if (!ready) gate = kind === "course" ? "Finish the last lesson, then this note goes live." : "Reviews open after this desk ends.";
+  return `<form class="desk-review${gate ? " is-gated" : ""}" data-review-kind="${escapeHtml(kind)}" data-review-id="${escapeHtml(id)}">
+    <span class="desk-review-kicker">Write a review</span>
+    <h3>How did this ${label} sit with you?</h3>
+    <p class="desk-review-sub">A star rating and a few honest lines. It publishes on Reviews as soon as you submit.</p>
+    <div class="desk-stars" role="radiogroup" aria-label="Stars">
+      ${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-star="${n}" class="${n <= stars ? "on" : ""}" style="--s:${n}">★</button>`).join("")}
+    </div>
+    <input type="hidden" name="stars" value="${stars}">
+    <textarea name="text" required maxlength="400" placeholder="What stayed with you after you finished?">${mine ? escapeHtml(mine.text) : ""}</textarea>
+    <div class="desk-review-row">
+      <input name="city" maxlength="40" placeholder="City (optional)" value="${mine ? escapeHtml(mine.city || "") : ""}">
+      <button class="btn btn-primary desk-review-go" type="submit">${mine ? "Update review" : "Submit review"}</button>
+    </div>
+    ${gate ? `<p class="desk-review-gate">${gate}</p>` : mine ? `<p class="desk-review-thanks">You rated this ${mine.stars}★. Edit and submit again anytime.</p>` : ""}
+  </form>`;
+}
+function itemReviewsBlockHTML(kind, id) {
+  const stats = ratingStats(kind, id);
+  const list = reviewsFor(kind, id);
+  return `<section class="cd-card desk-reviews-card" id="deskReviews" data-review-block="${escapeHtml(kind)}" data-review-target="${escapeHtml(id)}">
+    <div class="cd-ov-head">
+      <h2>Reviews</h2>
+      <p class="cd-ov-meta">${stats.count ? `<span>★ ${stats.avg}</span><span>${stats.count} review${stats.count === 1 ? "" : "s"}</span>` : `<span>Be the first to review</span>`}</p>
+    </div>
+    ${reviewFormHTML(kind, id)}
+    <div class="desk-review-list">${list.slice(0, 8).map(reviewCardHTML).join("")}</div>
+  </section>`;
+}
+function refreshDeskReviews(kind, id) {
+  const host = document.getElementById("deskReviews");
+  if (!host) return;
+  const parent = host.parentElement;
+  host.outerHTML = itemReviewsBlockHTML(kind, id);
+  bindReviewForm(parent || document);
+}
+function bindReviewForm(root = document) {
+  root.querySelectorAll("[data-review-kind]").forEach((form) => {
+    if (form.dataset.boundReview) return;
+    form.dataset.boundReview = "1";
+    form.querySelectorAll("[data-star]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const n = Number(btn.dataset.star);
+        form.stars.value = String(n);
+        form.querySelectorAll("[data-star]").forEach((x) => x.classList.toggle("on", Number(x.dataset.star) <= n));
+      });
+    });
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const kind = form.dataset.reviewKind;
+      const id = form.dataset.reviewId;
+      if (!getUser()) {
+        if (typeof requireAuth === "function") requireAuth(() => form.requestSubmit());
+        else toast("Login to submit a review");
+        return;
+      }
+      const row = submitLearnerReview(kind, id, {
+        stars: form.stars.value,
+        text: form.text.value,
+        city: form.city?.value
+      });
+      if (!row) {
+        toast(canReview(kind, id) ? "Write a short review first" : "Finish this desk first, then review");
+        return;
+      }
+      toast("Review is live");
+      refreshDeskReviews(kind, id);
+      if (typeof paintReviewMarquee === "function") {
+        paintReviewMarquee(document.getElementById("reviewMarquee"));
+        paintReviewMarquee(document.getElementById("learnReviews"), true);
+      }
+    });
+  });
+}
+
+function deskReviewSeeds() {
+  return [
+    { id: "seed-w1", kind: "webinar", targetId: "w1", name: "Isha Verma", city: "Delhi", photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=128&h=128&q=80&crop=faces", stars: 5, text: "Live room felt like a real desk. I wrote the gap rule before the open and skipped two noisy trades.", course: "Gap & Go for Nifty Options", courseId: "", when: "1 week ago", lang: "en", source: "seed" },
+    { id: "seed-w0", kind: "webinar", targetId: "w0", name: "Rohit Nair", city: "Kochi", photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&h=128&q=80&crop=faces", stars: 4, text: "Replay was tight. I wanted more Q&A time, but the invalidation line was clear.", course: "Gap & Go Replay Desk", courseId: "", when: "3 weeks ago", lang: "en", source: "seed" },
+    { id: "seed-m1", kind: "mentor", targetId: "mp-breakout", name: "Sana Qureshi", city: "Hyderabad", photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=128&h=128&q=80&crop=faces", stars: 5, text: "Journal check every week kept me honest. I still size too big sometimes, but the process stuck.", course: "Intraday Desk Mentorship", courseId: "", when: "4 days ago", lang: "en", source: "seed" },
+    { id: "seed-m2", kind: "mentor", targetId: "mp-closed", name: "Kabir Shah", city: "Ahmedabad", photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=128&h=128&q=80&crop=faces", stars: 5, text: "Closed cohort, still using the same journal. That is the point.", course: "Intraday Journal Cohort", courseId: "", when: "1 month ago", lang: "en", source: "seed" }
+  ];
+}
 function allReviews() {
-  return Array.isArray(window.REVIEWS) ? window.REVIEWS : [];
+  const seed = (Array.isArray(window.REVIEWS) ? window.REVIEWS : []).map((r) => ({
+    ...r,
+    kind: r.kind || "course",
+    targetId: r.targetId || r.courseId || ""
+  }));
+  return learnerReviews().concat(deskReviewSeeds(), seed);
 }
 
 function reviewCardHTML(r) {
@@ -2645,17 +3496,20 @@ function reviewCardHTML(r) {
   </article>`;
 }
 
-function renderHomeReviews() {
-  const host = document.getElementById("reviewMarquee");
+function paintReviewMarquee(host, single) {
   if (!host) return;
   const list = allReviews();
   if (!list.length) return;
   const row1 = list.slice(0, 24);
   const row2 = list.slice(24, 48);
   const paint = (rows) => rows.concat(rows).map(reviewCardHTML).join("");
-  host.innerHTML = `
-    <div class="review-row"><div class="review-track">${paint(row1)}</div></div>
+  host.innerHTML = single
+    ? `<div class="review-row"><div class="review-track">${paint(row1)}</div></div>`
+    : `<div class="review-row"><div class="review-track">${paint(row1)}</div></div>
     <div class="review-row reverse"><div class="review-track">${paint(row2)}</div></div>`;
+}
+function renderHomeReviews() {
+  paintReviewMarquee(document.getElementById("reviewMarquee"));
 }
 
 function renderReviewsPage() {
@@ -2674,6 +3528,9 @@ function renderReviewsPage() {
     if (filter === "3" && r.stars > 3) return false;
     if (filter === "hi" && r.lang === "en") return false;
     if (filter === "en" && r.lang !== "en") return false;
+    if (filter === "course" && (r.kind || "course") !== "course") return false;
+    if (filter === "webinar" && r.kind !== "webinar") return false;
+    if (filter === "mentor" && r.kind !== "mentor") return false;
     if (q) {
       const hay = `${r.name} ${r.city} ${r.course} ${r.text}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -2791,6 +3648,8 @@ function courseLangs(c) {
 }
 
 function learnPoints(c) {
+  const custom = Array.isArray(c?.learn) ? c.learn.map((s) => String(s || "").trim()).filter(Boolean) : [];
+  if (custom.length) return custom;
   const pack = {
     options: ["A complete map of option buying vs selling", "How to pick strikes without guessing", "Defined invalidation before you click buy", "Risk and capital rules for weekly trading", "The psychology to skip a weak setup"],
     investing: ["How to think in years, not tips", "A simple SIP and allocation routine", "How to judge a fund or stock without noise", "Rebalancing without over-trading", "A journal for long-term decisions"],
@@ -2802,6 +3661,232 @@ function learnPoints(c) {
     trending: ["How the setup is chosen on a live tape", "Entry, invalidation and targets", "Position sizing you can actually follow", "A simple journal template", "Common mistakes to skip this week"]
   };
   return pack[c.cat] || pack.trending;
+}
+function bonusResourcesOf(c) {
+  if (Array.isArray(c?.bonus)) {
+    return c.bonus.map((b) => {
+      if (typeof b === "string") return { title: b.trim(), note: "" };
+      return { title: String(b?.title || "").trim(), note: String(b?.note || "").trim() };
+    }).filter((b) => b.title).slice(0, 5);
+  }
+  return [{ title: `Access to the Bizgarh practice desk with ${c.instructor}`, note: "FREE" }];
+}
+
+function topicResHTML(it, playable) {
+  const notes = String(it.notes || "").trim();
+  const pdf = String(it.pdf || "").trim();
+  if (!notes && !pdf) return "";
+  return `<div class="cd-topic-res">
+    ${notes ? `<button type="button" class="cd-res" data-open-notes="${escapeHtml(it.t)}" data-notes="${encodeURIComponent(notes)}" ${playable ? "" : "disabled"}>Notes</button>` : ""}
+    ${pdf ? (playable
+      ? `<a class="cd-res" href="${escapeHtml(pdf)}" target="_blank" rel="noopener" download="${escapeHtml(it.pdfName || "lesson.pdf")}">PDF</a>`
+      : `<button type="button" class="cd-res" disabled>PDF</button>`) : ""}
+  </div>`;
+}
+
+function topicRowHTML(it, playable) {
+  const mode = it.mode || "";
+  const live = mode === "live" || it.kind === "live";
+  const rec = mode === "recorded";
+  if (it.kind === "pdf") {
+    const href = String(it.pdf || "").trim();
+    return `<div class="cd-topic-row">
+      <div class="cd-topic">
+        <span class="cd-topic-ico">${iconSvg("file")}</span>
+        <span>${escapeHtml(it.t)}</span>
+        ${it.dur ? `<em>${escapeHtml(it.dur)}</em>` : `<em>PDF</em>`}
+      </div>
+      ${href && playable
+        ? `<a class="cd-res" href="${escapeHtml(href)}" target="_blank" rel="noopener" download="${escapeHtml(it.pdfName || "lesson.pdf")}">Open PDF</a>`
+        : `<button type="button" class="cd-res" disabled>PDF</button>`}
+    </div>`;
+  }
+  if (it.kind === "article") {
+    return `<div class="cd-topic-row">
+      <div class="cd-topic">
+        <span class="cd-topic-ico">${iconSvg("file")}</span>
+        <span>${escapeHtml(it.t)}</span>
+        ${it.dur ? `<em>${escapeHtml(it.dur)}</em>` : ""}
+      </div>
+      ${topicResHTML(it, playable)}
+    </div>`;
+  }
+  if (playable && it.lesson != null && !live && !rec) {
+    return `<div class="cd-topic-row">
+      <button type="button" class="cd-topic playable${it.lesson === 0 ? " active" : ""}" data-lesson="${it.lesson}">
+        <span class="cd-topic-ico">${iconSvg("play")}</span>
+        <span>${escapeHtml(it.t)}</span>
+        ${it.dur ? `<em>${escapeHtml(it.dur)}</em>` : ""}
+      </button>
+      ${topicResHTML(it, true)}
+    </div>`;
+  }
+  if (playable && (live || rec)) {
+    return `<div class="cd-topic-row">
+      <button type="button" class="cd-topic playable" data-mp-lesson="${escapeHtml(String(it.i ?? ""))}" data-mp-mode="${escapeHtml(mode)}">
+        <span class="cd-topic-ico">${iconSvg(live ? "wifi" : "play")}</span>
+        <span>${escapeHtml(it.t)}</span>
+        <em>${live ? "Live" : "Recorded"}${it.dur ? " · " + escapeHtml(it.dur) : ""}</em>
+      </button>
+      ${topicResHTML(it, true)}
+    </div>`;
+  }
+  return `<div class="cd-topic-row">
+    <div class="cd-topic">
+      <span class="cd-topic-ico">${iconSvg(live ? "wifi" : "play")}</span>
+      <span>${escapeHtml(it.t)}</span>
+      ${mode ? `<em>${live ? "Live" : rec ? "Recorded" : ""}</em>` : ""}
+    </div>
+    ${topicResHTML(it, false)}
+  </div>`;
+}
+
+function mentorLessonsFor(programId) {
+  const map = mentorLessonsMap();
+  if (Object.prototype.hasOwnProperty.call(map, programId)) return map[programId] || [];
+  const p = (typeof mentorProgramById === "function" ? mentorProgramById(programId) : null)
+    || allMentorPrograms().find((x) => x.id === programId);
+  const pack = p && typeof mentorPack === "function" ? mentorPack(p) : { curriculum: [] };
+  return (pack.curriculum || ["Live desk session"]).map((t, i) => ({
+    id: programId + "-l" + i,
+    t,
+    dur: "60 min",
+    mode: "live",
+    notes: "",
+    pdf: "",
+    src: "",
+    vdoId: "",
+    at: p?.at || ""
+  }));
+}
+
+function mentorOverviewCardHTML(p, playable) {
+  const lessons = mentorLessonsFor(p.id);
+  const liveN = lessons.filter((l) => (l.mode || "live") === "live").length;
+  const recN = lessons.length - liveN;
+  const sections = [];
+  for (let i = 0; i < lessons.length; i += 3) {
+    const slice = lessons.slice(i, i + 3);
+    sections.push({
+      t: i === 0 ? "Desk sessions" : `Section ${String(Math.floor(i / 3) + 1).padStart(2, "0")}`,
+      m: `${slice.length} session${slice.length === 1 ? "" : "s"}`,
+      items: slice.map((l, j) => ({ ...l, i: i + j, lesson: null, mode: l.mode || "live" }))
+    });
+  }
+  return `
+        <section class="cd-card cd-overview-card" id="mentorOverview">
+          <div class="cd-ov-head">
+            <h2>Your Course Overview</h2>
+            <p class="cd-ov-meta">
+              <span>${sections.length} sections</span>
+              <span>${lessons.length} sessions</span>
+              <span>${liveN} live · ${recN} recorded</span>
+            </p>
+          </div>
+          <div class="cd-overview">
+            ${sections.map((s, i) => `
+              <div class="cd-sec ${playable || i === 0 ? "open" : ""}" style="--i:${i}">
+                <button type="button" class="cd-sec-h" aria-expanded="${playable || i === 0 ? "true" : "false"}">
+                  <span class="cd-sec-num">${String(i + 1).padStart(2, "0")}</span>
+                  <span class="cd-sec-title">${escapeHtml(s.t)}</span>
+                  <em class="cd-sec-dur">${iconSvg("clock")} ${escapeHtml(s.m)}</em>
+                  <i class="cd-sec-arrow" aria-hidden="true"></i>
+                </button>
+                <div class="cd-topics">
+                  <div class="cd-topics-inner">
+                    ${s.items.map((it) => topicRowHTML(it, playable)).join("")}
+                  </div>
+                </div>
+              </div>`).join("")}
+          </div>
+        </section>`;
+}
+
+function webinarOverviewCardHTML(w) {
+  const playable = isWebinarRegistered(w.id) || w.status === "ended";
+  const item = { t: w.title, dur: w.duration || "60 min", notes: w.notes || "", pdf: w.pdf || "", mode: w.status === "ended" && w.recordUrl ? "recorded" : "live" };
+  return `
+        <section class="cd-card cd-overview-card" id="webinarOverview">
+          <div class="cd-ov-head">
+            <h2>Your Course Overview</h2>
+            <p class="cd-ov-meta"><span>1 session</span><span>${w.status === "ended" ? "Ended" : "Live webinar"}</span></p>
+          </div>
+          <div class="cd-overview">
+            <div class="cd-sec open">
+              <button type="button" class="cd-sec-h" aria-expanded="true">
+                <span class="cd-sec-num">01</span>
+                <span class="cd-sec-title">Live session</span>
+                <em class="cd-sec-dur">${iconSvg("clock")} ${escapeHtml(w.duration || "60 min")}</em>
+                <i class="cd-sec-arrow" aria-hidden="true"></i>
+              </button>
+              <div class="cd-topics"><div class="cd-topics-inner">${topicRowHTML({ ...item, i: 0 }, playable)}</div></div>
+            </div>
+          </div>
+        </section>`;
+}
+
+function openDeskNotes(title, body) {
+  let pop = document.getElementById("deskNotePop");
+  if (!pop) {
+    pop = document.createElement("div");
+    pop.id = "deskNotePop";
+    pop.className = "desk-note-pop";
+    document.body.appendChild(pop);
+  }
+  pop.innerHTML = `<div class="desk-note-card">
+    <button type="button" class="desk-note-x" aria-label="Close">Close</button>
+    <h3>${escapeHtml(title || "Lesson notes")}</h3>
+    <div class="desk-note-body">${escapeHtml(body || "").replace(/\n/g, "<br>")}</div>
+  </div>`;
+  pop.hidden = false;
+  pop.querySelector(".desk-note-x").addEventListener("click", () => { pop.hidden = true; });
+  pop.addEventListener("click", (e) => { if (e.target === pop) pop.hidden = true; });
+}
+
+async function playMentorRecording(lesson) {
+  const host = document.getElementById("mpPlayer");
+  if (!host) { toast("Open the program page to watch the recording"); return; }
+  host.hidden = false;
+  host.innerHTML = `<p class="muted">Loading recording…</p>`;
+  host.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (lesson.vdoId && typeof fetchVdoOtp === "function") {
+    try {
+      const data = await fetchVdoOtp(lesson.vdoId);
+      host.innerHTML = `<iframe class="mp-frame" title="Recorded session" src="https://player.vdocipher.com/v2/?otp=${encodeURIComponent(data.otp)}&playbackInfo=${encodeURIComponent(data.playbackInfo)}" allow="encrypted-media; autoplay; fullscreen" allowfullscreen></iframe>`;
+      return;
+    } catch {
+      host.innerHTML = `<p class="muted">Could not start the DRM recording. Try the MP4 link or join the live desk.</p>`;
+      return;
+    }
+  }
+  if (lesson.fileKey && typeof getVideoBlob === "function") {
+    try {
+      const blob = await getVideoBlob(lesson.fileKey);
+      if (blob) {
+        host.innerHTML = `<video class="mp-frame" src="${URL.createObjectURL(blob)}" controls playsinline></video>`;
+        return;
+      }
+    } catch {}
+  }
+  if (lesson.src) {
+    host.innerHTML = `<video class="mp-frame" src="${escapeHtml(lesson.src)}" controls playsinline></video>`;
+    return;
+  }
+  host.innerHTML = `<p class="muted">No recording uploaded yet. Join the live desk, or wait for the mentor to add the file in admin.</p>`;
+}
+
+function bindOverviewExtras(root = document) {
+  bindCourseNudge(root);
+  bindReviewForm(root);
+  root.querySelectorAll("[data-open-notes]").forEach((btn) => {
+    if (btn.dataset.boundNotes) return;
+    btn.dataset.boundNotes = "1";
+    btn.addEventListener("click", () => {
+      let body = btn.dataset.notes || "";
+      try { body = decodeURIComponent(body); } catch {}
+      openDeskNotes(btn.dataset.openNotes, body);
+    });
+  });
 }
 
 function courseOverview(c) {
@@ -2815,29 +3900,52 @@ function courseOverview(c) {
 }
 
 function curriculumFromLessons(c) {
-  const lessons = lessonsFor(c.id);
-  const titles = ["Introduction", "Core ideas", "The setup", "Risk & journal", "Managing trades"];
-  const sections = [];
-  for (let i = 0; i < lessons.length; i += 3) {
-    const slice = lessons.slice(i, i + 3);
-    const gi = Math.floor(i / 3);
-    sections.push({
-      t: titles[gi] || `Section ${String(gi + 1).padStart(2, "0")}`,
-      m: `${slice.length} lesson${slice.length === 1 ? "" : "s"}`,
-      items: slice.map((l, j) => ({ t: l.t, dur: l.dur, lesson: i + j }))
-    });
+  const sy = typeof syllabusFor === "function" ? syllabusFor(c.id) : null;
+  const publicLessons = lessonsFor(c.id);
+  if (!sy || !sy.sections) {
+    const titles = ["Introduction", "Core ideas", "The setup", "Risk & journal", "Managing trades"];
+    const sections = [];
+    for (let i = 0; i < publicLessons.length; i += 3) {
+      const slice = publicLessons.slice(i, i + 3);
+      const gi = Math.floor(i / 3);
+      sections.push({
+        t: titles[gi] || `Section ${String(gi + 1).padStart(2, "0")}`,
+        m: `${slice.length} lesson${slice.length === 1 ? "" : "s"}`,
+        items: slice.map((l, j) => ({ t: l.t, dur: l.dur, lesson: i + j, notes: l.notes || "", pdf: l.pdf || "", pdfName: l.pdfName || "", kind: l.kind || "video" }))
+      });
+    }
+    return sections;
   }
-  return sections;
+  const all = lessonsAll(c.id);
+  const byId = Object.fromEntries(all.map((l) => [l.id, l]));
+  return sy.sections.map((sec) => {
+    const items = (sec.items || []).map((it) => {
+      const l = byId[it.lessonId];
+      if (!l || l.published === false || it.published === false) return null;
+      const lesson = publicLessons.findIndex((x) => x.id === l.id);
+      return {
+        t: l.t,
+        dur: l.dur || "",
+        lesson: lesson >= 0 ? lesson : null,
+        notes: l.notes || "",
+        pdf: l.pdf || "",
+        pdfName: l.pdfName || "",
+        kind: it.kind || l.kind || "video"
+      };
+    }).filter(Boolean);
+    return {
+      t: sec.title,
+      m: `${items.length} lesson${items.length === 1 ? "" : "s"}`,
+      items
+    };
+  }).filter((s) => s.items.length);
 }
 
 function courseOverviewCardHTML(c, playable) {
-  const sections = playable
-    ? curriculumFromLessons(c)
-    : courseOverview(c).map((s) => ({
-        t: s.t,
-        m: s.m,
-        items: s.items.map((t) => ({ t }))
-      }));
+  const sections = curriculumFromLessons(c).map((s) => ({
+    ...s,
+    items: playable ? s.items : s.items.map((it) => ({ ...it, lesson: null }))
+  }));
   const topicCount = playable ? lessonsFor(c.id).length : c.lessons;
   return `
         <section class="cd-card cd-overview-card" id="courseOverview">
@@ -2860,19 +3968,14 @@ function courseOverviewCardHTML(c, playable) {
                 </button>
                 <div class="cd-topics">
                   <div class="cd-topics-inner">
-                    ${s.items.map((it) => playable && it.lesson != null
-                      ? `<button type="button" class="cd-topic playable${it.lesson === 0 ? " active" : ""}" data-lesson="${it.lesson}">
-                          <span class="cd-topic-ico">${iconSvg("play")}</span>
-                          <span>${escapeHtml(it.t)}</span>
-                          ${it.dur ? `<em>${escapeHtml(it.dur)}</em>` : ""}
-                        </button>`
-                      : `<div class="cd-topic"><span class="cd-topic-ico">${iconSvg("play")}</span><span>${escapeHtml(it.t)}</span></div>`).join("")}
+                    ${s.items.map((it) => topicRowHTML(it, playable)).join("")}
                   </div>
                 </div>
               </div>`).join("")}
             ${awardedCertFooterHTML(c, playable)}
           </div>
-        </section>`;
+        </section>
+        ${playable ? courseNudgeHTML(c, (typeof certFor === "function" && getUser() && certFor(getUser().email, c.id)) ? "done" : "buy") : ""}`;
 }
 
 function courseAbout(c) {
@@ -2880,63 +3983,19 @@ function courseAbout(c) {
   return `${c.title} is taught by ${c.instructor}. The classroom is built around a written setup, a clear invalidation, and a journal you can keep after the video ends. You will learn how to choose the trade, size it, and review the week — not a list of tips. The lessons are short, practical, and meant to be replayed before the next session.`;
 }
 
-function communityForCourse(courseId) {
-  const channels = typeof telegramChannels === "function" ? telegramChannels().filter((x) => x.courseId === courseId) : [];
-  const posts = typeof forumPosts === "function" ? forumPosts().filter((p) => p.courseId === courseId).slice().reverse() : [];
-  return { channels, posts };
+function courseLiveRooms(c) {
+  return visibleDeskRooms(typeof courseRoomsOf === "function" ? courseRoomsOf(c.id) : deskRoomsMap());
 }
-
-function courseCommunityBodyHTML(c) {
-  const { channels, posts } = communityForCourse(c.id);
-  const user = getUser();
-  return `
-    <div class="course-comm-body">
-      <div class="course-comm-tg">
-        ${channels.length
-          ? channels.map((ch) => `<a class="course-tg-link" href="${ch.url}" target="_blank" rel="noopener"><span class="cd-fact-ico">${iconSvg("chat")}</span><span class="course-tg-copy"><b>${escapeHtml(ch.name)}</b><small>Telegram room</small></span><em>Open</em></a>`).join("")
-          : `<p class="muted">No Telegram channel for this course yet.</p>`}
-      </div>
-      ${user ? `<form class="course-comm-form" data-course-comm="${c.id}">
-        <input name="title" required placeholder="Start a thread">
-        <textarea name="body" required placeholder="Ask or share a setup from this classroom."></textarea>
-        <button class="btn btn-primary" type="submit">Post</button>
-      </form>` : `<p class="muted">Login to post in this room.</p>`}
-      <div class="course-comm-posts">
-        ${posts.length ? posts.map((p) => `<article class="course-comm-post"><span class="cd-post-ava">${escapeHtml((p.author || "?").charAt(0).toUpperCase())}</span><div><h4>${escapeHtml(p.title)}</h4><p>${escapeHtml(p.body)}</p><small>${escapeHtml(p.author)} · ${new Date(p.at).toLocaleDateString("en-IN")}</small></div></article>`).join("") : `<p class="muted">No discussion yet in this course.</p>`}
-      </div>
-    </div>`;
-}
-
-function bindCourseCommunity(courseId) {
-  document.querySelector(`[data-course-comm="${courseId}"]`)?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    requireAuth(() => {
-      const u = getUser();
-      const f = e.target;
-      const list = forumPosts();
-      list.push({
-        id: "p-" + Date.now(),
-        title: f.title.value.trim(),
-        body: f.body.value.trim(),
-        author: u.name,
-        email: u.email,
-        courseId,
-        at: new Date().toISOString()
-      });
-      writeList(POST_KEY, list);
-      f.reset();
-      toast("Posted in this course community");
-      const host = document.getElementById("courseCommInner");
-      if (host) {
-        const course = allCourses().find((x) => x.id === courseId);
-        if (course) host.innerHTML = courseCommunityBodyHTML(course);
-        bindCourseCommunity(courseId);
-      }
-    });
-  });
+function courseCommunityBodyHTML(c, owned) {
+  const rooms = typeof courseRoomsOf === "function" ? courseRoomsOf(c.id) : null;
+  const live = visibleDeskRooms(rooms);
+  if (!live.length) return "";
+  const names = live.map((r) => r.label).join(", ");
+  return `<div class="course-comm-body">${deskRoomsGridHTML(owned, "Buy this classroom to open " + names + ".", rooms)}</div>`;
 }
 
 function courseBuyBoxHTML(c, langs, watchers, extraClass) {
+  const hasComm = courseLiveRooms(c).length > 0;
   return `<aside class="cd-buy${extraClass ? ` ${extraClass}` : ""}">
         <ul class="cd-facts">
           <li>${iconSvg("badge")} <span>${c.learners} Learners Enrolled</span></li>
@@ -2948,10 +4007,10 @@ function courseBuyBoxHTML(c, langs, watchers, extraClass) {
         </ul>
         <div class="cd-price">₹${Number(c.price).toLocaleString("en-IN")}</div>
         <button class="btn btn-primary btn-block cd-cta js-enroll">Buy Now →</button>
-        <button type="button" class="btn btn-ghost btn-block cd-comm-cta locked js-comm-lock">
+        ${hasComm ? `<button type="button" class="btn btn-ghost btn-block cd-comm-cta locked js-comm-lock">
           <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
           Community
-        </button>
+        </button>` : ""}
         <p class="cd-watch"><i></i> ${watchers} learners watching right now</p>
       </aside>`;
 }
@@ -2963,9 +4022,12 @@ function renderCoursePage() {
   const c = allCourses().find((x) => x.id === id) || allCourses()[0];
   const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title, sub: c.instructor };
   const logged = Boolean(getUser());
-  const owned = logged && isEnrolled(c.id);
+  const previewMode = typeof staffCoursePreview === "function" ? staffCoursePreview() : "";
+  const owned = typeof courseOwnedForPage === "function" ? courseOwnedForPage(c) : (logged && isEnrolled(c.id));
   const langs = courseLangs(c);
   const points = learnPoints(c);
+  const bonuses = bonusResourcesOf(c);
+  const liveRooms = courseLiveRooms(c);
   const watchers = 11 + (c.title.length * 3) % 37;
   const photo = photoFor(c.instructor);
   if (window.BizgarhSeo) window.BizgarhSeo.apply();
@@ -2985,7 +4047,7 @@ function renderCoursePage() {
 
       ${owned
         ? `<div id="learnRoot" class="cd-classroom"></div>`
-        : `<div class="cd-preview" style="--cover:${art.bg}">
+        : `<div class="cd-preview${courseBannerOf(c) ? " has-banner" : ""}" style="${courseBannerOf(c) ? `background-image:url('${String(courseBannerOf(c)).replace(/'/g, "%27")}')` : `--cover:${art.bg}`}">
           <video id="cdPreview" autoplay muted loop playsinline preload="metadata" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
           <div class="cd-preview-art">
             <img class="cd-preview-person" src="${photo}" alt="${c.instructor}">
@@ -3001,16 +4063,18 @@ function renderCoursePage() {
 
       <div class="cd-body">
         ${owned ? `<div id="certAward"></div>${courseOverviewCardHTML(c, true)}` : ""}
-        <div class="cd-bonus cd-bonus-card">
+        ${previewMode ? `<p class="cd-admin-preview">${previewMode === "owned" ? "Admin view · after the student buys" : "Admin view · before the student buys"}</p>` : ""}
+        ${bonuses.length ? `<div class="cd-bonus cd-bonus-card">
           <div class="cd-ov-head">
             <h2>Bonus resources included</h2>
             <p class="cd-ov-meta"><span class="cd-free">FREE</span></p>
           </div>
-          <div class="cd-bonus-row">
+          ${bonuses.map((b) => `<div class="cd-bonus-row">
             <span class="cd-learn-ico">${iconSvg("gift")}</span>
-            <span>Access to the Bizgarh practice desk with ${c.instructor}</span>
-          </div>
-        </div>
+            <span>${escapeHtml(b.title)}</span>
+            ${b.note ? `<em>${escapeHtml(b.note)}</em>` : ""}
+          </div>`).join("")}
+        </div>` : ""}
 
         <section class="cd-card cd-learn-card">
           <div class="cd-ov-head">
@@ -3041,27 +4105,20 @@ function renderCoursePage() {
           <button type="button" class="cd-more" id="cdMore">See more</button>
         </section>
 
-        <section class="cd-card cd-community-card cd-community ${owned ? "is-open" : "is-locked"}" id="courseCommunity">
+        ${liveRooms.length ? `<section class="cd-card cd-community-card cd-community ${owned ? "is-open" : "is-locked"}" id="courseCommunity">
           <div class="cd-ov-head">
             <h2>Community</h2>
             <p class="cd-ov-meta">
               ${owned ? `<span class="cd-comm-open">Members only</span>` : `<span class="cd-lock-badge">${iconSvg("lock")} Locked</span>`}
             </p>
           </div>
-          ${owned
-            ? `<div id="courseCommInner">${courseCommunityBodyHTML(c)}</div>`
-            : `<div class="cd-comm-locked-panel">
-                <span class="cd-comm-lock-ico">${iconSvg("lock")}</span>
-                <div>
-                  <b>Buy to unlock this room</b>
-                  <p>Telegram and discussion for students of this course.</p>
-                </div>
-                <button type="button" class="cd-comm-cta locked" id="commLockedBtn">
-                  <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
-                  Community
-                </button>
-              </div>`}
-        </section>
+          <div id="courseCommInner">${courseCommunityBodyHTML(c, owned)}</div>
+          ${owned ? "" : `<button type="button" class="cd-comm-cta locked" id="commLockedBtn">
+            <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
+            Community
+          </button>`}
+        </section>` : ""}
+        ${itemReviewsBlockHTML("course", c.id)}
         ${faqSectionHTML(FAQ_SETS.course)}
       </div>
     </div>`;
@@ -3077,7 +4134,6 @@ function renderCoursePage() {
     btn.addEventListener("click", lockCommunity);
   });
   document.getElementById("commLockedBtn")?.addEventListener("click", lockCommunity);
-  if (owned) bindCourseCommunity(c.id);
   document.querySelectorAll(".cd-sec-h").forEach((btn) => {
     btn.addEventListener("click", () => {
       const sec = btn.parentElement;
@@ -3129,14 +4185,24 @@ function renderCoursePage() {
     if (cert) renderCertAward(document.getElementById("certAward"), c, cert);
   }
   bindFaqs(box);
+  bindOverviewExtras(box);
+  if (typeof bindWbMotion === "function") bindWbMotion(box);
 }
 
 function courseThumbHTML(c) {
+  const banner = courseBannerOf(c);
+  if (banner) {
+    return `<div class="thumb has-banner">
+      <img class="thumb-banner" src="${escapeHtml(banner)}" alt="">
+      <span class="brand-badge" aria-hidden="true">${brandMarkSVG()}</span>
+    </div>`;
+  }
   const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title };
   const photo = photoFor(c.instructor);
   return `<div class="thumb" style="background:${art.bg}">
     <img class="person" src="${photo}" alt="">
     <div class="cover-copy"><h3>${art.title}</h3></div>
+    <span class="brand-badge" aria-hidden="true">${brandMarkSVG()}</span>
   </div>`;
 }
 
@@ -3169,6 +4235,26 @@ function learnerGateHTML() {
   return `<div class="ld"><div class="empty"><h3>Login to see your classroom</h3><p class="muted">Purchased courses appear here after login.</p><button class="btn btn-primary" data-open="loginModal" style="margin-top:12px">Login</button></div></div>`;
 }
 
+function bindSlideFades(root = document) {
+  root.querySelectorAll(".carousel, .slide-fade").forEach((el) => {
+    if (el.querySelector(".review-marquee") || el.classList.contains("slide-fade-always")) return;
+    const track = el.querySelector(".track, .ld-rec") || el;
+    const sync = () => {
+      const max = track.scrollWidth - track.clientWidth - 4;
+      el.classList.toggle("is-start", track.scrollLeft <= 4);
+      el.classList.toggle("is-end", max <= 0 || track.scrollLeft >= max);
+    };
+    if (el.dataset.fadeBound) {
+      sync();
+      return;
+    }
+    el.dataset.fadeBound = "1";
+    track.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    requestAnimationFrame(sync);
+  });
+}
+
 function renderDashboard() {
   const root = document.getElementById("learnerHome") || document.getElementById("myCourses");
   if (!root) return;
@@ -3184,93 +4270,103 @@ function renderDashboard() {
     .map((x) => x.w)
     .filter((w) => w.status !== "ended")
     .sort((a, b) => (webinarStart(a)?.getTime() || 0) - (webinarStart(b)?.getTime() || 0))[0];
-  const upLiveHTML = nextLive ? `<div class="ld-uplive">
-      <h2>Your upcoming live sessions</h2>
-      <article>
-        <div>
-          <div class="ld-uplive-top">
-            <span>WEBINAR</span>
-            ${countdownLineHTML(webinarStart(nextLive))}
-          </div>
+  const mineMentors = myMentorships(user.email);
+  const nextMentor = mineMentors.filter((p) => mentorPhase(p) !== "ended")[0] || null;
+  const sessionCards = [];
+  if (nextLive) {
+    sessionCards.push(`<article class="ld-sess ld-sess-web">
+        <i class="ld-sess-sheen" aria-hidden="true"></i>
+        <div class="ld-sess-copy">
+          <div class="ld-sess-meta"><span class="ld-live-pill"><b></b> Live webinar</span></div>
           <h3>${escapeHtml(nextLive.title)}</h3>
           <p>by ${escapeHtml(nextLive.by)}</p>
           <small>${iconSvg("cal")} ${escapeHtml(webinarDateLabel(nextLive))} · ${escapeHtml(webinarTimeLabel(nextLive))}</small>
-          <a class="btn btn-ghost" href="${webinarHref(nextLive.id)}">View Details ›</a>
+          ${countdownHTML(webinarStart(nextLive), "Starts in")}
+          <a class="ld-sess-cta" href="${webinarHref(nextLive.id)}">View details ›</a>
         </div>
-        <img src="${photoFor(nextLive.by)}" alt="">
-      </article>
-    </div>` : "";
-  const mineMentors = myMentorships(user.email);
-  const nextMentor = mineMentors.filter((p) => mentorPhase(p) !== "ended")[0] || mineMentors[0];
-  const myMentorHTML = `<div class="ld-mentor">
-      <div class="ld-row-h"><h2>My Mentorship</h2><a href="/mentorship">${mineMentors.length ? "View all ›" : "Browse ›"}</a></div>
-      ${nextMentor ? `<a class="ld-mentor-card" href="${mentorHref(nextMentor.id)}">
-        <div class="mp-shot" style="--mp:${nextMentor.tint}">
-          <span class="mp-live"><i></i> ${mentorPhase(nextMentor) === "upcoming" ? "Upcoming" : "Ongoing"}</span>
-          <img src="${photoFor(nextMentor.by)}" alt="">
-        </div>
-        <div>
-          <small>${escapeHtml(webinarDateLabel(nextMentor))} · ${nextMentor.weeks} weeks</small>
+        <div class="ld-sess-photo"><img src="${photoFor(nextLive.by)}" alt=""></div>
+      </article>`);
+  }
+  if (nextMentor) {
+    sessionCards.push(`<article class="ld-sess ld-sess-ment">
+        <div class="ld-sess-copy">
+          <div class="ld-sess-meta">
+            <span class="ld-desk-pill">1:1 Mentorship</span>
+            <em class="ld-uplive-cd">${mentorPhase(nextMentor) === "upcoming" ? "Upcoming desk" : "Ongoing desk"}</em>
+          </div>
           <h3>${escapeHtml(nextMentor.title)}</h3>
           <p>by ${escapeHtml(nextMentor.by)}</p>
-          <span class="go">Open program ›</span>
+          <small>${iconSvg("cal")} ${escapeHtml(webinarDateLabel(nextMentor))} · ${escapeHtml(String(nextMentor.weeks || ""))} weeks</small>
+          <a class="ld-sess-cta" href="${mentorHref(nextMentor.id)}">Open program ›</a>
         </div>
-      </a>` : `<div class="ld-empty" style="padding:28px 8px"><p>No mentorship desk yet.</p><a class="btn btn-primary" href="/mentorship">Browse programs</a></div>`}
+        <div class="ld-sess-photo"><img src="${photoFor(nextMentor.by)}" alt=""></div>
+      </article>`);
+  }
+  const sessionsHTML = sessionCards.join("") || `<article class="ld-sess ld-sess-empty">
+        <div class="ld-sess-copy">
+          <div class="ld-sess-meta"><span class="ld-desk-pill">Live desk</span></div>
+          <h3>No live session on your book</h3>
+          <p>Register for a webinar or join a mentorship desk.</p>
+          <a class="ld-sess-cta" href="/live">Browse live ›</a>
+        </div>
+      </article>`;
+  const promoHTML = `<div class="ld-promo">
+          <div class="ld-promo-top">
+            <span class="ld-promo-kicker">This week</span>
+            <h3>Live rooms and 1:1 desks</h3>
+            <p>Sit with a working trader. Process and risk — not a tip feed.</p>
+          </div>
+          <div class="ld-promo-pills" aria-hidden="true"><em>Webinar</em><em>1:1 desk</em><em>Live room</em></div>
+          <a class="btn btn-primary" href="/live">Join live</a>
+        </div>`;
+  const upLiveHTML = `<div class="ld-uplive">
+      <h2>Your upcoming live sessions</h2>
+      ${sessionsHTML}
     </div>`;
   const continueHTML = cont
     ? `<a class="ld-resume" href="/course?id=${encodeURIComponent(cont.c.id)}&lesson=${cont.resume.i}">
-        <div class="ld-shot">${courseThumbHTML(cont.c)}<span class="ld-play"><i><svg viewBox="0 0 10 10"><path d="M2 1.2v7.6L8.5 5Z"/></svg></i> Continue learning</span></div>
+        <div class="ld-shot">${courseThumbHTML(cont.c)}<span class="ld-mark" aria-hidden="true">${brandMarkSVG()}</span><span class="ld-play"><i><svg viewBox="0 0 10 10"><path d="M2 1.2v7.6L8.5 5Z"/></svg></i> Continue learning</span></div>
         <h3>${escapeHtml(cont.c.title)}</h3>
         <div class="ld-from">Resume from: ${escapeHtml(cont.resume.lesson?.t || "Lesson 1")}</div>
         <div class="ld-meter"><div class="ld-track"><i style="width:${cont.stats.pct}%"></i></div><b>${cont.stats.pct}% · ${timeLeftLabel(cont.c, cont.stats.pct)}</b></div>
       </a>`
-    : `<div class="empty" style="text-align:left;max-width:420px"><h3>No classroom yet</h3><p class="muted">Buy a course and it appears here to continue.</p><a class="btn btn-primary" href="/courses" style="margin-top:12px">Browse courses</a></div>`;
-  root.innerHTML = `<div class="ld">
+    : `<div class="ld-resume ld-resume-empty">
+        <div class="ld-shot ld-shot-empty"><span class="ld-play"><i><svg viewBox="0 0 10 10"><path d="M2 1.2v7.6L8.5 5Z"/></svg></i> Start learning</span></div>
+        <h3>No classroom yet</h3>
+        <div class="ld-from">Pick a course and it will sit here to resume.</div>
+        <a class="ld-ghost" href="/courses">Browse courses ›</a>
+      </div>`;
+  root.innerHTML = `<div class="ld ld-home">
     <div class="ld-welcome">
       <h1>Welcome back, ${escapeHtml(user.name)} 👋</h1>
       <p>Continue where you left off.</p>
     </div>
     <div class="ld-continue">${continueHTML}</div>
-    <div class="ld-split">
-      <div>
+    ${dashboardPathNudgeHTML(user)}
+    <div class="ld-split ld-home-split">
+      <div class="ld-main">
         ${upLiveHTML}
-        ${myMentorHTML}
         <div class="ld-row-h"><h2>Recommended courses for you</h2><a href="/courses">View All ›</a></div>
-        <div class="ld-rec">${rec.map((c) => courseCard(c, "grid-card")).join("") || `<p class="muted">You already own the library.</p>`}</div>
-        <div class="ld-row-h" style="margin-top:28px"><h2>Explore by category</h2></div>
-        <div class="ld-cats">${CATEGORIES.map((cat) => `
-          <a class="ld-cat" href="/courses?cat=${courseFilterFromCat(cat.id)}#library">
-            <span style="background:${cat.tint};color:${cat.color}">${iconSvg(cat.icon)}</span>
-            <strong>${escapeHtml(cat.title)}</strong>
-          </a>`).join("")}</div>
-        <div class="ld-row-h"><h2>Explore Bizgarh</h2></div>
-        <div class="ld-ex">
-          <a href="/courses"><span class="ld-ex-ico">${iconSvg("layers")}</span><strong>Courses</strong><em>Setup-first classrooms for Indian traders</em><i class="go">›</i></a>
-          <a href="/live#webinars"><span class="ld-ex-ico">${iconSvg("wifi")}</span><strong>Live Webinars</strong><em>Live sessions with market desks</em><i class="go">›</i></a>
-          <a href="/mentorship"><span class="ld-ex-ico">${iconSvg("users")}</span><strong>Live Mentorships</strong><em>Guided programs with working traders</em><i class="go">›</i></a>
-          <a class="on" href="/live#call"><span class="ld-ex-ico">${iconSvg("headset")}</span><strong>1:1 Guidance</strong><em>Book a personal call with a mentor</em><i class="go">›</i></a>
-        </div>
+        <div class="slide-fade"><div class="ld-rec">${rec.map((c) => courseCard(c, "grid-card")).join("") || `<p class="muted">You already own the library.</p>`}</div></div>
+        ${faqSectionHTML(FAQ_SETS.dashboard)}
       </div>
       <aside class="ld-side">
-        <div class="ld-promo">
-          <h3>Live rooms and 1:1s this week</h3>
-          <p>Sit with a working desk. No tip feed — just process.</p>
-          <a class="btn btn-primary" href="/live">Join live ›</a>
-        </div>
+        ${promoHTML}
         <div class="ld-quick">
           <h3>Quick Actions</h3>
-          <a href="/learning">${iconSvg("play")} My Learning</a>
-          <a href="/learning#mentors">${iconSvg("users")} My Mentorship</a>
-          <a href="/learning#certs">${iconSvg("badge")} My Certificates</a>
-          <a href="/contact">${iconSvg("headset")} Help</a>
+          <a href="/learning" style="--i:1"><span class="ld-q-ico">${iconSvg("play")}</span><span>My Learning</span><i>›</i></a>
+          <a href="/learning#certs" style="--i:2"><span class="ld-q-ico">${iconSvg("badge")}</span><span>My Certificates</span><i>›</i></a>
+          <a href="/live" style="--i:3"><span class="ld-q-ico">${iconSvg("wifi")}</span><span>Live rooms</span><i>›</i></a>
+          <a href="/mentorship" style="--i:4"><span class="ld-q-ico">${iconSvg("users")}</span><span>1:1 desk</span><i>›</i></a>
         </div>
       </aside>
     </div>
-    ${faqSectionHTML(FAQ_SETS.dashboard)}
   </div>`;
   startWbCountdown(root);
   bindWbMotion(root);
   bindFaqs(root);
+  bindSlideFades(root);
+  bindCourseNudge(root);
 }
 
 function myWebinars(email) {
@@ -3354,7 +4450,10 @@ function renderMyLearning() {
           <span class="go">Continue watching ›</span>
         </a>`).join("") : `<div class="ld-empty"><p>${chip === "completed" ? "No completed classrooms yet." : "No ongoing classrooms. Buy a course to start."}</p>        <a class="btn btn-primary" href="/courses">Browse courses</a></div>`}</div>
     `}
-    ${faqSectionHTML(FAQ_SETS.learning)}
+    <div class="ld-rev">
+      <div class="ld-row-h"><h2>Experiences shared by learners</h2><a href="/reviews">Read all ›</a></div>
+    </div>
+    <div class="slide-fade ld-rev-fade"><div class="review-marquee" id="learnReviews"></div></div>
   </div>`;
   root.dataset.chip = chip;
   root.querySelectorAll("[data-ltab]").forEach((btn) => {
@@ -3369,7 +4468,8 @@ function renderMyLearning() {
       renderMyLearning();
     });
   });
-  bindFaqs(root);
+  paintReviewMarquee(document.getElementById("learnReviews"), true);
+  bindSlideFades(root);
 }
 
 function renderAccountPage() {
@@ -3721,6 +4821,16 @@ function renderWebinarPage() {
       ${hero}
       <div class="wb-split">
         <div>
+          ${webinarOverviewCardHTML(w)}
+          ${visibleDeskRooms().length ? `<section class="cd-card cd-community-card cd-community ${registered ? "is-open" : "is-locked"}" id="deskRooms">
+            <div class="cd-ov-head">
+              <h2>Community</h2>
+              <p class="cd-ov-meta">${registered ? `<span class="cd-comm-open">Members only</span>` : `<span class="cd-lock-badge">${iconSvg("lock")} Locked</span>`}</p>
+            </div>
+            ${deskRoomsGridHTML(registered, "Enroll to open " + visibleDeskRooms().map((r) => r.label).join(", ") + ".")}
+          </section>` : ""}
+          ${itemReviewsBlockHTML("webinar", w.id)}
+          ${w.status === "ended" ? pathNudgeHTML(w.title, "webinar", w.id, "live-end") : ""}
           <section class="wb-block" data-wb>
             <h2>What You Will Learn</h2>
             <div class="wb-learn">${meta.learn.map((x) => `<p>${iconSvg("check")} <span>${escapeHtml(x)}</span></p>`).join("")}</div>
@@ -3776,6 +4886,24 @@ function renderWebinarPage() {
     e.currentTarget.textContent = root.querySelector(".wb-about")?.classList.contains("open") ? "show less" : "show more";
   });
   bindFaqs(root);
+  bindOverviewExtras(root);
+  root.querySelectorAll(".wb-split .cd-sec-h").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const sec = btn.parentElement;
+      const open = !sec.classList.contains("open");
+      sec.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+  root.querySelectorAll("[data-mp-lesson]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (w.status === "ended" && w.recordUrl) {
+        location.href = w.recordUrl;
+        return;
+      }
+      location.href = "/live-room?id=" + encodeURIComponent(w.id);
+    });
+  });
 }
 
 function renderLiveRoom() {
@@ -3876,13 +5004,15 @@ function renderLiveRoom() {
             <a class="btn btn-ghost" href="/live">All live classes</a>
           </div>`}
       </div>
-      <aside class="live-side">
+        <aside class="live-side">
         <h3>${isHost ? "Students in this class" : "Class details"}</h3>
         ${isHost
           ? (regs.length ? `<ul class="live-students">${regs.map((r) => `<li>${r.name}<small>${r.email}</small></li>`).join("")}</ul>` : `<p class="muted">No registrations yet.</p>`)
           : `<p class="muted">${live.notes || "Bring your journal. Q&A at the end."}</p><p class="muted" style="margin-top:8px">${regs.length} learners registered.${live.chat === false ? " Chat is off for this session." : " Chat is on in the live room."}</p>`}
       </aside>
-    </div>`;
+    </div>
+    ${live.status === "ended" ? pathNudgeHTML(live.title, "webinar", live.id, "live-end") : ""}
+    ${itemReviewsBlockHTML("webinar", live.id)}`;
 
   if (canJoinHms) {
     mountHmsFrame(document.getElementById("hmsMount"), {
@@ -3923,6 +5053,7 @@ function renderLiveRoom() {
     toast("Class ended · everyone is kicked from the room");
     renderLiveRoom();
   });
+  bindOverviewExtras(root);
 }
 
 function applySignupGate() {
@@ -4622,6 +5753,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     wrap.querySelector(".prev")?.addEventListener("click", () => track.scrollBy({ left: -300, behavior: "smooth" }));
     wrap.querySelector(".next")?.addEventListener("click", () => track.scrollBy({ left: 300, behavior: "smooth" }));
   });
+  bindSlideFades(document);
 
   seedLiveClasses();
   renderHomeExtras();

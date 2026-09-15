@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=dash13">
-  <link rel="stylesheet" href="css/admin.css?v=spd2">
+  <link rel="stylesheet" href="css/style.css?v=dash42">
+  <link rel="stylesheet" href="css/admin.css?v=spd10">
   <script src="js/boot.js?v=home2"></script>
 </head>
 <body class="ad-body">
@@ -95,6 +95,15 @@
         <input name="hours" placeholder="Hours">
         <input name="lessons" type="number" placeholder="Lessons">
         <textarea name="description" placeholder="Course description"></textarea>
+        <label class="admin-file-field" style="grid-column:1/-1">
+          <span>Course banner (homepage + player)</span>
+          <input name="banner" type="url" inputmode="url" placeholder="Banner image URL">
+          <input name="bannerFile" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+          <img id="editBannerPreview" alt="" hidden style="margin-top:8px;max-width:100%;max-height:140px;border-radius:12px;object-fit:cover">
+          <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:700">
+            <input name="bannerClear" type="checkbox"> Remove banner
+          </label>
+        </label>
         <button class="btn btn-primary">Save changes</button>
       </form>
     </div>
@@ -109,6 +118,12 @@
         <input type="hidden" name="courseId">
         <input name="title" placeholder="Lesson title" required>
         <input name="dur" placeholder="Duration (05:20)">
+        <textarea name="notes" placeholder="Lesson notes (shown in Your Course Overview)"></textarea>
+        <input name="pdf" placeholder="PDF URL (optional)">
+        <label class="admin-file-field">
+          <span>Lesson PDF</span>
+          <input name="pdfFile" type="file" accept="application/pdf">
+        </label>
         <label class="admin-file-field">
           <span>Lesson video (from this computer)</span>
           <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
@@ -124,10 +139,57 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=dash13"></script>
+  <div class="overlay" id="liveExtrasOverlay">
+    <div class="modal" style="width:min(560px,100%)">
+      <button class="close-x" type="button" id="closeLiveExtras">×</button>
+      <h3 id="liveExtrasTitle">Session extras</h3>
+      <form id="liveExtrasForm" class="admin-form">
+        <input type="hidden" name="liveId">
+        <textarea name="notes" placeholder="Session notes (shown in Your Course Overview)"></textarea>
+        <input name="pdf" placeholder="PDF URL">
+        <input name="recordUrl" placeholder="Recording URL after the live ends">
+        <button class="btn btn-primary" type="submit">Save extras</button>
+      </form>
+    </div>
+  </div>
+  <div class="overlay overlay-scroll" id="mentorLessonOverlay">
+    <div class="modal" style="width:min(640px,100%);max-height:86vh;overflow:auto">
+      <button class="close-x" type="button" id="closeMentorLessons">×</button>
+      <h3 id="mentorLessonTitle">Mentorship sessions</h3>
+      <div id="mentorLessonList" class="video-admin-list"></div>
+      <form id="addMentorLessonForm" class="admin-form">
+        <input type="hidden" name="programId">
+        <input name="title" placeholder="Session title" required>
+        <input name="dur" placeholder="Duration (60 min)">
+        <select name="mode">
+          <option value="live">Live session</option>
+          <option value="recorded">Recorded video</option>
+        </select>
+        <input name="at" type="datetime-local">
+        <textarea name="notes" placeholder="Session notes (shown in overview)"></textarea>
+        <input name="pdf" placeholder="PDF URL (optional)">
+        <label class="admin-file-field">
+          <span>Session PDF</span>
+          <input name="pdfFile" type="file" accept="application/pdf">
+        </label>
+        <label class="admin-file-field">
+          <span>Recorded video file</span>
+          <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
+        </label>
+        <input name="vdoId" placeholder="VdoCipher video ID (optional)">
+        <input name="src" placeholder="Direct MP4 URL (optional)">
+        <button class="btn btn-primary" type="submit">Add session</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/reviews-data.js?v=7"></script>
+  <script src="js/app.js?v=dash42"></script>
   <script src="js/lms.js"></script>
   <script src="js/admin-core.js?v=spd2"></script>
   <script src="js/admin.js?v=drm3"></script>
-  <script src="js/admin-app.js?v=drm3"></script>
+  <script src="js/admin-course.js?v=dash42"></script>
+  <script src="js/admin-mentor.js?v=dash42"></script>
+  <script src="js/admin-app.js?v=dash42"></script>
 </body>
 </html>

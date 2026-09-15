@@ -9,6 +9,7 @@ function shieldId() {
 function canAccess(course) {
   const u = getUser();
   if (!u) return false;
+  if (typeof staffCoursePreview === "function" && staffCoursePreview() === "owned") return true;
   return isEnrolled(course.id);
 }
 
@@ -99,14 +100,7 @@ function renderLearnPage() {
           <button type="button" class="yt-bezel" id="ytBezel" aria-hidden="true">${ytIcon("play")}</button>
           <button type="button" class="yt-bigplay" id="ytBigPlay" aria-label="Play">${ytIcon("play")}</button>
           <div class="yt-cue" id="ytCue"></div>
-          <div class="yt-end" id="endCard" hidden>
-            <p>Up next</p>
-            <h3 id="endTitle"></h3>
-            <div class="yt-end-actions">
-              <button type="button" class="yt-end-play" id="endPlay">Play next</button>
-              <button type="button" id="endCancel">Cancel</button>
-            </div>
-          </div>
+          <div class="yt-end" id="endCard" hidden></div>
           <div class="player-ui" id="playerUi">
             <div class="yt-bar" id="seekWrap">
               <div class="yt-tip" id="seekTip">0:00</div>
@@ -178,7 +172,7 @@ function renderLearnPage() {
     list.innerHTML = LESSONS.map((l, i) => `
     <button class="cr-item${i === 0 ? " active" : ""}" data-lesson="${i}">
       <span class="cr-num">${String(i + 1).padStart(2, "0")}</span>
-      <span class="cr-item-body"><strong>${escapeHtml(l.t)}</strong><small>${escapeHtml(l.dur)} · ${l.vdoId ? "Widevine DRM" : "encrypted"}</small></span>
+      <span class="cr-item-body"><strong>${escapeHtml(l.t)}</strong><small>${escapeHtml(l.dur)} · ${l.drm === false ? "open play" : (l.vdoId ? "Widevine DRM" : "encrypted")}</small></span>
     </button>`).join("");
   }
 
@@ -435,6 +429,32 @@ function renderLearnPage() {
       drmError.textContent = "";
     }
   }
+  function hideEndCard() {
+    endCard.hidden = true;
+    endCard.classList.remove("is-upsell");
+    if (vdoFrame) vdoFrame.style.pointerEvents = "";
+  }
+  function paintEndCard(awarded) {
+    const hasNextLesson = currentLesson < LESSONS.length - 1;
+    endCard.hidden = false;
+    if (vdoFrame) vdoFrame.style.pointerEvents = "none";
+    if (awarded || !hasNextLesson) {
+      const next = typeof nextCourseOffer === "function" ? nextCourseOffer(c.id) : null;
+      endCard.classList.add("is-upsell");
+      endCard.innerHTML = typeof courseNudgePlayerHTML === "function"
+        ? courseNudgePlayerHTML(c, next, Boolean(awarded))
+        : `<p>Classroom complete</p><div class="yt-end-actions"><button type="button" id="endCancel">Close</button></div>`;
+      if (awarded && typeof refreshDeskReviews === "function") refreshDeskReviews("course", c.id);
+      return;
+    }
+    endCard.classList.remove("is-upsell");
+    endCard.innerHTML = `<p>Up next</p>
+      <h3 id="endTitle">${escapeHtml(LESSONS[currentLesson + 1].t)}</h3>
+      <div class="yt-end-actions">
+        <button type="button" class="yt-end-play" id="endPlay">Play next</button>
+        <button type="button" id="endCancel">Cancel</button>
+      </div>`;
+  }
   function finishLesson() {
     ended = true;
     setPlaying(false);
@@ -442,20 +462,24 @@ function renderLearnPage() {
     let awarded = null;
     if (typeof markLessonDone === "function") awarded = markLessonDone(user.email, c.id, currentLesson);
     if (awarded) {
-      endCard.hidden = true;
-      renderCertAward(document.getElementById("certAward"), c, awarded);
+      if (typeof renderCertAward === "function") renderCertAward(document.getElementById("certAward"), c, awarded);
       const foot = document.querySelector("#courseOverview .cd-cert");
-      if (foot) {
+      if (foot && typeof awardedCertFooterHTML === "function") {
         foot.outerHTML = awardedCertFooterHTML(c, true);
       }
-      document.getElementById("certAward")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      toast("Certificate ready · download it below");
+      const ov = document.getElementById("courseOverview");
+      if (ov && typeof courseNudgeHTML === "function") {
+        const html = courseNudgeHTML(c, "done");
+        const existing = document.querySelector(".cd-nudge");
+        if (existing) existing.outerHTML = html;
+        else ov.insertAdjacentHTML("afterend", html);
+        if (typeof bindCourseNudge === "function") bindCourseNudge(ov.parentElement || document);
+      }
+      paintEndCard(true);
+      toast("Certificate ready · next classroom is on the player");
       return;
     }
-    if (currentLesson < LESSONS.length - 1) {
-      endCard.hidden = false;
-      document.getElementById("endTitle").textContent = LESSONS[currentLesson + 1].t;
-    }
+    paintEndCard(false);
   }
   async function loadVdoLesson(videoId) {
     clearVdo();
@@ -490,7 +514,7 @@ function renderLearnPage() {
       patchProgress(watcher.email, c.id, { lastIdx: i });
     }
     ended = false;
-    endCard.hidden = true;
+    hideEndCard();
     document.querySelectorAll("[data-lesson]").forEach((b) => b.classList.toggle("active", Number(b.dataset.lesson) === i));
     const topic = document.querySelector(`#courseOverview [data-lesson="${i}"]`);
     const sec = topic?.closest(".cd-sec");
@@ -504,11 +528,14 @@ function renderLearnPage() {
     video.removeAttribute("src");
     hideDrmError();
     loadEl.classList.add("show");
+    const wantDrm = LESSONS[i].drm !== false;
     const vdoId = typeof parseVdoCipherId === "function"
       ? parseVdoCipherId(LESSONS[i].vdoId || (!LESSONS[i].fileKey ? LESSONS[i].src : ""))
       : "";
+    if (drmChip) drmChip.textContent = wantDrm ? (vdoId ? "Widevine" : "Protected") : "Open";
+    stage?.classList.toggle("is-open-play", !wantDrm);
     try {
-      if (vdoId) {
+      if (wantDrm && vdoId) {
         await loadVdoLesson(vdoId);
         loadEl.classList.remove("show");
         showUi();
@@ -647,13 +674,32 @@ function renderLearnPage() {
     e.stopPropagation();
     togglePlay();
   });
-  document.getElementById("endPlay").addEventListener("click", (e) => {
+  endCard.addEventListener("click", (e) => {
     e.stopPropagation();
-    loadLesson(currentLesson + 1);
-  });
-  document.getElementById("endCancel").addEventListener("click", (e) => {
-    e.stopPropagation();
-    endCard.hidden = true;
+    if (e.target.closest("[data-review-kind], [data-star], textarea, input")) return;
+    const go = e.target.closest("[data-nudge-id]");
+    if (go && typeof takeNextOffer === "function") {
+      takeNextOffer(go.dataset.nudgeKind || "course", go.dataset.nudgeId);
+      return;
+    }
+    const buy = e.target.closest("[data-nudge-buy]");
+    if (buy && typeof enroll === "function") {
+      enroll(buy.dataset.nudgeBuy);
+      return;
+    }
+    const certBtn = e.target.closest("[data-cert-download]");
+    if (certBtn && typeof downloadBizgarhCertificate === "function") {
+      const watcher = getUser();
+      const course = allCourses().find((x) => x.id === certBtn.dataset.certDownload);
+      const row = watcher && course && typeof certFor === "function" ? certFor(watcher.email, course.id) : null;
+      if (row && course) downloadBizgarhCertificate(row, course);
+      return;
+    }
+    if (e.target.closest("#endPlay")) {
+      loadLesson(currentLesson + 1);
+      return;
+    }
+    if (e.target.closest("#endCancel")) hideEndCard();
   });
   document.getElementById("keysClose").addEventListener("click", () => {
     document.getElementById("ytKeys").hidden = true;

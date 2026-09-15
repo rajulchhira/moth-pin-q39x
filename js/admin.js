@@ -923,6 +923,9 @@ document.addEventListener("DOMContentLoaded", () => {
     f.hours.value = c.hours;
     f.lessons.value = c.lessons;
     f.description.value = c.description || "";
+    if (f.banner) f.banner.value = c.banner && !String(c.banner).startsWith("data:") ? c.banner : "";
+    if (f.bannerFile) f.bannerFile.value = "";
+    if (f.bannerClear) f.bannerClear.checked = false;
     document.getElementById("editCourseOverlay").classList.add("open");
   }
   document.getElementById("closeEditCourse")?.addEventListener("click", () => {
@@ -931,7 +934,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("editCourseOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "editCourseOverlay") e.currentTarget.classList.remove("open");
   });
-  document.getElementById("editCourseForm")?.addEventListener("submit", (e) => {
+  document.getElementById("editCourseForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
     const id = f.courseId.value;
@@ -939,6 +942,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!c || !canEditCourse(c)) return;
     const s = staffNow();
     const instructor = isOwner() ? f.instructor.value.trim() : s.name;
+    const banner = await resolveCourseBanner(f, c.banner || "");
     applyCoursePatch(id, {
       title: f.title.value.trim(),
       instructor,
@@ -947,7 +951,8 @@ document.addEventListener("DOMContentLoaded", () => {
       cat: f.cat.value,
       hours: f.hours.value,
       lessons: Number(f.lessons.value),
-      description: f.description.value.trim()
+      description: f.description.value.trim(),
+      banner
     });
     if (COVERS[c.cover] || COVERS[id]) {
       COVERS[c.cover || id] = { bg: (COVERS[c.cover] || COVERS[id] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)" }).bg, title: f.title.value.trim().slice(0, 14).toUpperCase(), sub: instructor };
