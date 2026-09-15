@@ -119,38 +119,31 @@ function renderLearnPage() {
               </div>
             </div>
             <div class="player-row">
-              <button type="button" id="playBtn" class="yt-btn" data-tip="Play (k)" aria-label="Play">${ytIcon("play")}</button>
-              <button type="button" id="nextBtn" class="yt-btn" data-tip="Next lesson (Shift+N)" aria-label="Next lesson">${ytIcon("next")}</button>
-              <div class="yt-vol">
-                <button type="button" id="muteBtn" class="yt-btn" data-tip="Mute (m)" aria-label="Mute">${ytIcon("vol")}</button>
-                <div class="yt-vol-rail">
-                  <input type="range" id="vol" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+              <div class="yt-left">
+                <button type="button" id="playBtn" class="yt-btn" data-tip="Play (k)" aria-label="Play">${ytIcon("play")}</button>
+                <button type="button" id="nextBtn" class="yt-btn" data-tip="Next lesson (Shift+N)" aria-label="Next lesson">${ytIcon("next")}</button>
+                <div class="yt-vol">
+                  <button type="button" id="muteBtn" class="yt-btn" data-tip="Mute (m)" aria-label="Mute">${ytIcon("vol")}</button>
+                  <div class="yt-vol-rail">
+                    <input type="range" id="vol" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+                  </div>
                 </div>
+                <button type="button" id="timeLabel" class="yt-time" data-tip="Remaining time">0:00 / 0:00</button>
               </div>
-              <button type="button" id="timeLabel" class="yt-time" data-tip="Remaining time">0:00 / 0:00</button>
-              <span class="yt-spacer"></span>
-              <button type="button" id="autoBtn" class="yt-auto" data-tip="Autoplay" aria-label="Autoplay"><i></i></button>
-              <button type="button" id="ccBtn" class="yt-btn" data-tip="Subtitles (c)" aria-label="Subtitles">${ytIcon("cc")}</button>
-              <div class="yt-gear-wrap">
-                <button type="button" id="gearBtn" class="yt-btn" data-tip="Settings" aria-label="Settings">${ytIcon("gear")}</button>
-                <div class="yt-menu" id="settingsMenu" hidden>
-                  <button type="button" data-menu="speed">Playback speed <span><b id="speedNow">Normal</b> ›</span></button>
-                  <button type="button" data-menu="cc">Subtitles/CC <span><b id="ccNow">Off</b> ›</span></button>
-                  <button type="button" data-menu="quality">Quality <span><b id="qualNow">Auto</b> ›</span></button>
-                  <button type="button" data-menu="help">Keyboard shortcuts</button>
+              <div class="yt-right">
+                <div class="yt-gear-wrap">
+                  <button type="button" id="gearBtn" class="yt-btn" data-tip="Settings" aria-label="Settings">${ytIcon("gear")}</button>
+                  <div class="yt-menu" id="settingsMenu" hidden>
+                    <button type="button" data-menu="speed">Playback speed <span><b id="speedNow">Normal</b> ›</span></button>
+                    <button type="button" data-menu="quality">Quality <span><b id="qualNow">Auto</b> ›</span></button>
+                    <button type="button" data-menu="help">Keyboard shortcuts</button>
+                  </div>
+                  <div class="yt-menu" id="speedMenu" hidden></div>
+                  <div class="yt-menu" id="qualMenu" hidden></div>
                 </div>
-                <div class="yt-menu" id="speedMenu" hidden></div>
-                <div class="yt-menu" id="ccMenu" hidden>
-                  <button type="button" data-back="1">${ytIcon("back")} Subtitles/CC</button>
-                  <button type="button" data-cc="off" class="on"><span>Off</span></button>
-                  <button type="button" data-cc="en"><span>English</span></button>
-                  <button type="button" data-cc="hi"><span>Hindi</span></button>
-                </div>
-                <div class="yt-menu" id="qualMenu" hidden></div>
+                <button type="button" id="theaterBtn" class="yt-btn yt-desktop" data-tip="Theater mode (t)" aria-label="Theater mode">${ytIcon("theater")}</button>
+                <button type="button" id="fsBtn" class="yt-btn" data-tip="Full screen (f)" aria-label="Full screen">${ytIcon("fs")}</button>
               </div>
-              <button type="button" id="miniBtn" class="yt-btn" data-tip="Miniplayer (i)" aria-label="Miniplayer">${ytIcon("mini")}</button>
-              <button type="button" id="theaterBtn" class="yt-btn" data-tip="Theater mode (t)" aria-label="Theater mode">${ytIcon("theater")}</button>
-              <button type="button" id="fsBtn" class="yt-btn" data-tip="Full screen (f)" aria-label="Full screen">${ytIcon("fs")}</button>
             </div>
           </div>
           <div class="yt-tooltip" id="ytTip" hidden></div>
@@ -162,8 +155,8 @@ function renderLearnPage() {
               <li><b>k</b> / Space — Play / pause</li>
               <li><b>j</b> / <b>l</b> — Back / forward 10s</li>
               <li><b>←</b> / <b>→</b> — Back / forward 5s</li>
-              <li><b>m</b> Mute · <b>f</b> Full screen · <b>t</b> Theater · <b>i</b> Miniplayer</li>
-              <li><b>c</b> Subtitles · <b>0–9</b> Seek · <b>&lt;</b> <b>&gt;</b> Speed</li>
+              <li><b>m</b> Mute · <b>f</b> Full screen · <b>t</b> Theater</li>
+              <li><b>0–9</b> Seek · <b>&lt;</b> <b>&gt;</b> Speed</li>
               <li><b>Shift+N</b> Next · <b>Shift+P</b> Previous</li>
             </ul>
             <button type="button" class="btn btn-primary" id="keysClose">Got it</button>
@@ -211,7 +204,6 @@ function renderLearnPage() {
   const muteBtn = document.getElementById("muteBtn");
   const bigPlay = document.getElementById("ytBigPlay");
   const bezel = document.getElementById("ytBezel");
-  const cueEl = document.getElementById("ytCue");
   const endCard = document.getElementById("endCard");
   const wrap = root.querySelector(".learn-wrap");
   if (window.__drmTeardown) window.__drmTeardown();
@@ -220,7 +212,6 @@ function renderLearnPage() {
   const drmSig = { signal: drmCtl.signal };
   let currentLesson = 0;
   let blobUrl = "";
-  let vttUrl = "";
   let wx = 48;
   let wy = 72;
   let painting = true;
@@ -237,11 +228,8 @@ function renderLearnPage() {
   let remainTime = false;
   let clickTimer = 0;
   let rate = Number(localStorage.getItem("tradeshalaPlaybackRate") || 1) || 1;
-  let autoplay = localStorage.getItem("tradeshalaAutoplay") !== "0";
   let lastVol = 1;
   let quality = localStorage.getItem("tradeshalaQuality") || "auto";
-  let captionsOn = localStorage.getItem("tradeshalaCaptions") === "1";
-  let captionLang = localStorage.getItem("tradeshalaCaptionLang") || "en";
   let skipLeftAmt = 0;
   let skipRightAmt = 0;
   let skipReset;
@@ -419,81 +407,13 @@ function renderLearnPage() {
     host.innerHTML = [0.2, 0.45, 0.72].map((m) => `<i style="left:${m * 100}%"></i>`).join("");
   }
   function closeMenus() {
-    ["settingsMenu", "speedMenu", "ccMenu", "qualMenu"].forEach((id) => {
+    ["settingsMenu", "speedMenu", "qualMenu"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = true;
     });
   }
   function typeInField(e) {
     return e.target.closest("input, textarea, select, [contenteditable]");
-  }
-  function setCaptions(on, lang) {
-    captionsOn = on;
-    if (lang) captionLang = lang;
-    localStorage.setItem("tradeshalaCaptions", on ? "1" : "0");
-    localStorage.setItem("tradeshalaCaptionLang", captionLang);
-    document.getElementById("ccBtn").classList.toggle("on", on);
-    document.getElementById("ccNow").textContent = on ? (captionLang === "hi" ? "Hindi" : "English") : "Off";
-    document.querySelectorAll("#ccMenu [data-cc]").forEach((b) => {
-      const val = on ? captionLang : "off";
-      b.classList.toggle("on", b.dataset.cc === val);
-    });
-    [...(video.textTracks || [])].forEach((t) => { t.mode = "hidden"; });
-    if (!on) cueEl.classList.remove("show");
-  }
-  function attachCaptions(lesson, duration) {
-    if (vttUrl) URL.revokeObjectURL(vttUrl);
-    [...video.querySelectorAll("track")].forEach((t) => t.remove());
-    const d = duration || 60;
-    const en = [
-      [0, Math.min(7, d), lesson.t],
-      [7, Math.min(18, d), "Pause and write the setup, invalidation, and size."],
-      [18, Math.min(32, d), `${c.instructor} · ${c.title}`],
-      [32, Math.min(48, d), "Do not copy trades. Follow the process on your own chart."],
-      [48, d, "Watermarked classroom · Bizgarh"]
-    ];
-    const hi = [
-      [0, Math.min(7, d), lesson.t],
-      [7, Math.min(18, d), "Pause karke setup, invalidation aur size likho."],
-      [18, Math.min(32, d), `${c.instructor} · ${c.title}`],
-      [32, Math.min(48, d), "Trade copy mat karo. Apne chart par process follow karo."],
-      [48, d, "Watermarked classroom · Bizgarh"]
-    ];
-    const rows = captionLang === "hi" ? hi : en;
-    const vtt = "WEBVTT\n\n" + rows.filter((x) => x[1] > x[0]).map((x, i) => {
-      const a = fmtVtt(x[0]);
-      const b = fmtVtt(x[1]);
-      return `${i + 1}\n${a} --> ${b}\n${x[2]}`;
-    }).join("\n\n");
-    vttUrl = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
-    const track = document.createElement("track");
-    track.kind = "subtitles";
-    track.label = captionLang === "hi" ? "Hindi" : "English";
-    track.srclang = captionLang;
-    track.src = vttUrl;
-    video.appendChild(track);
-    const kick = () => {
-      const tt = video.textTracks[0];
-      if (!tt) return;
-      tt.mode = "hidden";
-      tt.oncuechange = () => {
-        const cue = tt.activeCues && tt.activeCues[0];
-        if (captionsOn && cue) {
-          cueEl.textContent = cue.text;
-          cueEl.classList.add("show");
-        } else cueEl.classList.remove("show");
-      };
-    };
-    track.addEventListener("load", kick);
-    setTimeout(kick, 250);
-  }
-  function fmtVtt(sec) {
-    const t = Math.max(0, sec);
-    const h = Math.floor(t / 3600);
-    const m = Math.floor((t % 3600) / 60);
-    const s = t % 60;
-    const ss = s.toFixed(3).padStart(6, "0");
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${ss}`;
   }
 
   function clearVdo() {
@@ -530,10 +450,6 @@ function renderLearnPage() {
       }
       document.getElementById("certAward")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       toast("Certificate ready · download it below");
-      return;
-    }
-    if (autoplay && currentLesson < LESSONS.length - 1) {
-      loadLesson(currentLesson + 1);
       return;
     }
     if (currentLesson < LESSONS.length - 1) {
@@ -630,8 +546,6 @@ function renderLearnPage() {
   }
 
   setRate(rate);
-  document.getElementById("autoBtn").classList.toggle("on", autoplay);
-  setCaptions(captionsOn, captionLang);
   syncVolume();
 
   playBtn.addEventListener("click", (e) => {
@@ -667,16 +581,6 @@ function renderLearnPage() {
     remainTime = !remainTime;
     updateBars();
   });
-  document.getElementById("autoBtn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    autoplay = !autoplay;
-    localStorage.setItem("tradeshalaAutoplay", autoplay ? "1" : "0");
-    e.currentTarget.classList.toggle("on", autoplay);
-  });
-  document.getElementById("ccBtn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    setCaptions(!captionsOn, captionLang);
-  });
   document.getElementById("gearBtn").addEventListener("click", (e) => {
     e.stopPropagation();
     const menu = document.getElementById("settingsMenu");
@@ -693,7 +597,7 @@ function renderLearnPage() {
       document.getElementById("ytKeys").hidden = false;
       return;
     }
-    document.getElementById(btn.dataset.menu === "speed" ? "speedMenu" : btn.dataset.menu === "cc" ? "ccMenu" : "qualMenu").hidden = false;
+    document.getElementById(btn.dataset.menu === "speed" ? "speedMenu" : "qualMenu").hidden = false;
   });
   document.getElementById("speedMenu").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -704,23 +608,6 @@ function renderLearnPage() {
     }
     const b = e.target.closest("[data-rate]");
     if (b) { setRate(b.dataset.rate); closeMenus(); }
-  });
-  document.getElementById("ccMenu").addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (e.target.closest("[data-back]")) {
-      document.getElementById("ccMenu").hidden = true;
-      document.getElementById("settingsMenu").hidden = false;
-      return;
-    }
-    const b = e.target.closest("[data-cc]");
-    if (!b) return;
-    if (b.dataset.cc === "off") setCaptions(false);
-    else {
-      captionLang = b.dataset.cc;
-      setCaptions(true, captionLang);
-      attachCaptions(LESSONS[currentLesson], video.duration);
-    }
-    closeMenus();
   });
   document.getElementById("qualMenu").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -735,21 +622,12 @@ function renderLearnPage() {
     applyQuality();
     closeMenus();
   });
-  document.getElementById("miniBtn").addEventListener("click", (e) => {
+  document.getElementById("theaterBtn")?.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (document.fullscreenElement) document.exitFullscreen?.();
-    wrap.classList.toggle("mini");
-    document.body.classList.toggle("yt-mini-on", wrap.classList.contains("mini"));
-    sizeCanvas();
-  });
-  document.getElementById("theaterBtn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (wrap.classList.contains("mini")) {
-      wrap.classList.remove("mini");
-      document.body.classList.remove("yt-mini-on");
-    }
+    wrap.classList.remove("mini");
+    document.body.classList.remove("yt-mini-on");
     wrap.classList.toggle("theater");
-    document.getElementById("theaterBtn").innerHTML = ytIcon(wrap.classList.contains("theater") ? "theaterOff" : "theater");
+    e.currentTarget.innerHTML = ytIcon(wrap.classList.contains("theater") ? "theaterOff" : "theater");
     sizeCanvas();
   });
   function setFs(on) {
@@ -818,7 +696,6 @@ function renderLearnPage() {
     applyQuality();
     updateBars();
     paintChapters();
-    attachCaptions(LESSONS[currentLesson], video.duration);
   });
   video.addEventListener("waiting", () => {
     clearTimeout(waitTimer);
@@ -971,9 +848,7 @@ function renderLearnPage() {
       arrowdown: () => { video.volume = Math.max(0, video.volume - 0.05); syncVolume(); },
       m: () => muteBtn.click(),
       f: () => document.getElementById("fsBtn").click(),
-      t: () => document.getElementById("theaterBtn").click(),
-      i: () => document.getElementById("miniBtn").click(),
-      c: () => document.getElementById("ccBtn").click(),
+      t: () => document.getElementById("theaterBtn")?.click(),
       home: () => seekTo(0),
       end: () => seekTo(1),
       n: () => { if (e.shiftKey) loadLesson(currentLesson + 1); },

@@ -82,6 +82,7 @@ const ENROLL_KEY = "tradeshalaEnroll";
 const USERS_KEY = "tradeshalaUsers";
 const ALL_ENROLL_KEY = "tradeshalaAllEnrolls";
 const REGS_KEY = "tradeshalaRegs";
+const MENTOR_ENROLL_KEY = "tradeshalaMentorEnroll";
 const TICKETS_KEY = "tradeshalaTickets";
 const EXTRA_COURSES_KEY = "tradeshalaExtraCourses";
 const HIDDEN_COURSES_KEY = "tradeshalaHiddenCourses";
@@ -412,6 +413,11 @@ function iconSvg(name) {
     badge: '<path d="M8 3h8l1 4H7L8 3Z"/><path d="M7 7h10v4a5 5 0 0 1-10 0V7Z"/><path d="M9 19 8 22l4-1 4 1-1-3"/>',
     share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 13.4 7.6 4.2M15.8 6.4 8.2 10.6"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    cal: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+    globe: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4a12 12 0 0 1 0 16M12 4a12 12 0 0 0 0 16"/>',
+    wa: '<path d="M12 4a8 8 0 0 0-6.9 12L4 20l4.1-1.1A8 8 0 1 0 12 4Z"/><path d="M9.2 9.4c.2-.4.4-.4.6-.4h.5c.2 0 .3.1.4.3l.6 1.4c.1.2 0 .4-.1.5l-.4.4c-.1.1-.1.3 0 .5.3.5.8 1 1.3 1.3.2.1.4.1.5 0l.4-.4c.2-.2.4-.2.5-.1l1.4.6c.2.1.3.2.3.4v.5c0 .2 0 .4-.4.6A5.2 5.2 0 0 1 9.2 9.4Z"/>',
+    download: '<path d="M12 4v10"/><path d="m8 10 4 4 4-4"/><path d="M5 18h14"/>',
+    flag: '<path d="M5 21V4"/><path d="M5 4h12l-2.2 4L17 12H5"/>',
     play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5-6-3.5Z" fill="currentColor" stroke="none"/>',
     clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.4 1.6"/>',
     check: '<path d="m6.5 12.2 3.4 3.4 7.6-7.6"/>',
@@ -456,9 +462,12 @@ function categoryCardsHTML(active) {
 }
 
 function webinarBannerHTML(w, i) {
-  return `<div class="web-banner" style="background:${WEB_BANNERS[i % WEB_BANNERS.length]}">
-    <div class="web-banner-copy"><small>Bizgarh</small><b>${w.title}</b></div>
-    <img src="${photoFor(w.by)}" alt="${w.by}">
+  const idx = allWebinars().findIndex((x) => x.id === w.id);
+  const bg = WEB_BANNERS[(i ?? (idx < 0 ? 0 : idx)) % WEB_BANNERS.length];
+  return `<div class="web-banner" style="background:${bg}">
+    <span class="wb-chip">Bizgarh</span>
+    <div class="web-banner-copy"><small>${escapeHtml(webinarProfile(w).tag)}</small><b>${escapeHtml(w.title)}</b></div>
+    <img src="${photoFor(w.by)}" alt="${escapeHtml(w.by)}">
   </div>`;
 }
 
@@ -563,8 +572,18 @@ function pagePath() {
 
 function afterAuthArrive() {
   const pending = sessionStorage.getItem("tradeshalaPendingBuy");
-  if (pending) {
+    if (pending) {
     location.href = "/course?id=" + encodeURIComponent(pending);
+    return;
+  }
+  const pendingWeb = sessionStorage.getItem("tradeshalaPendingWebinar");
+  if (pendingWeb) {
+    location.href = "/webinar?id=" + encodeURIComponent(pendingWeb);
+    return;
+  }
+  const pendingMentor = sessionStorage.getItem("tradeshalaPendingMentor");
+  if (pendingMentor) {
+    location.href = "/program?id=" + encodeURIComponent(pendingMentor);
     return;
   }
   if (pagePath() === "/dashboard") {
@@ -902,8 +921,789 @@ function seedLiveClasses() {
 }
 function allWebinars() {
   seedLiveClasses();
+  ensureCatalogWebinars();
   return readList(LIVE_KEY);
 }
+function ensureCatalogWebinars() {
+  const list = readList(LIVE_KEY);
+  const extra = [
+    { id: "w4", title: "Opening Range Playbook", by: "Kabir Joshi", at: "2026-09-30T20:00:00", duration: "90 min", kind: "webinar", notes: "Index open, first hour, and defined invalidation." }
+  ];
+  let changed = false;
+  extra.forEach((w) => {
+    if (list.some((x) => x.id === w.id)) return;
+    list.push({
+      ...w,
+      hostEmail: w.by.split(" ")[0].toLowerCase() + "@bizgarh.in",
+      when: formatLiveWhen(w.at),
+      joinUrl: "",
+      status: "scheduled"
+    });
+    changed = true;
+  });
+  if (changed) writeList(LIVE_KEY, list);
+}
+function webinarHref(id) {
+  return "/webinar?id=" + encodeURIComponent(id);
+}
+function webinarStart(w) {
+  const d = new Date(w.at || w.when || "");
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function webinarMins(w) {
+  return Number(w.durationMinutes || String(w.duration || "60").replace(/\D/g, "") || 60);
+}
+function webinarEnd(w) {
+  const start = webinarStart(w);
+  return start ? new Date(start.getTime() + webinarMins(w) * 60000) : null;
+}
+function ordinalDay(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function webinarDateLabel(w) {
+  const d = webinarStart(w);
+  if (!d) return w.when || "";
+  return `${ordinalDay(d.getDate())} ${d.toLocaleString("en-IN", { month: "long" })}, ${d.getFullYear()}`;
+}
+function webinarTimeLabel(w) {
+  const a = webinarStart(w);
+  const b = webinarEnd(w);
+  const fmt = (x) => x.toLocaleString("en-IN", { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  if (!a) return w.when || "";
+  return b ? `${fmt(a)} - ${fmt(b)}` : fmt(a);
+}
+function webinarWhenShort(w) {
+  const d = webinarStart(w);
+  if (!d) return w.when || "";
+  return `${d.getDate()} ${d.toLocaleString("en-IN", { month: "long" })}, ${d.getFullYear()} · ${d.toLocaleString("en-IN", { hour: "numeric", minute: "2-digit" }).toLowerCase()}`;
+}
+function countdownParts(msTarget) {
+  const ms = Math.max(0, Number(msTarget) - Date.now());
+  const s = Math.floor(ms / 1000);
+  return {
+    days: String(Math.floor(s / 86400)).padStart(2, "0"),
+    hours: String(Math.floor((s % 86400) / 3600)).padStart(2, "0"),
+    mins: String(Math.floor((s % 3600) / 60)).padStart(2, "0"),
+    secs: String(s % 60).padStart(2, "0"),
+    done: ms <= 0
+  };
+}
+function countdownHTML(target, label) {
+  const t = target ? target.getTime() : 0;
+  const p = countdownParts(t);
+  return `<div class="wb-count" data-count="${t}" aria-label="${escapeHtml(label || "Starts in")}">
+    <span><b data-k="days">${p.days}</b><small>Days</small></span>
+    <span><b data-k="hours">${p.hours}</b><small>Hours</small></span>
+    <span><b data-k="mins">${p.mins}</b><small>Min</small></span>
+    <span><b data-k="secs">${p.secs}</b><small>Sec</small></span>
+  </div>`;
+}
+function countdownLineHTML(target) {
+  const t = target ? target.getTime() : 0;
+  const p = countdownParts(t);
+  return `<em class="ld-uplive-cd" data-count="${t}" data-line="1">Starts in ${p.days}d : ${p.hours}h : ${p.mins}m : ${p.secs}s</em>`;
+}
+function startWbCountdown(root = document) {
+  if (window.__wbTick) clearInterval(window.__wbTick);
+  const boxes = root.querySelectorAll("[data-count]");
+  if (!boxes.length) return;
+  const tick = () => {
+    boxes.forEach((el) => {
+      const p = countdownParts(el.dataset.count);
+      if (el.dataset.line) {
+        el.textContent = `Starts in ${p.days}d : ${p.hours}h : ${p.mins}m : ${p.secs}s`;
+        return;
+      }
+      const set = (k, v) => { const n = el.querySelector(`[data-k="${k}"]`); if (n) n.textContent = v; };
+      set("days", p.days);
+      set("hours", p.hours);
+      set("mins", p.mins);
+      set("secs", p.secs);
+      el.classList.toggle("is-live", p.done);
+    });
+  };
+  tick();
+  window.__wbTick = setInterval(tick, 1000);
+}
+function bindWbMotion(root) {
+  if (!root || !("IntersectionObserver" in window)) {
+    root?.querySelectorAll("[data-wb]")?.forEach((el) => el.classList.add("wb-on"));
+    return;
+  }
+  const io = new IntersectionObserver((ents) => {
+    ents.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add("wb-on");
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -40px" });
+  root.querySelectorAll("[data-wb]").forEach((el) => io.observe(el));
+}
+
+function faqSectionHTML(items, title) {
+  if (!items || !items.length) return "";
+  return `<section class="wb-block faq-block" data-wb>
+    <h2>${escapeHtml(title || "Frequently Asked Questions")}</h2>
+    <div class="wb-faqs">${items.map((f, i) => `
+      <article class="wb-faq${i === 0 ? " open" : ""}">
+        <button type="button" data-faq>${escapeHtml(f.q)}<i></i></button>
+        <div class="ans"><p>${escapeHtml(f.a)}</p></div>
+      </article>`).join("")}</div>
+  </section>`;
+}
+function bindFaqs(root) {
+  (root || document).querySelectorAll("[data-faq]").forEach((btn) => {
+    if (btn.dataset.boundFaq) return;
+    btn.dataset.boundFaq = "1";
+    btn.addEventListener("click", () => btn.closest(".wb-faq")?.classList.toggle("open"));
+  });
+}
+function mountStaticFaqs() {
+  document.querySelectorAll("[data-faq-set]").forEach((el) => {
+    const items = FAQ_SETS[el.dataset.faqSet];
+    if (!items) return;
+    el.innerHTML = faqSectionHTML(items, el.dataset.faqTitle || "Frequently Asked Questions");
+    bindFaqs(el);
+    bindWbMotion(el);
+  });
+}
+
+const FAQ_SETS = {
+  home: [
+    { q: "What is Bizgarh?", a: "Bizgarh is an education classroom for Indian traders and long-term investors. You get recorded courses, live webinars, mentorship desks, and optional 1:1 calls. We teach process, risk, and journals — not tips." },
+    { q: "Is this investment advice or portfolio management?", a: "No. Everything on Bizgarh is education. You write your own process and size. We do not give buy/sell calls or manage money." },
+    { q: "What is the difference between a course, a webinar, and a mentorship?", a: "A course is a recorded classroom you can finish at your pace. A webinar is a single live session. A mentorship is a multi-week live desk with the same mentor, a community room, and recordings when they are uploaded." },
+    { q: "Do I need an account?", a: "Yes. Login to enroll, join a live room, continue a classroom, or see certificates. After login you land on your dashboard." },
+    { q: "How do I start if I am new?", a: "Open Courses, pick a beginner or Hindi classroom, or sit in a live webinar first. Mentorships are better once you already have a journal." },
+    { q: "Can I learn on my phone?", a: "Yes. The site, classroom player, mentorship pages, and live rooms are built for mobile browsers." },
+    { q: "What language are the classrooms in?", a: "Most desks run in English and Hindi. Each course or live page lists the language." },
+    { q: "Where do I get help?", a: "Use Contact or write to desk@bizgarh.com. For a program you already joined, use the community room for follow-ups." }
+  ],
+  mentorList: [
+    { q: "What is a live mentorship program?", a: "A guided multi-week desk with a working trader. You enroll, join live sessions inside Bizgarh, use the community room, and review recordings when they are uploaded." },
+    { q: "How is this different from a webinar?", a: "A webinar is one session. A mentorship runs for several weeks with a fixed curriculum, weekly reviews, and a seat in the desk community." },
+    { q: "How do I enroll?", a: "Open any program card, then tap Enroll Now. You need to be logged in. After enroll, the same page shows Join desk and Join community." },
+    { q: "Where do enrolled programs appear?", a: "On your dashboard under My Mentorship, and in My Learning → My Mentorship." },
+    { q: "Is the listed price a one-time fee?", a: "Yes. The price on the card is for that program. The struck-through amount is the listed full price." },
+    { q: "Do I get a certificate?", a: "Mentorships are live desks. Course-completion certificates are issued when you finish a recorded classroom. Ask the mentor during the program if they issue a participation note." },
+    { q: "Is this investment advice?", a: "No. Bizgarh does not give investment advice or manage portfolios. You write your own process and size." },
+    { q: "Can I request a callback before I enroll?", a: "Yes. Open the program and tap Request a callback. The desk will reach you on the email on your account." }
+  ],
+  mentorship: [
+    { q: "Will the sessions be live?", a: "Yes. Sessions run inside the Bizgarh classroom. After you enroll, use Join desk on this page, or open the program from My Learning." },
+    { q: "How do I enroll?", a: "Tap Enroll Now and log in if asked. You will see Already enrolled, Join desk, and Join community on this same page." },
+    { q: "What happens after I enroll?", a: "The program is saved to My Mentorship on your dashboard and My Learning. You can join the desk and the Telegram community from this page." },
+    { q: "How do I join the live desk?", a: "Tap Join desk when you are enrolled. The room opens in Bizgarh. You can also reach it from My Learning → My Mentorship." },
+    { q: "Can I skip a session?", a: "Prefer not to. If you miss one, the recording — when the mentor uploads it — stays on this page for enrolled learners." },
+    { q: "How long do I have access to recordings?", a: "One year from the day you enroll, on this same program page, whenever a recording is uploaded." },
+    { q: "Will I get to ask doubts?", a: "Yes. Live Q&A is part of each session. The community room is for short follow-ups, not for personal trading calls." },
+    { q: "What is the community room?", a: "An exclusive Telegram room for this desk: session notes, reminders, and follow-up questions. It is not a tip channel." },
+    { q: "What does Request a callback do?", a: "It sends your name and email to the desk. Someone from Bizgarh will contact you about this program. It does not enroll you." },
+    { q: "Is this investment advice?", a: "No. Ideas shared on this desk are education only. You write your own process and size. Bizgarh does not manage portfolios." },
+    { q: "Who is this program for?", a: "Traders and learners who want a written process they can run after the live desk closes. Beginners can join if they are willing to journal. It is not a signals service." },
+    { q: "What should I prepare before the first session?", a: "Bring the broker you already use, a journal, and the basics listed under Key concepts on this page. You do not need a new platform." },
+    { q: "Can I attend on mobile?", a: "Yes. Enroll, join the desk, and watch recordings in your mobile browser. Keep the phone charged for live sessions." },
+    { q: "What language is the desk in?", a: "Mentors teach in English and Hindi as needed. Curriculum text on this page is in English." },
+    { q: "What if seats are full?", a: "The page shows seats left. If a batch is full, request a callback and we will tell you about the next desk." },
+    { q: "Who do I write to for billing or access issues?", a: "Email desk@bizgarh.com or use the Contact page. Mention this program title and the email on your account." }
+  ],
+  webinarList: [
+    { q: "Are webinars free?", a: "Most Bizgarh webinars are listed as free for registered learners. The detail page shows the price if a session is paid." },
+    { q: "How do I enroll in a webinar?", a: "Open the webinar card and tap Enroll Now. Login is required. You then see Join Now and the community link." },
+    { q: "Where do I join when it goes live?", a: "From the webinar page or from your dashboard under upcoming live sessions. Join Now opens the Bizgarh live room." },
+    { q: "Will I get a recording?", a: "If the mentor uploads one, registered learners see it on the same webinar page." },
+    { q: "Is there a certificate?", a: "Yes. Registered learners get a certificate of participation after the session." },
+    { q: "How is a live class different from a webinar?", a: "Both run in the Bizgarh room. Webinars are public sessions. Live classes may be tied to a classroom or mentorship desk." }
+  ],
+  webinar: [
+    { q: "Will this webinar be conducted live?", a: "Yes. Registered learners join the Bizgarh room from this page when the teacher starts the session." },
+    { q: "How do I enroll?", a: "Tap Enroll Now and log in. The page then shows Already enrolled, Join Now, and Join community." },
+    { q: "How do I join at start time?", a: "Stay on this page or open it from your dashboard. Tap Join Now. The countdown shows when the room opens." },
+    { q: "Will I have access to the recording?", a: "If the mentor uploads a recording after class, it appears on this same page for registered learners." },
+    { q: "Is there a certificate?", a: "Yes. Registered learners receive a certificate of participation after the session." },
+    { q: "Do I need a paid course first?", a: "No. A webinar stands on its own. A related classroom is useful but not required." },
+    { q: "What should I bring?", a: "A journal and one question you already have. This is not a tip feed — you write the process as the mentor works." },
+    { q: "Is this investment advice?", a: "No. The session is education. You make your own decisions and size." },
+    { q: "Can I join from my phone?", a: "Yes. Use your mobile browser. Allow camera or mic only if the room asks and you want to speak." },
+    { q: "What is Join community?", a: "A Telegram room for reminders and follow-ups for this session. It is not a WhatsApp broadcast or a calls channel." },
+    { q: "What if I miss the live time?", a: "Register anyway. If a recording is uploaded, you can watch it here. The certificate still applies if you registered." },
+    { q: "Who can I contact if I cannot join?", a: "Write to desk@bizgarh.com with the webinar title and your login email." }
+  ],
+  courseList: [
+    { q: "How do I buy a course?", a: "Open a course card and complete enroll while logged in. Owned classrooms then appear on your dashboard and in My Learning." },
+    { q: "Can I watch at my own pace?", a: "Yes. Courses are recorded classrooms. Your progress and last lesson are saved to your account." },
+    { q: "When do I get a certificate?", a: "After you finish every lesson in that classroom. View and download it from My Learning → My Certificates." },
+    { q: "Is the community included?", a: "Yes, after you own the course. The Telegram room on the course page unlocks for students of that classroom." },
+    { q: "Are courses investment advice?", a: "No. Classrooms teach process and risk. They are not recommendations or portfolio management." },
+    { q: "Can I filter Hindi or beginner classrooms?", a: "Yes. Use the chips on this page: Beginners, Hindi, Options, Investing, Charts, and more." }
+  ],
+  course: [
+    { q: "How do I start this classroom?", a: "Enroll while logged in. The preview becomes the full player and you can continue from any lesson." },
+    { q: "Will my progress be saved?", a: "Yes. The last lesson and completion percent stay on your dashboard and in My Learning." },
+    { q: "When is the certificate issued?", a: "When every lesson is complete. You can view and download it from this course and from My Certificates." },
+    { q: "What is in Bonus resources?", a: "Student access to the practice desk and community for this course, after you own it." },
+    { q: "Why is Community locked?", a: "The room opens only after you enroll in this course. It is for students, not a public tip feed." },
+    { q: "Can I watch on mobile?", a: "Yes. The player stays on screen on a phone. Use play, next, mute, and fullscreen from the bar." },
+    { q: "Which language is original?", a: "The first language chip is the original track. You can switch labels on the preview; the classroom follows the course language." },
+    { q: "Is this investment advice?", a: "No. This classroom is education. You write your own process and size." },
+    { q: "How long do I keep access?", a: "As long as the course stays on your Bizgarh account. Certificates remain available after you finish." },
+    { q: "Who do I contact for playback issues?", a: "Use Contact or desk@bizgarh.com. Mention the course title, lesson name, and your login email." }
+  ],
+  live: [
+    { q: "What can I join from this page?", a: "Live webinars, live classes, mentorship desks, and 1:1 call requests. Each card opens a detail page before you enter the room." },
+    { q: "Do I need to register before joining?", a: "Yes. Enroll or register on the detail page while logged in. Join Now then opens the Bizgarh room." },
+    { q: "Where does the live video run?", a: "Inside Bizgarh, not on Zoom. Use Join desk or Join Now from the program or webinar page." },
+    { q: "Can I book a 1:1 from here?", a: "Yes. Scroll to Book a 1:1 call, pick a topic and time, and submit while logged in. After approval you join inside Bizgarh." }
+  ],
+  call: [
+    { q: "How long is a 1:1 call?", a: "45 minutes on your journal, risk, or a stuck setup. It is not a live trading call service." },
+    { q: "When do I get the room?", a: "After the desk approves your slot. You will join from Bizgarh using the same account email." },
+    { q: "What should I write in Notes?", a: "What is stuck: a setup, a size rule, or a journal week. Bring that to the call." },
+    { q: "Can I pick a mentor?", a: "Yes, or leave Any available. We assign someone who teaches that topic." },
+    { q: "Is a 1:1 investment advice?", a: "No. The mentor reviews your process. You still make your own decisions." }
+  ],
+  dashboard: [
+    { q: "What is Continue learning?", a: "The classroom you last opened that is not finished. Tap it to resume the same lesson." },
+    { q: "Where are my live sessions?", a: "Your upcoming webinar appears under Your upcoming live sessions. Mentorships appear under My Mentorship." },
+    { q: "How do I open My Mentorship?", a: "Use the card on this page, Quick Actions → My Mentorship, or My Learning → My Mentorship." },
+    { q: "Where are my certificates?", a: "Quick Actions → My Certificates, or My Learning → My Certificates. Finish every lesson in a course to issue one." },
+    { q: "Why did I land here after login?", a: "Logged-in learners open the dashboard so you can continue, instead of the public homepage." }
+  ],
+  learning: [
+    { q: "What is in My Courses?", a: "Classrooms you own. Ongoing is not finished yet. Completed is 100% watched." },
+    { q: "What is in Webinars?", a: "Sessions you enrolled in. Ongoing is still scheduled or live. Completed has ended." },
+    { q: "What is in My Mentorship?", a: "Programs you enrolled in. Open a card to join the desk, read the curriculum, or enter the community." },
+    { q: "How do certificates work?", a: "Finish every lesson in a course. Then open My Certificates to view or download the PNG." },
+    { q: "I enrolled but I do not see the tab count go up.", a: "Refresh the page after login. Mentorship and webinar lists are stored on this browser for your account email." },
+    { q: "Can I switch between Ongoing and Completed?", a: "Yes. The chips under each tab filter that list only." }
+  ],
+  cert: [
+    { q: "When is a certificate issued?", a: "After you complete every lesson in that classroom. It then appears here and in My Certificates." },
+    { q: "How do I download it?", a: "Tap Download PNG. Your name and the course title are printed on the certificate." },
+    { q: "Can I print a PDF?", a: "Yes. Use Print / PDF and save from the browser print dialog." },
+    { q: "The page says it is not issued yet.", a: "Finish the remaining lessons, then return. Certificates are not issued for webinars or mentorships unless a classroom is completed." },
+    { q: "Whose name is on the certificate?", a: "The name on your Bizgarh account. Update it in My Profile before you download if you need a correction." }
+  ],
+  contact: [
+    { q: "How fast will you reply?", a: "We reply to desk@bizgarh.com and this form within one working day." },
+    { q: "What should I include?", a: "Your login email, the course or program title, and what is broken: enroll, player, live room, or certificate." },
+    { q: "Is this the right place for refund or billing questions?", a: "Yes. Write billing in the message. Do not send passwords or OTPs." },
+    { q: "Can I ask a trading doubt here?", a: "Use the community room or a 1:1 for process questions. This form is for access and account help." }
+  ]
+};
+
+function isWebinarRegistered(id, email) {
+  const mail = email || getUser()?.email;
+  if (!mail) return false;
+  return readList(REGS_KEY).some((r) => r.id === id && r.email === mail);
+}
+function webinarCommunityUrl(w) {
+  const channels = typeof telegramChannels === "function" ? telegramChannels() : [];
+  const hit = channels.find((x) => x.creatorEmail === w.hostEmail) || channels[0];
+  return hit?.url || "https://t.me/bizgarh_breakout";
+}
+function webinarProfile(w) {
+  const mentor = MENTORS.find((m) => m.name === w.by) || {};
+  const pack = {
+    w1: {
+      tag: "Nifty options",
+      listPrice: 2999,
+      seats: 80,
+      lang: "Hindi, English",
+      exp: "10+ Years of Experience",
+      learners: "12,480 Learners",
+      learn: [
+        "The 60-minute theory and the right trading mindset",
+        "Gap selection and how to mark the opening range",
+        "Step-by-step execution with a written invalidation",
+        "Risk and trade management to protect your capital"
+      ],
+      about: "A live desk on gap-and-go for Nifty options. You will write the setup, the invalidation, and the size before the first candle of the session.",
+      aboutMore: "This is not a tip feed. Aarav walks one process: locate the gap, wait for acceptance, and leave the trade if the level fails. Bring a journal.",
+      audience: [
+        { t: "Intraday traders", d: "Get a written process for the first hour instead of chasing the open." },
+        { t: "Working professionals", d: "Learn a checklist you can run before the office day starts." },
+        { t: "Serious beginners", d: "See how a working desk sizes risk on index options." }
+      ],
+      bio: "Aarav Mehta is a full-time trader. He teaches process, invalidation, and journal work — not calls."
+    },
+    w2: {
+      tag: "Defined risk",
+      listPrice: 2499,
+      seats: 70,
+      lang: "English, Hindi",
+      exp: "8+ Years of Experience",
+      learners: "7,890 Learners",
+      learn: [
+        "How a credit spread is built before you click buy",
+        "Adjustment rules that do not turn into hope",
+        "Defined risk vs undefined size on weekly options",
+        "A journal template for income-style trades"
+      ],
+      about: "Neha walks defined-risk credit spreads for weekly income. You leave with a written risk, not a target.",
+      aboutMore: "We cover which strikes to skip, when to take the loss, and why size is smaller than the premium looks.",
+      audience: [
+        { t: "Options traders", d: "Replace naked selling with a defined-risk structure." },
+        { t: "Income seekers", d: "See why premium is not income until the trade is closed." },
+        { t: "Course students", d: "A live lab for the income playbook classroom." }
+      ],
+      bio: "Neha Kapoor teaches options as risk first. Spreads, adjustments, and weekly review."
+    },
+    w3: {
+      tag: "Price action",
+      listPrice: 1999,
+      seats: 90,
+      lang: "English, Hindi",
+      exp: "12+ Years of Experience",
+      learners: "9,340 Learners",
+      learn: [
+        "How weekly structure is marked before Monday",
+        "Which levels are real and which are decoration",
+        "A swing journal you can keep after the call",
+        "Common mistakes when a level is taken out"
+      ],
+      about: "Vikram reads weekly structure live. One chart, one invalidation, no indicator stack.",
+      aboutMore: "You will mark last week's high, low, and the level that would cancel the idea.",
+      audience: [
+        { t: "Swing traders", d: "Get a weekend process before the next week opens." },
+        { t: "Chart readers", d: "Learn what to ignore on a busy chart." },
+        { t: "Desk builders", d: "Leave with a journal, not a watchlist of 40 names." }
+      ],
+      bio: "Vikram Singh coaches price action without the indicator pile. Structure, then size."
+    },
+    w4: {
+      tag: "Index open",
+      listPrice: 1999,
+      seats: 75,
+      lang: "Hindi, English",
+      exp: "9+ Years of Experience",
+      learners: "6,112 Learners",
+      learn: [
+        "How the opening range is defined on index options",
+        "When to stand aside in the first 15 minutes",
+        "A written invalidation for Bank Nifty opens",
+        "Size rules that survive a fast tape"
+      ],
+      about: "Kabir runs the opening-range playbook on index options. First hour only. No afternoon noise.",
+      aboutMore: "We mark the range, wait for acceptance, and leave if the range fails. Bring yesterday's journal.",
+      audience: [
+        { t: "Index traders", d: "A process for the open instead of chasing the first spike." },
+        { t: "Working desks", d: "A checklist you can finish before 10:15." },
+        { t: "Students", d: "Live lab for the opening-range classroom." }
+      ],
+      bio: "Kabir Joshi teaches index options with a clock. Opening range, then stop."
+    }
+  }[w.id] || {};
+  return {
+    tag: pack.tag || (liveKindOf(w) === "class" ? "Live class" : "Live webinar"),
+    listPrice: pack.listPrice || 1999,
+    price: w.free === false ? Number(w.price || 0) : 0,
+    seats: pack.seats || 80,
+    lang: pack.lang || "Hindi, English",
+    exp: pack.exp || mentor.tag || "Working trader",
+    learners: pack.learners || "",
+    learn: pack.learn || [
+      "A written setup you can run after the session",
+      "Invalidation and size before the first click",
+      "Live Q&A with the mentor",
+      "A journal prompt for the next trading day"
+    ],
+    about: pack.about || w.notes || `${w.title} is a live Bizgarh classroom with ${w.by}.`,
+    aboutMore: pack.aboutMore || "Register to get the room link on this page. Recording, if any, stays here.",
+    audience: pack.audience || [
+      { t: "Active traders", d: "Sit with a working desk and write the process." },
+      { t: "Working professionals", d: "A focused session you can finish the same evening." },
+      { t: "Learners", d: "See how the mentor thinks, then journal it." }
+    ],
+    bio: pack.bio || `${w.by} hosts this live room on Bizgarh.`,
+    faqs: FAQ_SETS.webinar
+  };
+}
+
+const MENTOR_PROGRAMS = [
+  { id: "mp-income", title: "Options Income Mentorship", by: "Neha Kapoor", at: "2026-09-22T18:00:00", weeks: 3, sessions: 10, hours: 12, price: 14999, old: 29999, seats: 18, tint: "#FDE68A", tag: "Defined risk", blurb: "Build a written income process: spreads, adjustments, and a weekly review you can keep after the desk closes." },
+  { id: "mp-gap", title: "Gap & Go Mentorship", by: "Aarav Mehta", at: "2026-09-28T19:00:00", weeks: 4, sessions: 12, hours: 14, price: 12999, old: 24999, seats: 16, tint: "#C7D2FE", tag: "Intraday", blurb: "A four-week desk on gap selection, opening acceptance, and size you can defend." },
+  { id: "mp-or", title: "Opening Range Mentorship", by: "Kabir Joshi", at: "2026-10-01T20:15:00", weeks: 3, sessions: 9, hours: 10, price: 11999, old: 19999, seats: 20, tint: "#FBCFE8", tag: "Index open", blurb: "First-hour process for index options. Mark the range, wait, or stand aside." },
+  { id: "mp-breakout", title: "Intraday Desk Mentorship", by: "Aarav Mehta", at: "2026-09-08T19:00:00", weeks: 4, sessions: 12, hours: 14, price: 15999, old: 29999, seats: 14, tint: "#DDD6FE", tag: "Breakout", blurb: "Live tape, written invalidation, and a journal check every week." },
+  { id: "mp-swing", title: "Swing Structure Mentorship", by: "Vikram Singh", at: "2026-09-01T11:00:00", weeks: 6, sessions: 12, hours: 16, price: 13999, old: 24999, seats: 22, tint: "#BBF7D0", tag: "Price action", blurb: "Weekly structure, real levels, and a weekend recap with Vikram." },
+  { id: "mp-port", title: "Portfolio Construction Lab", by: "Ananya Rao", at: "2026-09-02T10:00:00", weeks: 4, sessions: 8, hours: 10, price: 9999, old: 18999, seats: 24, tint: "#BAE6FD", tag: "Investing", blurb: "Build a 10-year book: SIP, allocation, and a review you can run each quarter." },
+  { id: "mp-opt0", title: "Options from Zero Mentorship", by: "Meera Iyer", at: "2026-08-18T19:30:00", weeks: 6, sessions: 14, hours: 16, price: 11999, old: 21999, seats: 20, tint: "#FED7AA", tag: "Options", blurb: "Calls, puts, expiry, and defined risk before you size up." },
+  { id: "mp-sip", title: "SIP & Allocation Mentorship", by: "Priya Nair", at: "2026-08-04T19:30:00", weeks: 8, sessions: 12, hours: 14, price: 8999, old: 16999, seats: 25, tint: "#FECACA", tag: "Long-term", blurb: "A patient desk for SIP, rebalance, and what not to chase." },
+  { id: "mp-pa", title: "Price Action Mentorship", by: "Vikram Singh", at: "2026-08-20T19:00:00", weeks: 5, sessions: 10, hours: 12, price: 10999, old: 19999, seats: 18, tint: "#A5F3FC", tag: "Charts", blurb: "Read the chart without the indicator pile. Structure, then size." }
+];
+
+function allMentorPrograms() { return MENTOR_PROGRAMS; }
+function mentorHref(id) { return "/program?id=" + encodeURIComponent(id); }
+function mentorEnrolls() { return readList(MENTOR_ENROLL_KEY); }
+function isMentorEnrolled(id, email) {
+  const mail = email || getUser()?.email;
+  return !!mail && mentorEnrolls().some((r) => r.id === id && r.email === mail);
+}
+function myMentorships(email) {
+  return allMentorPrograms().filter((p) => isMentorEnrolled(p.id, email));
+}
+function mentorEnd(p) {
+  return new Date(new Date(p.at).getTime() + (p.weeks || 4) * 7 * 86400000);
+}
+function mentorPhase(p) {
+  const start = new Date(p.at);
+  const end = mentorEnd(p);
+  if (Number.isNaN(start.getTime())) return "upcoming";
+  if (Date.now() > end.getTime()) return "ended";
+  if (Date.now() >= start.getTime()) return "ongoing";
+  return "upcoming";
+}
+function mentorSavePct(p) {
+  return Math.max(0, Math.round((1 - Number(p.price) / Number(p.old || p.price)) * 100));
+}
+function mentorSeatsLeft(p) {
+  return Math.max(0, (p.seats || 20) - mentorEnrolls().filter((r) => r.id === p.id).length);
+}
+function mentorCommunityUrl(p) {
+  const channels = typeof telegramChannels === "function" ? telegramChannels() : [];
+  const host = (p.by || "").split(" ")[0].toLowerCase() + "@bizgarh.in";
+  return (channels.find((x) => x.creatorEmail === host) || channels[0])?.url || "https://t.me/bizgarh_breakout";
+}
+function mentorPack(p) {
+  const packs = {
+    "mp-income": {
+      learn: ["How a credit spread is built before you click", "Adjustment rules that do not become hope", "A weekly income journal", "When to skip the week entirely"],
+      curriculum: ["Defined-risk structure on weekly options", "Strike choice and what to ignore", "Adjustment vs hope", "Size that survives a fast week", "Journal template for income trades", "Live review of student books", "When premium is not income"],
+      outcomes: ["Spot defined-risk income setups", "Read option chain context", "Use time decay with a written plan", "Manage risk without averaging down"]
+    },
+    "mp-gap": {
+      learn: ["Gap selection before the open", "Acceptance vs fade", "A size rule for the first hour", "A journal you can keep after class"],
+      curriculum: ["Pre-open checklist", "Gap quality vs noise", "Opening acceptance", "Invalidation you can write", "Size for the first hour", "When to stand aside", "Weekend recap"],
+      outcomes: ["Choose which gaps to skip", "Write invalidation before entry", "Size without chasing", "Keep a first-hour journal"]
+    }
+  }[p.id] || {};
+  const mentor = MENTORS.find((m) => m.name === p.by) || {};
+  return {
+    learn: packs.learn || [
+      "A written setup you can run after each live desk",
+      "Invalidation and size before the first click",
+      "Weekly review with the mentor",
+      "A journal that survives a bad week"
+    ],
+    curriculum: packs.curriculum || [
+      "How the desk is run each week",
+      "Setup selection on a live chart",
+      "Entry, invalidation, targets",
+      "Position sizing you can follow",
+      "Journal template walkthrough",
+      "Common mistakes to skip",
+      "A process you can repeat"
+    ],
+    outcomes: packs.outcomes || [
+      "Identify high-probability setups",
+      "Read the chart or chain with context",
+      "Use time and size with a plan",
+      "Manage risk without copying trades"
+    ],
+    prep: [
+      "Familiarity with stocks or indices helps",
+      "Know calls, puts, and expiry if this is an options desk",
+      "A basic read of OI or volume is useful, not required",
+      "Bring a journal and the broker you already use"
+    ],
+    who: [
+      { t: "Beginners who want a desk", d: "Sit with a process instead of a tip feed." },
+      { t: "Working professionals", d: "A timed program you can finish around work." },
+      { t: "Traders adding a new book", d: "Learn one process, then journal it." },
+      { t: "Long-term learners", d: "Use the recordings and the weekly review." }
+    ],
+    steps: [
+      { n: "01", t: "Join the desk community", d: "You get the Telegram room for program notes and session reminders." },
+      { n: "02", t: "Attend live inside Bizgarh", d: "Sessions run in the Bizgarh classroom. Join from this page or My Learning." },
+      { n: "03", t: "Review the recording", d: "If a recording is uploaded, registered learners see it here within a day." }
+    ],
+    faqs: [
+      { q: "Can I skip a session?", a: "Prefer not to. If you miss one, the recording — when uploaded — stays on this page for registered learners." },
+      { q: "How long do I have access to recordings?", a: "One year from the day you enroll, on this same program page." },
+      { q: "Will I get to ask doubts?", a: "Yes. Live Q&A is part of each session. The community room is for follow-ups, not for calls." },
+      { q: "Is this investment advice?", a: "No. Bizgarh classrooms are education. You write your own process and size." }
+    ],
+    bio: `${p.by} hosts this mentorship on Bizgarh. ${mentor.role || "Working trader"}. The desk is process, invalidation, and journal work — not a tip feed.`,
+    role: mentor.tag || mentor.role || "Mentor"
+  };
+}
+
+function mentorPriceHTML(p) {
+  return `<div class="mp-price"><b>₹${Number(p.price).toLocaleString("en-IN")}</b><s>₹${Number(p.old).toLocaleString("en-IN")}</s><em>SAVE ${mentorSavePct(p)}%</em></div>`;
+}
+
+function mentorCardHTML(p) {
+  const enrolled = isMentorEnrolled(p.id);
+  return `<a class="mp-card wb-in" href="${mentorHref(p.id)}">
+    <div class="mp-shot" style="--mp:${p.tint}">
+      <span class="mp-live"><i></i> Live on Bizgarh</span>
+      <span class="wb-chip">Bizgarh</span>
+      <h3>${escapeHtml(p.title)}</h3>
+      <p>by ${escapeHtml(p.by)}</p>
+      <img src="${photoFor(p.by)}" alt="">
+    </div>
+    <div class="mp-body">
+      <small>${escapeHtml(webinarWhenShort(p))}</small>
+      <h3>${escapeHtml(p.title)}</h3>
+      <p>by ${escapeHtml(p.by)}</p>
+      ${mentorPriceHTML(p)}
+      ${enrolled ? `<em class="mp-in-pill">Enrolled</em>` : ""}
+    </div>
+  </a>`;
+}
+
+function mentorCtaHTML(p, enrolled) {
+  if (enrolled) {
+    return `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(p.id)}">Join desk ›</a>
+      <a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(mentorCommunityUrl(p))}" target="_blank" rel="noopener">${iconSvg("wa")} Join community</a>`;
+  }
+  return `<button type="button" class="btn btn-primary wb-cta" data-mentor-enroll="${p.id}">Enroll Now ›</button>
+    <button type="button" class="btn btn-ghost wb-cta" data-mentor-call="${p.id}">Request a callback</button>`;
+}
+
+function enrollMentorProgram(id) {
+  sessionStorage.setItem("tradeshalaPendingMentor", id);
+  requireAuth(() => {
+    sessionStorage.removeItem("tradeshalaPendingMentor");
+    const u = getUser();
+    const list = mentorEnrolls();
+    if (list.some((r) => r.id === id && r.email === u.email)) {
+      toast("Already enrolled");
+      renderMentorProgramPage();
+      return;
+    }
+    list.push({ id, name: u.name, email: u.email, at: new Date().toISOString() });
+    writeList(MENTOR_ENROLL_KEY, list);
+    sessionStorage.setItem("tradeshalaMentorPop", "1");
+    toast("You're in the mentorship desk");
+    if (document.getElementById("programRoot")) renderMentorProgramPage();
+    else location.href = mentorHref(id);
+    renderMentorListing();
+    renderLive();
+    renderDashboard();
+    renderMyLearning();
+  });
+}
+
+function requestMentorCallback(id) {
+  requireAuth(() => {
+    const u = getUser();
+    const p = allMentorPrograms().find((x) => x.id === id);
+    const key = typeof CALL_KEY === "string" ? CALL_KEY : "tradeshalaCalls";
+    const list = readList(key);
+    list.push({
+      id: "call-" + Date.now(),
+      name: u.name,
+      email: u.email,
+      topic: "Mentorship · " + (p?.title || id),
+      date: "",
+      time: "",
+      mentor: p?.by || "",
+      status: "pending",
+      notes: "Callback requested from mentorship page",
+      at: new Date().toISOString()
+    });
+    writeList(key, list);
+    toast("Callback requested · the desk will reach you");
+  });
+}
+
+function consumePendingMentor() {
+  const id = sessionStorage.getItem("tradeshalaPendingMentor");
+  if (!id || !getUser()) return;
+  sessionStorage.removeItem("tradeshalaPendingMentor");
+  enrollMentorProgram(id);
+}
+
+function ensureMentorLive(p) {
+  const list = allWebinars();
+  if (list.some((x) => x.id === p.id)) return;
+  list.push({
+    id: p.id,
+    title: p.title,
+    by: p.by,
+    at: p.at,
+    when: formatLiveWhen(p.at),
+    duration: "90 min",
+    kind: "class",
+    hostEmail: (p.by || "desk").split(" ")[0].toLowerCase() + "@bizgarh.in",
+    notes: p.blurb,
+    status: "scheduled",
+    joinUrl: ""
+  });
+  saveWebinars(list);
+}
+
+function downloadMentorCurriculum(id) {
+  const p = allMentorPrograms().find((x) => x.id === id);
+  if (!p) return;
+  const pack = mentorPack(p);
+  const text = [p.title, "by " + p.by, "", "Live curriculum", ...pack.curriculum.map((x, i) => `${i + 1}. ${x}`)].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+  a.download = p.id + "-curriculum.txt";
+  a.click();
+}
+
+function renderMentorListing() {
+  const root = document.getElementById("mentorRoot");
+  const strip = document.getElementById("mentorHomeList");
+  const programs = allMentorPrograms();
+  const upcoming = programs.filter((p) => mentorPhase(p) === "upcoming");
+  const ongoing = programs.filter((p) => mentorPhase(p) === "ongoing");
+  const listHTML = (rows) => rows.map(mentorCardHTML).join("") || `<p class="muted">None in this list right now.</p>`;
+  if (root) {
+    document.title = `Mentorship Programs | ${BRAND}`;
+    root.innerHTML = `<div class="container">
+      <div class="wb-crumb wb-in"><a href="${homeHref()}">Home</a> · Mentorship Programs</div>
+      <div class="mp-head wb-in">
+        <h1>Live Mentorship Programs</h1>
+        <p>${iconSvg("wifi")} ${upcoming.length} upcoming · ${iconSvg("users")} ${ongoing.length} ongoing</p>
+        <small>Education only. Bizgarh does not give investment advice or manage portfolios.</small>
+      </div>
+      <h2 class="wb-list-kicker" data-wb>Upcoming Mentorship Programs</h2>
+      <div class="mp-grid">${listHTML(upcoming)}</div>
+      <h2 class="wb-list-kicker" data-wb>Ongoing Mentorship Programs</h2>
+      <div class="mp-grid">${listHTML(ongoing)}</div>
+      ${faqSectionHTML(FAQ_SETS.mentorList)}
+    </div>`;
+    bindWbMotion(root);
+    bindFaqs(root);
+  }
+  if (strip) {
+    strip.innerHTML = `<div class="row-between">
+      <div><h2>Mentorship programs</h2><p class="muted">Guided desks with working traders. Enroll, then join live inside Bizgarh.</p></div>
+      <a class="btn btn-ghost" href="/mentorship">View all →</a>
+    </div>
+    <div class="mp-grid" style="margin-top:18px">${upcoming.concat(ongoing).slice(0, 3).map(mentorCardHTML).join("")}</div>`;
+  }
+}
+
+function renderMentorProgramPage() {
+  const root = document.getElementById("programRoot");
+  if (!root) return;
+  const id = new URLSearchParams(location.search).get("id");
+  const p = allMentorPrograms().find((x) => x.id === id) || allMentorPrograms()[0];
+  if (!p) {
+    root.innerHTML = `<div class="container"><div class="empty"><h3>Program not found</h3><a class="btn btn-primary" href="/mentorship" style="margin-top:12px">All programs</a></div></div>`;
+    return;
+  }
+  ensureMentorLive(p);
+  const pack = mentorPack(p);
+  const enrolled = isMentorEnrolled(p.id);
+  const just = sessionStorage.getItem("tradeshalaMentorPop") === "1";
+  if (just) sessionStorage.removeItem("tradeshalaMentorPop");
+  const seats = mentorSeatsLeft(p);
+  const start = webinarStart(p);
+  document.title = `${p.title} | Mentorship | ${BRAND}`;
+  root.innerHTML = `<div class="container">
+    <div class="wb-crumb wb-in"><a href="${homeHref()}">Home</a> · <a href="/mentorship">Mentorship Programs</a> · ${escapeHtml(p.title)}</div>
+    <section class="mp-hero${just ? " wb-just-in" : ""}">
+      <div class="mp-hero-copy wb-in">
+        ${enrolled ? `<span class="wb-pill in">Already enrolled</span>` : `<span class="wb-pill">${escapeHtml(p.tag)} mentorship</span>`}
+        <h1>${escapeHtml(p.title)}</h1>
+        <p class="wb-by">${escapeHtml(p.blurb)}</p>
+        <div class="mp-when">
+          <b>${new Date(p.at).toLocaleString("en-IN", { month: "short" }).toUpperCase()}<span>${new Date(p.at).getDate()}</span></b>
+          <div>
+            <strong>Starts on ${escapeHtml(webinarDateLabel(p))}</strong>
+            <small>${escapeHtml(webinarTimeLabel({ ...p, durationMinutes: 60 }))}</small>
+          </div>
+        </div>
+        ${mentorPriceHTML(p)}
+        <div class="wb-hero-ctas">${mentorCtaHTML(p, enrolled)}</div>
+      </div>
+      <div class="mp-hero-shot wb-in" style="--mp:${p.tint}">
+        <span class="mp-live"><i></i> Live on Bizgarh</span>
+        <span class="wb-chip">Bizgarh</span>
+        <h3>${escapeHtml(p.title)}</h3>
+        <p>by ${escapeHtml(p.by)}</p>
+        <img src="${photoFor(p.by)}" alt="">
+      </div>
+    </section>
+    <div class="mp-strip" data-wb>
+      <span>${iconSvg("clock")} ${p.hours}+ hours of teaching</span>
+      <span>${iconSvg("headset")} Doubt solving live on Bizgarh</span>
+      <span>${iconSvg("chat")} Exclusive desk community</span>
+      <span>${iconSvg("play")} 1 year access to recordings</span>
+    </div>
+    <section class="wb-block" data-wb>
+      <h2>What you will learn</h2>
+      <div class="mp-learn">${pack.learn.map((x) => `<p>${iconSvg("check")} <span>${escapeHtml(x)}</span></p>`).join("")}</div>
+    </section>
+    <section class="mp-overview" data-wb>
+      <h2>Program overview</h2>
+      <div class="mp-ov-facts">
+        <div><small>Starts on</small><b>${escapeHtml(webinarDateLabel(p))}</b></div>
+        <div><small>Duration</small><b>${p.weeks} weeks</b></div>
+        <div><small>Sessions</small><b>${p.sessions} live sessions</b></div>
+      </div>
+      <div class="mp-curr-h">
+        <h3>Live curriculum</h3>
+        <button type="button" class="btn btn-ghost" data-curr="${p.id}">${iconSvg("download")} Download curriculum</button>
+      </div>
+      <ul class="mp-curr">${pack.curriculum.map((x) => `<li>${iconSvg("check")} ${escapeHtml(x)}</li>`).join("")}</ul>
+    </section>
+    <section class="wb-block" data-wb>
+      <h2>What you will be able to do after this program</h2>
+      <div class="mp-out">${pack.outcomes.map((x, i) => `<article><b>${iconSvg(["target", "bars", "clock", "flag"][i] || "check")}</b><p>${escapeHtml(x)}</p></article>`).join("")}</div>
+    </section>
+    <section class="wb-block mp-instructor" data-wb>
+      <h2>Know your instructor</h2>
+      <div class="mp-ins">
+        <img src="${photoFor(p.by)}" alt="">
+        <div>
+          <h3>${escapeHtml(p.by)}</h3>
+          <p>${escapeHtml(pack.bio)}</p>
+          <div class="mp-ins-tags"><span>${escapeHtml(pack.role)}</span><span>Full-time desk</span><span>Bizgarh mentor</span></div>
+        </div>
+      </div>
+    </section>
+    <section class="wb-block" data-wb>
+      <h2>Key concepts you should know before joining</h2>
+      <div class="mp-prep">${pack.prep.map((x) => `<p>${iconSvg("check")} <span>${escapeHtml(x)}</span></p>`).join("")}</div>
+    </section>
+    <section class="wb-block" data-wb>
+      <h2>Who is this program for</h2>
+      <div class="mp-who">${pack.who.map((x) => `<article><b>${iconSvg("users")}</b><strong>${escapeHtml(x.t)}</strong><p>${escapeHtml(x.d)}</p></article>`).join("")}</div>
+    </section>
+    <section class="wb-block" data-wb>
+      <h2>How will this program work?</h2>
+      <div class="mp-steps">${pack.steps.map((s) => `<article><em>${s.n}</em><h3>${escapeHtml(s.t)}</h3><p>${escapeHtml(s.d)}</p></article>`).join("")}</div>
+      <p class="mp-note">The ideas shared on this desk are education only — not investment advice. You write your own process and size.</p>
+    </section>
+    <section class="mp-seats" data-wb>
+      <div>
+        <b>First session starts on ${escapeHtml(webinarDateLabel(p))}</b>
+        <small>Only ${seats} seats left</small>
+      </div>
+      ${enrolled ? `<a class="btn btn-primary" href="/live-room?id=${encodeURIComponent(p.id)}">Join desk ›</a>` : `<button type="button" class="btn btn-primary" data-mentor-enroll="${p.id}">Enroll Now ›</button>`}
+    </section>
+    <section class="wb-block" data-wb>
+      <h2>Frequently Asked Questions</h2>
+      <div class="wb-faqs">${FAQ_SETS.mentorship.map((f, i) => `
+        <article class="wb-faq${i === 0 ? " open" : ""}">
+          <button type="button" data-faq>${escapeHtml(f.q)}<i></i></button>
+          <div class="ans"><p>${escapeHtml(f.a)}</p></div>
+        </article>`).join("")}</div>
+    </section>
+  </div>
+  <div class="mp-stick">
+    <div class="mp-stick-in">
+      <span>Starts on <b>${escapeHtml(webinarDateLabel(p))}</b></span>
+      <span>Duration <b>${p.weeks} weeks</b></span>
+      <span>Price <b>₹${Number(p.price).toLocaleString("en-IN")}</b> <s>₹${Number(p.old).toLocaleString("en-IN")}</s></span>
+      <div class="mp-stick-cta">${mentorCtaHTML(p, enrolled)}</div>
+    </div>
+  </div>`;
+  bindWbMotion(root);
+  startWbCountdown(root);
+  bindFaqs(root);
+  root.querySelector("[data-curr]")?.addEventListener("click", () => downloadMentorCurriculum(p.id));
+}
+
 function saveWebinars(list) { writeList(LIVE_KEY, list); }
 function updateLive(id, patch) {
   const list = allWebinars();
@@ -997,7 +1797,7 @@ function renderCourses(target, filter = "trending", asGrid = false, query = "") 
 
 function liveMegaHTML() {
   const cards = allWebinars().filter((w) => w.status !== "ended").slice(0, 3).map((w, i) => `
-    <a class="mega-web" href="/live#webinars">
+    <a class="mega-web" href="${webinarHref(w.id)}">
       ${webinarBannerHTML(w, i)}
       <div class="mega-web-meta">
         <small>${w.when}</small>
@@ -1012,7 +1812,7 @@ function liveMegaHTML() {
           <span class="mega-ico">${iconSvg("wifi")}</span>
           <span><strong>Webinars</strong><em>Value packed interactive sessions led by expert traders</em></span>
         </a>
-        <a href="/live#mentorship">
+        <a href="/mentorship">
           <span class="mega-ico">${iconSvg("users")}</span>
           <span><strong>Mentorship Programs</strong><em>Learn from training and online sessions with stock market experts</em></span>
         </a>
@@ -1125,7 +1925,7 @@ function footerHTML() {
             <h4>Classroom</h4>
             <a href="/courses">All courses</a>
             <a href="/live">Live rooms</a>
-            <a href="/live#mentorship">Mentorship</a>
+            <a href="/mentorship">Mentorship</a>
             <a href="/courses?cat=hindi">Hindi library</a>
           </div>
           <div>
@@ -1568,14 +2368,21 @@ function enroll(id) {
 }
 
 function webinarCardHTML(w, i) {
+  const meta = webinarProfile(w);
+  const enrolled = isWebinarRegistered(w.id);
   return `
-    <article class="course-card webinar-card">
-      ${webinarBannerHTML(w, i)}
-      <div class="date">${w.when}</div>
-      <div class="course-title" style="padding:0 14px">${w.title}</div>
-      <p class="muted" style="padding:0 14px">by ${w.by}</p>
-      ${liveActionBtn(w)}
-    </article>`;
+    <a class="wb-card webinar-card" href="${webinarHref(w.id)}">
+      <div class="wb-card-shot">${webinarBannerHTML(w, i)}</div>
+      <div class="wb-card-body">
+        <span class="wb-card-when">${escapeHtml(webinarWhenShort(w))}</span>
+        <h3>${escapeHtml(w.title)}</h3>
+        <p>by ${escapeHtml(w.by)}</p>
+        <div class="wb-card-foot">
+          ${meta.price ? `<b>₹${Number(meta.price).toLocaleString("en-IN")}</b>` : `<b>FREE</b><s>₹${Number(meta.listPrice).toLocaleString("en-IN")}</s>`}
+          ${enrolled ? `<em>Enrolled</em>` : ""}
+        </div>
+      </div>
+    </a>`;
 }
 
 function escapeHtml(s) {
@@ -2017,6 +2824,7 @@ function renderCoursePage() {
                 </button>
               </div>`}
         </section>
+        ${faqSectionHTML(FAQ_SETS.course)}
       </div>
     </div>`;
 
@@ -2082,6 +2890,7 @@ function renderCoursePage() {
     const cert = maybeIssueCert(getUser().email, c.id);
     if (cert) renderCertAward(document.getElementById("certAward"), c, cert);
   }
+  bindFaqs(box);
 }
 
 function courseThumbHTML(c) {
@@ -2133,6 +2942,43 @@ function renderDashboard() {
   const mine = ownedCourses(user.email);
   const cont = mine.find((x) => x.stats.pct < 100) || mine[0];
   const rec = allCourses().filter((c) => !enrolled().includes(c.id)).slice(0, 8);
+  const nextLive = myWebinars(user.email)
+    .map((x) => x.w)
+    .filter((w) => w.status !== "ended")
+    .sort((a, b) => (webinarStart(a)?.getTime() || 0) - (webinarStart(b)?.getTime() || 0))[0];
+  const upLiveHTML = nextLive ? `<div class="ld-uplive">
+      <h2>Your upcoming live sessions</h2>
+      <article>
+        <div>
+          <div class="ld-uplive-top">
+            <span>WEBINAR</span>
+            ${countdownLineHTML(webinarStart(nextLive))}
+          </div>
+          <h3>${escapeHtml(nextLive.title)}</h3>
+          <p>by ${escapeHtml(nextLive.by)}</p>
+          <small>${iconSvg("cal")} ${escapeHtml(webinarDateLabel(nextLive))} · ${escapeHtml(webinarTimeLabel(nextLive))}</small>
+          <a class="btn btn-ghost" href="${webinarHref(nextLive.id)}">View Details ›</a>
+        </div>
+        <img src="${photoFor(nextLive.by)}" alt="">
+      </article>
+    </div>` : "";
+  const mineMentors = myMentorships(user.email);
+  const nextMentor = mineMentors.filter((p) => mentorPhase(p) !== "ended")[0] || mineMentors[0];
+  const myMentorHTML = `<div class="ld-mentor">
+      <div class="ld-row-h"><h2>My Mentorship</h2><a href="/mentorship">${mineMentors.length ? "View all ›" : "Browse ›"}</a></div>
+      ${nextMentor ? `<a class="ld-mentor-card" href="${mentorHref(nextMentor.id)}">
+        <div class="mp-shot" style="--mp:${nextMentor.tint}">
+          <span class="mp-live"><i></i> ${mentorPhase(nextMentor) === "upcoming" ? "Upcoming" : "Ongoing"}</span>
+          <img src="${photoFor(nextMentor.by)}" alt="">
+        </div>
+        <div>
+          <small>${escapeHtml(webinarDateLabel(nextMentor))} · ${nextMentor.weeks} weeks</small>
+          <h3>${escapeHtml(nextMentor.title)}</h3>
+          <p>by ${escapeHtml(nextMentor.by)}</p>
+          <span class="go">Open program ›</span>
+        </div>
+      </a>` : `<div class="ld-empty" style="padding:28px 8px"><p>No mentorship desk yet.</p><a class="btn btn-primary" href="/mentorship">Browse programs</a></div>`}
+    </div>`;
   const continueHTML = cont
     ? `<a class="ld-resume" href="/course?id=${encodeURIComponent(cont.c.id)}&lesson=${cont.resume.i}">
         <div class="ld-shot">${courseThumbHTML(cont.c)}<span class="ld-play"><i><svg viewBox="0 0 10 10"><path d="M2 1.2v7.6L8.5 5Z"/></svg></i> Continue learning</span></div>
@@ -2149,6 +2995,8 @@ function renderDashboard() {
     <div class="ld-continue">${continueHTML}</div>
     <div class="ld-split">
       <div>
+        ${upLiveHTML}
+        ${myMentorHTML}
         <div class="ld-row-h"><h2>Recommended courses for you</h2><a href="/courses">View All ›</a></div>
         <div class="ld-rec">${rec.map((c) => courseCard(c, "grid-card")).join("") || `<p class="muted">You already own the library.</p>`}</div>
         <div class="ld-row-h" style="margin-top:28px"><h2>Explore by category</h2></div>
@@ -2161,7 +3009,7 @@ function renderDashboard() {
         <div class="ld-ex">
           <a href="/courses"><span class="ld-ex-ico">${iconSvg("layers")}</span><strong>Courses</strong><em>Setup-first classrooms for Indian traders</em><i class="go">›</i></a>
           <a href="/live#webinars"><span class="ld-ex-ico">${iconSvg("wifi")}</span><strong>Live Webinars</strong><em>Live sessions with market desks</em><i class="go">›</i></a>
-          <a href="/live#mentorship"><span class="ld-ex-ico">${iconSvg("users")}</span><strong>Live Mentorships</strong><em>Guided programs with working traders</em><i class="go">›</i></a>
+          <a href="/mentorship"><span class="ld-ex-ico">${iconSvg("users")}</span><strong>Live Mentorships</strong><em>Guided programs with working traders</em><i class="go">›</i></a>
           <a class="on" href="/live#call"><span class="ld-ex-ico">${iconSvg("headset")}</span><strong>1:1 Guidance</strong><em>Book a personal call with a mentor</em><i class="go">›</i></a>
         </div>
       </div>
@@ -2174,12 +3022,17 @@ function renderDashboard() {
         <div class="ld-quick">
           <h3>Quick Actions</h3>
           <a href="/learning">${iconSvg("play")} My Learning</a>
-          <a href="/account#certs">${iconSvg("badge")} My Certificates</a>
+          <a href="/learning#mentors">${iconSvg("users")} My Mentorship</a>
+          <a href="/learning#certs">${iconSvg("badge")} My Certificates</a>
           <a href="/contact">${iconSvg("headset")} Help</a>
         </div>
       </aside>
     </div>
+    ${faqSectionHTML(FAQ_SETS.dashboard)}
   </div>`;
+  startWbCountdown(root);
+  bindWbMotion(root);
+  bindFaqs(root);
 }
 
 function myWebinars(email) {
@@ -2203,29 +3056,52 @@ function renderMyLearning() {
   const mine = ownedCourses(user.email);
   const ongoing = mine.filter((x) => x.stats.pct < 100);
   const done = mine.filter((x) => x.stats.pct >= 100);
-  const shown = tab === "webinars" ? [] : (chip === "completed" ? done : ongoing);
+  const shown = tab === "webinars" || tab === "certs" || tab === "mentors" ? [] : (chip === "completed" ? done : ongoing);
   const webs = myWebinars(user.email);
   const webChip = chip === "completed";
   const webShown = webs.filter((x) => webChip ? x.w.status === "ended" : x.w.status !== "ended");
+  const mentors = myMentorships(user.email);
+  const mentorChip = chip === "completed";
+  const mentorShown = mentors.filter((p) => mentorChip ? mentorPhase(p) === "ended" : mentorPhase(p) !== "ended");
+  const certRows = mine.filter((x) => x.stats.cert || (typeof certFor === "function" && certFor(user.email, x.c.id)));
   root.innerHTML = `<div class="ld">
     <div class="ld-crumb"><a href="${homeHref()}">Home</a> · My Learning</div>
     <h1 class="ld-title">My Learning</h1>
     <div class="ld-tabs">
-      <button type="button" data-ltab="courses" class="${tab !== "webinars" ? "on" : ""}">${iconSvg("layers")} My Courses <b>${mine.length}</b></button>
+      <button type="button" data-ltab="courses" class="${tab !== "webinars" && tab !== "certs" && tab !== "mentors" ? "on" : ""}">${iconSvg("layers")} My Courses <b>${mine.length}</b></button>
       <button type="button" data-ltab="webinars" class="${tab === "webinars" ? "on" : ""}">${iconSvg("wifi")} Webinars <b>${webs.length}</b></button>
+      <button type="button" data-ltab="mentors" class="${tab === "mentors" ? "on" : ""}">${iconSvg("users")} My Mentorship <b>${mentors.length}</b></button>
+      <button type="button" data-ltab="certs" class="${tab === "certs" ? "on" : ""}">${iconSvg("badge")} My Certificates <b>${certRows.length}</b></button>
     </div>
-    ${tab === "webinars" ? `
+    ${tab === "mentors" ? `
+      <button class="ld-chip ${mentorChip ? "off" : ""}" data-lchip="ongoing" type="button">Ongoing</button>
+      <button class="ld-chip ${mentorChip ? "" : "off"}" data-lchip="completed" type="button">Completed</button>
+      <div class="mp-grid ld-mp">${mentorShown.length ? mentorShown.map(mentorCardHTML).join("") : `<div class="ld-empty"><p>No mentorship desks in this list.</p><a class="btn btn-primary" href="/mentorship">Browse programs</a></div>`}</div>
+    ` : tab === "certs" ? `
+      <div class="ld-cert-grid">${certRows.length ? certRows.map((x) => `
+        <article class="ld-cert">
+          <div class="ld-shot">${courseThumbHTML(x.c)}</div>
+          <div class="ld-cert-body">
+            <h3>${escapeHtml(x.c.title)}</h3>
+            <small>by ${escapeHtml(x.c.instructor)}</small>
+            <div class="ld-cert-actions">
+              <a class="btn btn-ghost" href="/certificate?course=${encodeURIComponent(x.c.id)}">View</a>
+              <button type="button" class="btn btn-primary" data-cert-download="${x.c.id}">Download</button>
+            </div>
+          </div>
+        </article>`).join("") : `<div class="ld-empty"><p>Finish a classroom to earn a certificate.</p><a class="btn btn-primary" href="/courses">Browse courses</a></div>`}</div>
+    ` : tab === "webinars" ? `
       <button class="ld-chip ${webChip ? "off" : ""}" data-lchip="ongoing" type="button">Ongoing</button>
       <button class="ld-chip ${webChip ? "" : "off"}" data-lchip="completed" type="button">Completed</button>
       <div class="ld-web">${webShown.length ? webShown.map((row, i) => `
-        <article>
+        <a href="${webinarHref(row.w.id)}">
           ${webinarBannerHTML(row.w, i)}
           <div class="body">
             <small class="${row.w.status === "ended" ? "ended" : ""}">${row.w.status === "ended" ? "Ended" : (row.w.when || "Upcoming")}</small>
             <h3>${escapeHtml(row.w.title)}</h3>
             <p class="muted">by ${escapeHtml(row.w.by)}</p>
           </div>
-        </article>`).join("") : `<div class="ld-empty"><p>No webinars in this list yet.</p><a class="btn btn-primary" href="/live">Browse live classes</a></div>`}</div>
+        </a>`).join("") : `<div class="ld-empty"><p>No webinars in this list yet.</p><a class="btn btn-primary" href="/live">Browse live classes</a></div>`}</div>
     ` : `
       <button class="ld-chip ${chip === "completed" ? "off" : ""}" data-lchip="ongoing" type="button">Ongoing</button>
       <button class="ld-chip ${chip === "completed" ? "" : "off"}" data-lchip="completed" type="button">Completed</button>
@@ -2238,8 +3114,9 @@ function renderMyLearning() {
           <h3>${escapeHtml(x.c.title)}</h3>
           <small>by ${escapeHtml(x.c.instructor)}</small>
           <span class="go">Continue watching ›</span>
-        </a>`).join("") : `<div class="ld-empty"><p>${chip === "completed" ? "No completed classrooms yet." : "No ongoing classrooms. Buy a course to start."}</p><a class="btn btn-primary" href="/courses">Browse courses</a></div>`}</div>
+        </a>`).join("") : `<div class="ld-empty"><p>${chip === "completed" ? "No completed classrooms yet." : "No ongoing classrooms. Buy a course to start."}</p>        <a class="btn btn-primary" href="/courses">Browse courses</a></div>`}</div>
     `}
+    ${faqSectionHTML(FAQ_SETS.learning)}
   </div>`;
   root.dataset.chip = chip;
   root.querySelectorAll("[data-ltab]").forEach((btn) => {
@@ -2254,6 +3131,7 @@ function renderMyLearning() {
       renderMyLearning();
     });
   });
+  bindFaqs(root);
 }
 
 function renderAccountPage() {
@@ -2429,14 +3307,234 @@ async function mountHmsFrame(el, opts) {
 function renderLive() {
   const webinars = allWebinars().filter((w) => liveKindOf(w) === "webinar");
   const classes = allWebinars().filter((w) => liveKindOf(w) === "class");
-  const list = document.getElementById("liveList");
-  if (list) {
-    list.innerHTML = webinars.map((w, i) => webinarCardHTML(w, i)).join("") || `<p class="muted">No webinars scheduled.</p>`;
+  const upcoming = webinars.filter((w) => w.status !== "ended");
+  const catalog = document.getElementById("liveCatalog");
+  if (catalog) {
+    catalog.innerHTML = `<section class="wb-list" id="webinars">
+      <div class="container">
+        <div class="wb-crumb wb-in"><a href="${homeHref()}">Home</a> · Live Webinars</div>
+        <div class="wb-list-head wb-in">
+          <h1>Live Webinars</h1>
+          <p>${iconSvg("wifi")} ${upcoming.length} webinar${upcoming.length === 1 ? "" : "s"}</p>
+        </div>
+        <h2 class="wb-list-kicker wb-in" data-wb>Upcoming Webinars</h2>
+        <div class="wb-grid">${upcoming.length ? upcoming.map((w, i) => webinarCardHTML(w, i)).join("") : `<p class="muted">No webinars scheduled.</p>`}</div>
+        ${faqSectionHTML(FAQ_SETS.webinarList)}
+      </div>
+    </section>`;
+    bindWbMotion(catalog);
+    bindFaqs(catalog);
   }
   const classList = document.getElementById("classList");
   if (classList) {
-    classList.innerHTML = classes.map((w, i) => webinarCardHTML(w, i)).join("") || `<p class="muted">No live classes scheduled.</p>`;
+    const box = classList.closest("section");
+    if (!classes.length) {
+      if (box) box.hidden = true;
+    } else {
+      if (box) box.hidden = false;
+      classList.innerHTML = classes.map((w, i) => webinarCardHTML(w, i)).join("");
+    }
   }
+}
+
+function registerForWebinar(id) {
+  sessionStorage.setItem("tradeshalaPendingWebinar", id);
+  requireAuth(() => {
+    sessionStorage.removeItem("tradeshalaPendingWebinar");
+    const u = getUser();
+    const regs = readList(REGS_KEY);
+    if (regs.some((r) => r.id === id && r.email === u.email)) {
+      toast("Already registered");
+      renderWebinarPage();
+      renderLive();
+      return;
+    }
+    regs.push({ id, name: u.name, email: u.email, at: new Date().toISOString() });
+    writeList(REGS_KEY, regs);
+    sessionStorage.setItem("tradeshalaWebinarPop", "1");
+    toast("You're enrolled");
+    if (document.getElementById("webinarRoot")) renderWebinarPage();
+    else location.href = webinarHref(id);
+    renderLive();
+    renderHomeExtras();
+    renderDashboard();
+    renderMyLearning();
+    renderLiveRoom();
+  });
+}
+
+function consumePendingWebinar() {
+  const id = sessionStorage.getItem("tradeshalaPendingWebinar");
+  if (!id || !getUser()) return;
+  sessionStorage.removeItem("tradeshalaPendingWebinar");
+  registerForWebinar(id);
+}
+
+function webinarCtaHTML(w, registered) {
+  if (w.status === "ended") {
+    return w.recordUrl
+      ? `<a class="btn btn-primary wb-cta" href="${escapeHtml(w.recordUrl)}" target="_blank" rel="noopener">Watch recording</a>`
+      : `<span class="btn btn-ghost wb-cta is-off">This webinar has ended</span>`;
+  }
+  if (registered) {
+    const join = w.status === "live"
+      ? `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(w.id)}">Join Now ›</a>`
+      : `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(w.id)}">Join Now ›</a>`;
+    return `${join}<a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(webinarCommunityUrl(w))}" target="_blank" rel="noopener">${iconSvg("wa")} Join community</a>`;
+  }
+  return `<button type="button" class="btn btn-primary wb-cta" data-register="${w.id}">Enroll Now ›</button>`;
+}
+
+function renderWebinarPage() {
+  const root = document.getElementById("webinarRoot");
+  if (!root) return;
+  const id = new URLSearchParams(location.search).get("id");
+  const list = allWebinars();
+  const w = list.find((x) => x.id === id) || list[0];
+  if (!w) {
+    root.innerHTML = `<div class="container"><div class="empty"><h3>Webinar not found</h3><a class="btn btn-primary" href="/live" style="margin-top:12px">All webinars</a></div></div>`;
+    return;
+  }
+  const meta = webinarProfile(w);
+  const user = getUser();
+  const regs = readList(REGS_KEY).filter((r) => r.id === w.id);
+  const registered = isWebinarRegistered(w.id);
+  const justIn = sessionStorage.getItem("tradeshalaWebinarPop") === "1";
+  if (justIn) sessionStorage.removeItem("tradeshalaWebinarPop");
+  const seatsLeft = Math.max(0, meta.seats - regs.length);
+  const faces = regs.slice(0, 3).map((r) => `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name)}&background=eef2ff&color=4f46e5&size=64`);
+  while (faces.length < 3) faces.push(photoFor(w.by));
+  const start = webinarStart(w);
+  const idx = list.findIndex((x) => x.id === w.id);
+  document.title = `${w.title} | Webinar | ${BRAND}`;
+  const priceHTML = meta.price
+    ? `<div class="wb-price"><b>₹${Number(meta.price).toLocaleString("en-IN")}</b></div>`
+    : `<div class="wb-price"><b>FREE</b><s>₹${Number(meta.listPrice).toLocaleString("en-IN")}</s><em>100% OFF</em></div>`;
+  const facts = `
+    <ul class="wb-facts">
+      <li>${iconSvg("cal")} ${escapeHtml(webinarDateLabel(w))}</li>
+      <li>${iconSvg("clock")} ${escapeHtml(webinarTimeLabel(w))}</li>
+      <li>${iconSvg("globe")} ${escapeHtml(meta.lang)}</li>
+      <li>${iconSvg("badge")} Certificate of Participation</li>
+    </ul>`;
+  const sideCard = `
+    <aside class="wb-side" data-wb>
+      ${registered ? `<div class="wb-mini">${webinarBannerHTML(w, idx)}${webinarCtaHTML(w, true)}</div>` : ""}
+      ${facts}
+      ${registered ? "" : webinarCtaHTML(w, false)}
+      <p class="wb-or">or</p>
+      <a class="btn btn-ghost wb-soft" href="/courses">Browse classrooms after this session</a>
+      <div class="wb-starts">
+        <small>Webinar Starts In</small>
+        ${countdownHTML(start, "Webinar starts in")}
+      </div>
+    </aside>`;
+
+  const hero = registered ? `
+    <section class="wb-hero is-in${justIn ? " wb-just-in" : ""}">
+      <div class="wb-hero-copy wb-in">
+        <span class="wb-pill in">Already enrolled</span>
+        <h1>${escapeHtml(w.title)}</h1>
+        <p class="wb-by">by ${escapeHtml(w.by)}</p>
+        <div class="wb-meta-row">
+          <span>${iconSvg("cal")} Date: ${escapeHtml(webinarDateLabel(w))}</span>
+          <span>${iconSvg("clock")} Time: ${escapeHtml(webinarTimeLabel(w))}</span>
+        </div>
+        <div class="wb-hero-ctas">${webinarCtaHTML(w, true)}</div>
+      </div>
+      <div class="wb-hero-shot wb-in">
+        ${webinarBannerHTML(w, idx)}
+        <div class="wb-hero-count">
+          <small>Starts in</small>
+          ${countdownHTML(start, "Starts in")}
+        </div>
+      </div>
+    </section>` : `
+    <section class="wb-hero">
+      <div class="wb-hero-shot wb-in">
+        ${webinarBannerHTML(w, idx)}
+        <div class="wb-hero-count">
+          <small>Starts in</small>
+          ${countdownHTML(start, "Starts in")}
+        </div>
+      </div>
+      <div class="wb-hero-copy wb-in">
+        <span class="wb-pill">${w.status === "live" ? "Live now" : "Live webinar"}</span>
+        <h1>${escapeHtml(w.title)}</h1>
+        <div class="wb-meta-row">
+          <span>${iconSvg("cal")} ${escapeHtml(webinarDateLabel(w))}</span>
+          <span>${iconSvg("clock")} ${escapeHtml(webinarTimeLabel(w))}</span>
+        </div>
+        ${priceHTML}
+        ${webinarCtaHTML(w, false)}
+        <div class="wb-seats">
+          <div class="wb-faces">${faces.map((src) => `<img src="${src}" alt="">`).join("")}</div>
+          <small>Limited seats · ${seatsLeft} left</small>
+        </div>
+      </div>
+    </section>`;
+
+  root.innerHTML = `
+    <div class="container">
+      <div class="wb-crumb wb-in"><a href="${homeHref()}">Home</a> · <a href="/live#webinars">Webinars</a> · ${escapeHtml(w.title)}</div>
+      ${hero}
+      <div class="wb-split">
+        <div>
+          <section class="wb-block" data-wb>
+            <h2>What You Will Learn</h2>
+            <div class="wb-learn">${meta.learn.map((x) => `<p>${iconSvg("check")} <span>${escapeHtml(x)}</span></p>`).join("")}</div>
+          </section>
+          ${registered ? "" : `<section class="wb-block" data-wb>
+            <h2>About The Webinar</h2>
+            <div class="wb-about">
+              <p>${escapeHtml(meta.about)}</p>
+              <p class="wb-more">${escapeHtml(meta.aboutMore)}</p>
+            </div>
+            <button type="button" class="wb-more-btn" data-more>show more</button>
+          </section>`}
+          <section class="wb-block" data-wb>
+            <h2>Who Is This Webinar For</h2>
+            <div class="wb-who">${meta.audience.map((a) => `
+              <article>
+                <b>${iconSvg("users")} ${escapeHtml(a.t)}</b>
+                <p>${escapeHtml(a.d)}</p>
+              </article>`).join("")}</div>
+          </section>
+          <section class="wb-block wb-mentor" data-wb>
+            <h2>Meet Your Instructor</h2>
+            <div class="wb-mentor-card">
+              <div class="wb-mentor-top">
+                <img src="${photoFor(w.by)}" alt="">
+                <div>
+                  <small>Learn From · ${escapeHtml(w.by)}</small>
+                  <p>${escapeHtml(meta.exp)}${meta.learners ? ` · ${escapeHtml(meta.learners)}` : ""}</p>
+                </div>
+              </div>
+              <h3>${escapeHtml(w.by)}</h3>
+              <p>${escapeHtml(meta.bio)}</p>
+            </div>
+          </section>
+          <section class="wb-block" data-wb>
+            <h2>Frequently Asked Questions</h2>
+            <div class="wb-faqs">${meta.faqs.map((f, i) => `
+              <article class="wb-faq${i === 0 ? " open" : ""}">
+                <button type="button" data-faq>${escapeHtml(f.q)}<i></i></button>
+                <div class="ans"><p>${escapeHtml(f.a)}</p></div>
+              </article>`).join("")}</div>
+          </section>
+        </div>
+        ${sideCard}
+      </div>
+    </div>
+    <div class="wb-dock">${webinarCtaHTML(w, registered)}</div>`;
+
+  bindWbMotion(root);
+  startWbCountdown(root);
+  root.querySelector("[data-more]")?.addEventListener("click", (e) => {
+    root.querySelector(".wb-about")?.classList.toggle("open");
+    e.currentTarget.textContent = root.querySelector(".wb-about")?.classList.contains("open") ? "show less" : "show more";
+  });
+  bindFaqs(root);
 }
 
 function renderLiveRoom() {
@@ -3119,7 +4217,8 @@ async function renderCertificatePage() {
   const course = allCourses().find((c) => c.id === courseId);
   const row = typeof certs === "function" ? certs().find((c) => c.courseId === courseId && c.email === email) : null;
   if (!course || !row) {
-    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><p class="muted">Finish every lesson in the classroom and it appears here.</p><a class="btn btn-primary" href="/dashboard" style="margin-top:12px">My learning</a></div>`;
+    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><p class="muted">Finish every lesson in the classroom and it appears here.</p><a class="btn btn-primary" href="/dashboard" style="margin-top:12px">My learning</a></div>${faqSectionHTML(FAQ_SETS.cert)}`;
+    bindFaqs(root);
     return;
   }
   document.title = `Certificate · ${course.title} | ${BRAND}`;
@@ -3146,6 +4245,8 @@ async function renderCertificatePage() {
     win.focus();
     win.print();
   });
+  root.insertAdjacentHTML("beforeend", faqSectionHTML(FAQ_SETS.cert));
+  bindFaqs(root);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -3299,26 +4400,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderAccountPage();
   });
   renderLive();
+  renderWebinarPage();
+  consumePendingWebinar();
+  renderMentorListing();
+  renderMentorProgramPage();
+  consumePendingMentor();
   renderLiveRoom();
 
   document.body.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-register]");
-    if (!btn) return;
-    requireAuth(() => {
-      const u = getUser();
-      const regs = readList(REGS_KEY);
-      if (regs.some((r) => r.id === btn.dataset.register && r.email === u.email)) {
-        toast("Already registered");
-        return;
-      }
-      const live = allWebinars().find((w) => w.id === btn.dataset.register);
-      regs.push({ id: btn.dataset.register, name: u.name, email: u.email, at: new Date().toISOString() });
-      writeList(REGS_KEY, regs);
-      toast(`Registered for ${live?.title || "live class"}`);
-      renderLive();
-      renderHomeExtras();
-      renderLiveRoom();
-    });
+    const reg = e.target.closest("[data-register]");
+    if (reg) registerForWebinar(reg.dataset.register);
+    const men = e.target.closest("[data-mentor-enroll]");
+    if (men) enrollMentorProgram(men.dataset.mentorEnroll);
+    const call = e.target.closest("[data-mentor-call]");
+    if (call) requestMentorCallback(call.dataset.mentorCall);
   });
 
   document.getElementById("contactForm")?.addEventListener("submit", (e) => {
@@ -3380,5 +4475,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (row && course) downloadBizgarhCertificate(row, course);
   });
   renderCertificatePage();
+  mountStaticFaqs();
   window.BizgarhLoader?.done?.();
 });
