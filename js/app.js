@@ -4075,6 +4075,20 @@ function deskReviewSeeds() {
     { id: "seed-m2", kind: "mentor", targetId: "mp-closed", name: "Kabir Shah", city: "Ahmedabad", photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=128&h=128&q=80&crop=faces", stars: 5, text: "Closed cohort, still using the same journal. That is the point.", course: "Intraday Journal Cohort", courseId: "", when: "1 month ago", lang: "en", source: "seed" }
   ];
 }
+let reviewsDataP = null;
+function ensureReviewsData() {
+  if (Array.isArray(window.REVIEWS)) return Promise.resolve();
+  if (reviewsDataP) return reviewsDataP;
+  reviewsDataP = new Promise((resolve) => {
+    const s = document.createElement("script");
+    s.src = "js/reviews-data.js?v=8";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => resolve();
+    document.head.appendChild(s);
+  });
+  return reviewsDataP;
+}
 function allReviews() {
   const seed = (Array.isArray(window.REVIEWS) ? window.REVIEWS : []).map((r) => ({
     ...r,
@@ -4101,8 +4115,8 @@ function paintReviewMarquee(host, single) {
   if (!host) return;
   const list = allReviews();
   if (!list.length) return;
-  const row1 = list.slice(0, 24);
-  const row2 = list.slice(24, 48);
+  const row1 = list.slice(0, 8);
+  const row2 = list.slice(8, 16);
   const paint = (rows) => rows.concat(rows).map(reviewCardHTML).join("");
   host.innerHTML = single
     ? `<div class="review-row"><div class="review-track">${paint(row1)}</div></div>`
@@ -4110,12 +4124,17 @@ function paintReviewMarquee(host, single) {
     <div class="review-row reverse"><div class="review-track">${paint(row2)}</div></div>`;
 }
 function renderHomeReviews() {
-  paintReviewMarquee(document.getElementById("reviewMarquee"));
+  const host = document.getElementById("reviewMarquee");
+  if (!host) return;
+  ensureReviewsData().then(() => paintReviewMarquee(host));
 }
 
 function renderReviewsPage() {
   const grid = document.getElementById("reviewsGrid");
   if (!grid) return;
+  ensureReviewsData().then(() => paintReviewsPage(grid));
+}
+function paintReviewsPage(grid) {
   const list = allReviews();
   const summary = document.getElementById("reviewsSummary");
   const avg = list.length ? (list.reduce((s, r) => s + r.stars, 0) / list.length).toFixed(1) : "0";
@@ -6545,6 +6564,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     consumePendingMentor();
     renderInstructorListing();
     renderInstructorPage();
+    if (document.getElementById("instructorRoot")) {
+      ensureReviewsData().then(() => renderInstructorPage());
+    }
     renderLiveRoom();
     renderCommunityPage();
     renderCertificatePage();

@@ -39,7 +39,7 @@ body.nav-open, body.modal-open { overflow: hidden; }
 .page { min-height: 68vh; }
 
 html.bg-waiting { overflow: hidden; }
-#bgBoot,
+#bgBoot { display: none !important; }
 #bgWait {
   position: fixed;
   inset: 0;
