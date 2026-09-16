@@ -38,9 +38,7 @@ body.nav-open, body.modal-open { overflow: hidden; }
 .hidden { display: none !important; }
 .page { min-height: 68vh; }
 
-html.bg-booting,
 html.bg-waiting { overflow: hidden; }
-html.bg-booting body > *:not(#bgBoot) { visibility: hidden !important; }
 #bgBoot,
 #bgWait {
   position: fixed;
@@ -61,6 +59,15 @@ html.bg-booting body > *:not(#bgBoot) { visibility: hidden !important; }
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+#bgBoot:empty::after {
+  content: "";
+  width: 44px;
+  height: 44px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: bgOrbit .7s linear infinite;
 }
 .bg-loader {
   width: 88px;

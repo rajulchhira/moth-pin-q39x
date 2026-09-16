@@ -27,8 +27,7 @@
     var css = document.createElement("style");
     css.id = "bgBootCss";
     css.textContent =
-      "html.bg-booting,html.bg-waiting{overflow:hidden}" +
-      "html.bg-booting body>*:not(#bgBoot){visibility:hidden!important}" +
+      "html.bg-waiting{overflow:hidden}" +
       "#bgBoot,#bgWait{position:fixed;inset:0;z-index:4000;display:grid;place-items:center;background:#fff;transition:opacity .38s ease,visibility .38s}" +
       "#bgWait{background:rgba(255,255,255,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}" +
       "#bgBoot.is-out,#bgWait.is-out{opacity:0;visibility:hidden;pointer-events:none}" +
@@ -154,8 +153,8 @@
   setTimeout(function () {
     minOk = true;
     maybeHide();
-  }, 640);
-  setTimeout(hideBoot, 2400);
+  }, 280);
+  setTimeout(hideBoot, 1200);
 
   window.BizgarhLoader = {
     html: html,

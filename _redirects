@@ -13,3 +13,4 @@ https://bizgarh.com/* https://www.bizgarh.com/:splat 301
 /stock-market /stock-market-courses 301
 /trading-course /stock-market-courses 301
 /instructor/* /instructor 200
+/help /contact 301

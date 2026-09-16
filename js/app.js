@@ -1403,7 +1403,7 @@ function providersLabel(user) {
 async function restoreOAuthSession() {
   if (getUser()) return;
   try {
-    const res = await fetch("/api/me", { credentials: "same-origin" });
+    const res = await fetch("/api/me", { credentials: "same-origin", signal: AbortSignal.timeout(1500) });
     if (!res.ok) return;
     const data = await res.json();
     const user = oauthUser(data.user);
@@ -2554,7 +2554,8 @@ function renderInstructorPage() {
   const root = document.getElementById("instructorRoot");
   if (!root) return;
   const slug = instructorSlugFromLocation();
-  const mentor = instructorBySlug(slug) || (!slug ? null : null);
+  if (!slug) return;
+  const mentor = instructorBySlug(slug);
   if (!mentor) {
     root.innerHTML = `<div class="container"><div class="empty"><h3>Instructor not found</h3><a class="btn btn-primary" href="/instructors" style="margin-top:12px">All instructors</a></div></div>`;
     return;
@@ -2796,9 +2797,10 @@ function renderMentorProgramPage() {
   if (!root) return;
   const id = new URLSearchParams(location.search).get("id");
   const preview = typeof staffMentorPreview === "function" ? staffMentorPreview() : "";
+  if (!id && !preview) return;
   const p = (typeof mentorProgramById === "function" ? mentorProgramById(id) : null)
     || allMentorPrograms().find((x) => x.id === id)
-    || (!id ? allMentorPrograms()[0] : null);
+    || (preview ? allMentorPrograms()[0] : null);
   if (!p || (p.unpublished && !preview)) {
     root.innerHTML = `<div class="container"><div class="empty"><h3>Program not found</h3><a class="btn btn-primary" href="/mentorship" style="margin-top:12px">All programs</a></div></div>`;
     return;
@@ -4714,7 +4716,12 @@ function renderCoursePage() {
   const box = document.getElementById("courseDetail");
   if (!box) return;
   const id = new URLSearchParams(location.search).get("id");
-  const c = allCourses().find((x) => x.id === id) || allCourses()[0];
+  if (!id) return;
+  const c = allCourses().find((x) => x.id === id);
+  if (!c) {
+    box.innerHTML = `<div class="empty"><h3>Classroom not found</h3><a class="btn btn-primary" href="/courses" style="margin-top:12px">All courses</a></div>`;
+    return;
+  }
   const art = COVERS[c.cover] || { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: c.title, sub: c.instructor };
   const logged = Boolean(getUser());
   const previewMode = typeof staffCoursePreview === "function" ? staffCoursePreview() : "";
@@ -5445,10 +5452,10 @@ function renderWebinarPage() {
   if (!root) return;
   const id = new URLSearchParams(location.search).get("id");
   const preview = typeof staffWebinarPreview === "function" ? staffWebinarPreview() : "";
+  if (!id && !preview) return;
   const list = typeof webinarCatalogAll === "function" ? webinarCatalogAll() : allWebinars().filter((x) => x.kind !== "class");
   const w = (id && list.find((x) => x.id === id))
-    || (!id && list.find((x) => !x.unpublished))
-    || (preview ? list[0] : null);
+    || (preview ? list.find((x) => !x.unpublished) || list[0] : null);
   if (!w || (w.unpublished && !preview && !isWebinarRegistered(w.id))) {
     root.innerHTML = `<div class="container"><div class="empty"><h3>Webinar not found</h3><a class="btn btn-primary" href="/live" style="margin-top:12px">All webinars</a></div></div>`;
     return;
@@ -6367,6 +6374,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (mountH) mountH.innerHTML = headerHTML();
   if (mountF) mountF.innerHTML = footerHTML();
   bindChrome();
+  window.BizgarhLoader?.done?.();
   syncNotesFromAccount();
   paintNoteBell(false);
   applySignupGate();
@@ -6505,34 +6513,42 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   bindSlideFades(document);
 
-  seedLiveClasses();
-  renderHomeExtras();
-  bindCourseLibrary();
-  bindExploreTiles();
-  renderHomeReviews();
-  renderReviewsPage();
-  consumePendingBuy();
-  renderCoursePage();
-  if (sessionStorage.getItem("tradeshalaScrollPlayer")) {
-    sessionStorage.removeItem("tradeshalaScrollPlayer");
-    document.getElementById("learnRoot")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-  renderDashboard();
-  renderMyLearning();
-  renderAccountPage();
-  window.addEventListener("hashchange", () => {
+  try {
+    seedLiveClasses();
+    renderHomeExtras();
+    bindCourseLibrary();
+    bindExploreTiles();
+    renderHomeReviews();
+    renderReviewsPage();
+    consumePendingBuy();
+    renderCoursePage();
+    if (sessionStorage.getItem("tradeshalaScrollPlayer")) {
+      sessionStorage.removeItem("tradeshalaScrollPlayer");
+      document.getElementById("learnRoot")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    renderDashboard();
     renderMyLearning();
     renderAccountPage();
-  });
-  renderLive();
-  renderWebinarPage();
-  consumePendingWebinar();
-  renderMentorListing();
-  renderMentorProgramPage();
-  consumePendingMentor();
-  renderInstructorListing();
-  renderInstructorPage();
-  renderLiveRoom();
+    window.addEventListener("hashchange", () => {
+      renderMyLearning();
+      renderAccountPage();
+    });
+    renderLive();
+    renderWebinarPage();
+    consumePendingWebinar();
+    renderMentorListing();
+    renderMentorProgramPage();
+    consumePendingMentor();
+    renderInstructorListing();
+    renderInstructorPage();
+    renderLiveRoom();
+    renderCommunityPage();
+    renderCertificatePage();
+    mountStaticFaqs();
+    bindHelpFaqSearch();
+  } finally {
+    window.BizgarhLoader?.done?.();
+  }
 
   document.body.addEventListener("click", (e) => {
     const hostStart = e.target.closest("[data-wb-host-start]");
@@ -6612,7 +6628,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       toast("1:1 call request sent to the mentor");
     });
   });
-  renderCommunityPage();
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-cert-download]");
     if (!btn) return;
@@ -6621,8 +6636,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     const row = u && course && typeof certFor === "function" ? certFor(u.email, course.id) : null;
     if (row && course) downloadBizgarhCertificate(row, course);
   });
-  renderCertificatePage();
-  mountStaticFaqs();
-  bindHelpFaqSearch();
   window.BizgarhLoader?.done?.();
 });
