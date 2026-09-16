@@ -1,4 +1,7 @@
+https://bizgarh.com/dashboard https://www.bizgarh.com/dashboard 301
 https://bizgarh.com/* https://www.bizgarh.com/:splat 301
+http://bizgarh.com/* https://www.bizgarh.com/:splat 301
+/dashboard /dashboard.html 200
 /learn /course 301
 /index / 301
 /index.html / 301

@@ -60,13 +60,6 @@ function stripHtmlUrl() {
 }
 
 function ensureBrandFont() {
-  if (!document.getElementById("playfairBrand") && !document.querySelector('link[href*="Playfair"]')) {
-    const link = document.createElement("link");
-    link.id = "playfairBrand";
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap";
-    document.head.appendChild(link);
-  }
   if (!document.querySelector('link[rel="icon"]')) {
     const icon = document.createElement("link");
     icon.rel = "icon";
@@ -1265,7 +1258,14 @@ function afterAuthArrive() {
     return;
   }
   if (pagePath() === "/dashboard") {
-    location.reload();
+    if (typeof bindChrome === "function") {
+      const mountH = document.getElementById("site-header");
+      const mountF = document.getElementById("site-footer");
+      if (mountH) mountH.innerHTML = headerHTML();
+      if (mountF) mountF.innerHTML = footerHTML();
+      bindChrome();
+    }
+    if (typeof renderDashboard === "function") renderDashboard();
     return;
   }
   location.href = "/dashboard";
@@ -5954,13 +5954,7 @@ function fitCertText(ctx, text, maxW, maxSize, minSize, font) {
 }
 
 function ensureCertFonts() {
-  if (!document.getElementById("certScriptFont")) {
-    const link = document.createElement("link");
-    link.id = "certScriptFont";
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,700;1,700&display=swap";
-    document.head.appendChild(link);
-  }
+  /* Faces live in css/fonts.css — do not hit fonts.googleapis.com */
   const ready = document.fonts?.ready ? document.fonts.ready.catch(() => {}) : Promise.resolve();
   return ready.then(() => Promise.all([
     document.fonts?.load("80px Great Vibes").catch(() => {}),
