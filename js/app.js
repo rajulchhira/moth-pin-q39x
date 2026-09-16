@@ -65,8 +65,6 @@ function ensureBrandFont() {
     link.id = "playfairBrand";
     link.rel = "stylesheet";
     link.href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap";
-    link.media = "print";
-    link.onload = function () { this.media = "all"; };
     document.head.appendChild(link);
   }
   if (!document.querySelector('link[rel="icon"]')) {
