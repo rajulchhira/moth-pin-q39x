@@ -91,6 +91,7 @@ const EXTRA_MENTORS_KEY = "tradeshalaExtraMentors";
 const HIDDEN_MENTORS_KEY = "tradeshalaHiddenMentors";
 const MENTOR_EDITS_KEY = "tradeshalaMentorEdits";
 const MENTOR_ROOMS_KEY = "tradeshalaMentorRooms";
+const WEBINAR_ROOMS_KEY = "tradeshalaWebinarRooms";
 const STAFF_KEY = "tradeshalaStaff";
 const STAFF_SESSION_KEY = "tradeshalaStaffSession";
 const COURSE_OWNERS_KEY = "tradeshalaCourseOwners";
@@ -264,6 +265,28 @@ function mentorRoomsOf(programId) {
   if (own && typeof own === "object") return own;
   return deskRoomsMap();
 }
+function webinarRoomsMap() {
+  try { return JSON.parse(localStorage.getItem(WEBINAR_ROOMS_KEY) || "{}") || {}; } catch { return {}; }
+}
+function setWebinarRooms(webinarId, next) {
+  const all = webinarRoomsMap();
+  const out = {};
+  DESK_ROOM_TYPES.forEach((t) => {
+    const row = (next && next[t.id]) || {};
+    out[t.id] = {
+      live: row.live === true || row.live === "1",
+      url: typeof sanitizeSocialUrl === "function" ? sanitizeSocialUrl(row.url) : String(row.url || "").trim()
+    };
+  });
+  all[webinarId] = out;
+  localStorage.setItem(WEBINAR_ROOMS_KEY, JSON.stringify(all));
+  return out;
+}
+function webinarRoomsOf(webinarId) {
+  const own = webinarRoomsMap()[webinarId];
+  if (own && typeof own === "object") return own;
+  return deskRoomsMap();
+}
 function visibleDeskRooms(roomsMap) {
   const map = roomsMap || deskRoomsMap();
   return DESK_ROOM_TYPES.map((t) => ({ ...t, ...(map[t.id] || {}) })).filter((r) => r.live && r.url);
@@ -332,6 +355,19 @@ function mentorOwnedForPage(p) {
   if (preview === "owned") return true;
   if (preview === "buy") return false;
   return typeof isMentorEnrolled === "function" && isMentorEnrolled(p.id);
+}
+function staffWebinarPreview() {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get("preview") !== "1") return "";
+  const u = typeof getUser === "function" ? getUser() : null;
+  if (!u || !staffAccessRole(u.email)) return "";
+  return qs.get("view") === "owned" ? "owned" : "buy";
+}
+function webinarOwnedForPage(w) {
+  const preview = staffWebinarPreview();
+  if (preview === "owned") return true;
+  if (preview === "buy") return false;
+  return typeof isWebinarRegistered === "function" && isWebinarRegistered(w.id);
 }
 function staffAccessRole(email) {
   const e = normEmail(email);
@@ -717,6 +753,186 @@ const MENTORS = [
 function photoFor(name) {
   return MENTORS.find((m) => m.name === name)?.img || "https://randomuser.me/api/portraits/men/15.jpg";
 }
+function instructorSlug(name) {
+  return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function instructorHref(name) {
+  const slug = instructorSlug(name);
+  return slug ? "/instructor?id=" + encodeURIComponent(slug) : "/instructors";
+}
+function instructorSlugFromLocation() {
+  const qs = new URLSearchParams(location.search);
+  const q = qs.get("id") || qs.get("slug") || "";
+  if (q) return instructorSlug(q);
+  const parts = String(location.pathname || "").replace(/\.html$/i, "").split("/").filter(Boolean);
+  if (parts[0] === "instructor" && parts[1]) return instructorSlug(decodeURIComponent(parts[1]));
+  return "";
+}
+const INSTRUCTOR_PACKS = {
+  "aarav-mehta": {
+    title: "Full-time trader, Bizgarh desk",
+    company: "Bizgarh",
+    years: "12+",
+    learners: "50,483",
+    topRated: true,
+    languages: ["Hindi", "English"],
+    tags: ["Intraday", "Nifty options", "Gap & go"],
+    bio: "Aarav Mehta is a full-time trader. He teaches process: locate the gap, wait for acceptance, and leave if the level fails. Journals first. No tip feed.",
+    quote: "Write the invalidation before the first click. Size is a decision. The open is not a suggestion to chase.",
+    pillars: [
+      { t: "Process over tips", d: "One written setup for the first hour. If the level fails, you are out." },
+      { t: "Size before entry", d: "Risk is decided before the candle prints, not after it runs." },
+      { t: "Journal every session", d: "What you saw, what you did, and what you will skip tomorrow." },
+      { t: "Stand aside is a trade", d: "The best open is often no trade. Waiting is part of the desk." }
+    ]
+  },
+  "neha-kapoor": {
+    title: "Options specialist, defined risk",
+    company: "Bizgarh",
+    years: "10+",
+    learners: "36,800",
+    topRated: true,
+    languages: ["English", "Hindi"],
+    tags: ["Credit spreads", "Weekly income", "Defined risk"],
+    bio: "Neha Kapoor teaches options as risk first. Spreads, adjustments, and a weekly review you can keep after the premium looks tempting.",
+    quote: "Premium is not income until the trade is closed. Defined risk is the product. Hope is not an adjustment.",
+    pillars: [
+      { t: "Defined risk only", d: "Every structure has a written max loss before you click sell." },
+      { t: "Adjustments are rules", d: "You do not turn a losing spread into a bigger hope trade." },
+      { t: "Weekly review", d: "One page: what paid, what decayed, what you will not repeat." },
+      { t: "Size stays small", d: "Income-style size is smaller than the premium looks." }
+    ]
+  },
+  "vikram-singh": {
+    title: "Price action coach",
+    company: "Bizgarh",
+    years: "14+",
+    learners: "28,220",
+    topRated: true,
+    languages: ["English", "Hindi"],
+    tags: ["Swing", "Structure", "Charts"],
+    bio: "Vikram Singh reads weekly structure without the indicator pile. One chart, one invalidation, levels that are real.",
+    quote: "If the level is decoration, skip it. Structure first. Then size. The indicator stack can wait.",
+    pillars: [
+      { t: "Structure first", d: "Last week's high, low, and the level that cancels the idea." },
+      { t: "Fewer names", d: "A journal of three charts beats a watchlist of forty." },
+      { t: "Weekend process", d: "Mark the week before Monday. Do not discover it on the open." },
+      { t: "No pile of tools", d: "Price and context. Indicators are optional, not the desk." }
+    ]
+  },
+  "ananya-rao": {
+    title: "Long-term investor",
+    company: "Bizgarh",
+    years: "11+",
+    learners: "33,650",
+    topRated: true,
+    languages: ["English", "Hindi"],
+    tags: ["Portfolio", "SIP", "Investing"],
+    bio: "Ananya Rao builds 10-year books: allocation, review, and what not to chase. Patient process for working professionals.",
+    quote: "A portfolio is a system. SIP is a habit. Chasing last quarter's winner is not a plan.",
+    pillars: [
+      { t: "Horizon first", d: "Ten years, not ten days. The review matches the horizon." },
+      { t: "Allocation on paper", d: "Equity, debt, and cash written before you add a name." },
+      { t: "Quarterly review", d: "Rebalance on a calendar. Not on a headline." },
+      { t: "Skip the noise", d: "Tips and IPO chatter stay off the book." }
+    ]
+  },
+  "kabir-joshi": {
+    title: "Index options, first hour",
+    company: "Bizgarh",
+    years: "9+",
+    learners: "16,352",
+    topRated: false,
+    languages: ["Hindi", "English"],
+    tags: ["Bank Nifty", "Opening range", "Index options"],
+    bio: "Kabir Joshi teaches the opening-range playbook on index options. First hour only. A clock, a range, and a stop.",
+    quote: "The first 15 minutes are for marking, not clicking. If the range fails, you are done for the open.",
+    pillars: [
+      { t: "Clock first", d: "The open has a window. After it, the desk is closed." },
+      { t: "Range then wait", d: "Mark it. Wait for acceptance. Do not fade the first spike." },
+      { t: "One invalidation", d: "If the range fails, stand aside. No afternoon revenge." },
+      { t: "Size for speed", d: "Index tape is fast. Size is smaller than it feels." }
+    ]
+  },
+  "rohan-desai": {
+    title: "Fund researcher",
+    company: "Bizgarh",
+    years: "8+",
+    learners: "24,884",
+    topRated: false,
+    languages: ["English", "Hindi"],
+    tags: ["Mutual funds", "Swing", "Research"],
+    bio: "Rohan Desai teaches funds and swing in plain language. Categories, costs, and a review you can keep.",
+    quote: "A fund is a product with a cost. Read the category before the return. Hindi or English — same rule.",
+    pillars: [
+      { t: "Category before return", d: "Know what you own. Then look at the year." },
+      { t: "Cost is a drag", d: "Expense and exit load sit on the same page as return." },
+      { t: "Simple Hindi, same desk", d: "The process does not change when the language does." },
+      { t: "Review, do not chase", d: "Last year's top fund is a headline, not a plan." }
+    ]
+  },
+  "priya-nair": {
+    title: "Asset allocation",
+    company: "Bizgarh",
+    years: "9+",
+    learners: "15,300",
+    topRated: false,
+    languages: ["English", "Hindi"],
+    tags: ["SIP", "Allocation", "Crypto risk"],
+    bio: "Priya Nair runs the SIP and allocation lab. Rebalance, patience, and risk in spot crypto without a signal feed.",
+    quote: "SIP works because you repeat it. Allocation works because you write it. Crypto is a size problem first.",
+    pillars: [
+      { t: "Habit over timing", d: "The SIP date is the strategy. Not the headline." },
+      { t: "Write the mix", d: "Equity, debt, and satellite size stay on one page." },
+      { t: "Crypto is satellite", d: "Spot only. Size you can explain. No leverage story." },
+      { t: "Rebalance on a calendar", d: "Not when the chart looks exciting." }
+    ]
+  },
+  "meera-iyer": {
+    title: "Options coach, from zero",
+    company: "Bizgarh",
+    years: "8+",
+    learners: "30,568",
+    topRated: true,
+    languages: ["English", "Hindi"],
+    tags: ["Options", "Defined risk", "Levels"],
+    bio: "Meera Iyer starts people from zero: calls, puts, expiry, then defined risk. Structure on the chart, size on paper.",
+    quote: "Learn the contract before the strategy. Expiry is a clock. Defined risk is how you stay in the game.",
+    pillars: [
+      { t: "Contract first", d: "Call, put, and expiry before any spread story." },
+      { t: "Defined risk next", d: "You do not sell naked while you are still learning." },
+      { t: "Levels you can defend", d: "Support and resistance that survive a second look." },
+      { t: "Size stays beginner", d: "Small until the journal is boring and clean." }
+    ]
+  }
+};
+function instructorBySlug(slug) {
+  const key = instructorSlug(slug);
+  return MENTORS.find((m) => instructorSlug(m.name) === key) || MENTORS.find((m) => m.name.toLowerCase() === String(slug || "").toLowerCase()) || null;
+}
+function instructorPack(name) {
+  const m = MENTORS.find((x) => x.name === name) || { name, role: "Mentor", tag: "Desk" };
+  const saved = INSTRUCTOR_PACKS[instructorSlug(name)] || {};
+  const courses = (typeof allCourses === "function" ? allCourses() : []).filter((c) => c.instructor === name);
+  const fromCourses = courses.reduce((n, c) => n + Number(String(c.learners || "0").replace(/,/g, "") || 0), 0);
+  return {
+    title: saved.title || m.role,
+    company: saved.company || "Bizgarh",
+    years: saved.years || "8+",
+    learners: saved.learners || (fromCourses ? fromCourses.toLocaleString("en-IN") : "1,200"),
+    topRated: saved.topRated !== false && (saved.topRated === true || fromCourses > 20000),
+    languages: saved.languages || ["English", "Hindi"],
+    tags: saved.tags || [m.tag].filter(Boolean),
+    bio: saved.bio || `${name} teaches a written process on the Bizgarh desk — setups, invalidation, and a journal. Education only.`,
+    quote: saved.quote || "Write the process. Size the risk. Review the week. That is the desk.",
+    pillars: saved.pillars || [
+      { t: "Process over noise", d: "One setup you can explain, not a feed of calls." },
+      { t: "Risk on paper", d: "Invalidation and size before the first click." },
+      { t: "Journal the session", d: "What worked, what you skip next time." },
+      { t: "Education only", d: "You make the decision. We teach the checklist." }
+    ]
+  };
+}
 
 function iconSvg(name) {
   const paths = {
@@ -744,7 +960,9 @@ function iconSvg(name) {
     check: '<path d="m6.5 12.2 3.4 3.4 7.6-7.6"/>',
     gift: '<rect x="3" y="10" width="18" height="11" rx="2"/><path d="M12 7v14"/><path d="M3 10h18"/><path d="M12 7c-2.2-3.4-5.5-1.4-4.2 1.2C9.2 10 12 7 12 7Z"/><path d="M12 7c2.2-3.4 5.5-1.4 4.2 1.2C14.8 10 12 7 12 7Z"/>',
     bell: '<path d="M6.4 16h11.2"/><path d="M7 16v-5.1a5 5 0 0 1 10 0V16"/><path d="M10.2 16.2a1.8 1.8 0 0 0 3.6 0"/><path d="M12 4.2V6"/>',
-    file: '<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/>'
+    file: '<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/>',
+    building: '<rect x="5" y="4" width="14" height="16" rx="1.5"/><path d="M9 8h.01M12 8h.01M15 8h.01M9 12h.01M12 12h.01M15 12h.01M9 20v-3h6v3"/>',
+    star: '<path d="m12 3.6 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.5.9-5.4L4.2 9.3l5.4-.8Z"/>'
   };
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.chart}</svg>`;
 }
@@ -784,9 +1002,20 @@ function categoryCardsHTML(active) {
   }).join("");
 }
 
+function webinarBannerOf(w) {
+  return String(w?.banner || "").trim();
+}
 function webinarBannerHTML(w, i) {
-  const idx = allWebinars().findIndex((x) => x.id === w.id);
-  const bg = WEB_BANNERS[(i ?? (idx < 0 ? 0 : idx)) % WEB_BANNERS.length];
+  const pic = webinarBannerOf(w);
+  if (pic) {
+    return `<div class="web-banner has-banner" style="background-image:url('${escapeHtml(pic)}')"></div>`;
+  }
+  const catalog = typeof webinarCatalogAll === "function" ? webinarCatalogAll() : allWebinars();
+  const idx = catalog.findIndex((x) => x.id === w.id);
+  const tint = String(w.tint || "").trim();
+  const bg = /^#/.test(tint)
+    ? `linear-gradient(135deg,${tint},#0f172a)`
+    : (/^linear-gradient/i.test(tint) ? tint : WEB_BANNERS[(i ?? (idx < 0 ? 0 : idx)) % WEB_BANNERS.length]);
   return `<div class="web-banner" style="background:${bg}">
     <span class="wb-chip">Bizgarh</span>
     <div class="web-banner-copy"><small>${escapeHtml(webinarProfile(w).tag)}</small><b>${escapeHtml(w.title)}</b></div>
@@ -1420,6 +1649,16 @@ function allWebinars() {
   ensureCatalogWebinars();
   return readList(LIVE_KEY);
 }
+function webinarCatalogAll() {
+  return allWebinars().filter((w) => w.kind !== "class");
+}
+function webinarById(id) {
+  return allWebinars().find((w) => w.id === id) || null;
+}
+function listedWebinars() {
+  const preview = typeof staffWebinarPreview === "function" && staffWebinarPreview();
+  return webinarCatalogAll().filter((w) => preview || !w.unpublished);
+}
 function ensureCatalogWebinars() {
   const list = readList(LIVE_KEY);
   const extra = [
@@ -1443,12 +1682,72 @@ function ensureCatalogWebinars() {
 function webinarHref(id) {
   return "/webinar?id=" + encodeURIComponent(id);
 }
+function webinarHostRoomHref(id) {
+  return "/live-room?id=" + encodeURIComponent(id) + "&host=1";
+}
+function isWebinarHost(w) {
+  const staff = typeof getStaffSession === "function" ? getStaffSession() : null;
+  if (!staff?.email || !w) return false;
+  if (staff.status === "suspended" || staff.status === "inactive") return false;
+  const mail = normEmail(staff.email);
+  if (w.hostEmail && normEmail(w.hostEmail) === mail) return true;
+  if (w.ownerEmail && normEmail(w.ownerEmail) === mail) return true;
+  if (w.by && staff.name && String(w.by) === String(staff.name)) return true;
+  if (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(mail)) return true;
+  const role = staff.role || (typeof staffAccessRole === "function" ? staffAccessRole(mail) : "");
+  if (role === "owner" || role === "superadmin") return true;
+  try {
+    const qs = new URLSearchParams(location.search);
+    if (qs.get("host") === "1" && qs.get("id") === w.id && staffAccessRole(mail)) return true;
+  } catch {}
+  return false;
+}
+function startWebinarAsHost(id, goRoom) {
+  const w = typeof webinarById === "function" ? webinarById(id) : allWebinars().find((x) => x.id === id);
+  if (!w || !isWebinarHost(w)) {
+    toast("Only the host can start this webinar");
+    return null;
+  }
+  const staff = getStaffSession();
+  const patch = { status: "live" };
+  if (staff?.email && !w.hostEmail) patch.hostEmail = staff.email;
+  const next = updateLive(id, patch);
+  toast("Webinar is live · enrolled students can join now");
+  if (goRoom !== false) location.href = webinarHostRoomHref(id);
+  return next;
+}
+async function endWebinarAsHost(id) {
+  const w = typeof webinarById === "function" ? webinarById(id) : allWebinars().find((x) => x.id === id);
+  if (!w || !isWebinarHost(w)) {
+    toast("Only the host can end this webinar");
+    return;
+  }
+  updateLive(id, { status: "ended" });
+  try {
+    await fetch(hmsApiUrl("/api/live/end"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: liveKindOf(w), id })
+    });
+  } catch {}
+  toast("Webinar ended · everyone is out of the room");
+}
 function webinarStart(w) {
   const d = new Date(w.at || w.when || "");
   return Number.isNaN(d.getTime()) ? null : d;
 }
 function webinarMins(w) {
   return Number(w.durationMinutes || String(w.duration || "60").replace(/\D/g, "") || 60);
+}
+function webinarPhase(w) {
+  if (w?.unpublished) return "draft";
+  if (w?.status === "ended") return "ended";
+  if (w?.status === "live") return "live";
+  const end = webinarEnd(w);
+  const start = webinarStart(w);
+  if (end && Date.now() > end.getTime()) return "ended";
+  if (start && Date.now() >= start.getTime()) return "live";
+  return "upcoming";
 }
 function webinarEnd(w) {
   const start = webinarStart(w);
@@ -1752,7 +2051,11 @@ function isWebinarRegistered(id, email) {
   return readList(REGS_KEY).some((r) => r.id === id && r.email === mail);
 }
 function webinarCommunityUrl(w) {
-  return primaryDeskRoomUrl() || "https://t.me/bizgarh";
+  const rooms = webinarLiveRooms(w);
+  return rooms[0]?.url || "";
+}
+function webinarLiveRooms(w) {
+  return visibleDeskRooms(typeof webinarRoomsOf === "function" && w ? webinarRoomsOf(w.id) : deskRoomsMap());
 }
 function webinarProfile(w) {
   const mentor = MENTORS.find((m) => m.name === w.by) || {};
@@ -1846,28 +2149,31 @@ function webinarProfile(w) {
       bio: "Kabir Joshi teaches index options with a clock. Opening range, then stop."
     }
   }[w.id] || {};
+  const learn = Array.isArray(w.learn) ? w.learn.filter((x) => String(x || "").trim()) : [];
+  const audience = Array.isArray(w.audience) ? w.audience.filter((a) => a && (a.t || a.d)) : [];
+  const paid = w.free !== true && Number(w.price) > 0;
   return {
-    tag: pack.tag || (liveKindOf(w) === "class" ? "Live class" : "Live webinar"),
-    listPrice: pack.listPrice || 1999,
-    price: w.free === false ? Number(w.price || 0) : 0,
-    seats: pack.seats || 80,
-    lang: pack.lang || "Hindi, English",
-    exp: pack.exp || mentor.tag || "Working trader",
-    learners: pack.learners || "",
-    learn: pack.learn || [
+    tag: w.tag || pack.tag || (liveKindOf(w) === "class" ? "Live class" : "Live webinar"),
+    listPrice: Number(w.listPrice || pack.listPrice || 1999),
+    price: paid ? Number(w.price || 0) : 0,
+    seats: Number(w.seats || pack.seats || 80),
+    lang: w.lang || pack.lang || "Hindi, English",
+    exp: w.exp || pack.exp || mentor.tag || "Working trader",
+    learners: w.learners || pack.learners || "",
+    learn: learn.length ? learn : (pack.learn || [
       "A written setup you can run after the session",
       "Invalidation and size before the first click",
       "Live Q&A with the mentor",
       "A journal prompt for the next trading day"
-    ],
-    about: pack.about || w.notes || `${w.title} is a live Bizgarh classroom with ${w.by}.`,
-    aboutMore: pack.aboutMore || "Register to get the room link on this page. Recording, if any, stays here.",
-    audience: pack.audience || [
+    ]),
+    about: w.about || w.blurb || pack.about || w.notes || `${w.title} is a live Bizgarh classroom with ${w.by}.`,
+    aboutMore: w.aboutMore || pack.aboutMore || "Register to get the room link on this page. Recording, if any, stays here.",
+    audience: audience.length ? audience : (pack.audience || [
       { t: "Active traders", d: "Sit with a working desk and write the process." },
       { t: "Working professionals", d: "A focused session you can finish the same evening." },
       { t: "Learners", d: "See how the mentor thinks, then journal it." }
-    ],
-    bio: pack.bio || `${w.by} hosts this live room on Bizgarh.`,
+    ]),
+    bio: w.bio || pack.bio || `${w.by} hosts this live room on Bizgarh.`,
     faqs: FAQ_SETS.webinar
   };
 }
@@ -2132,6 +2438,294 @@ function consumePendingMentor() {
   enrollMentorProgram(id);
 }
 
+function instructorCourses(name) {
+  return (typeof allCourses === "function" ? allCourses() : []).filter((c) => c.instructor === name);
+}
+function instructorMentorships(name) {
+  return (typeof allMentorPrograms === "function" ? allMentorPrograms() : []).filter((p) => p.by === name);
+}
+function instructorReviews(name) {
+  const courses = instructorCourses(name).map((c) => c.id);
+  const desks = instructorMentorships(name).map((p) => p.id);
+  const webs = (typeof listedWebinars === "function" ? listedWebinars() : []).filter((w) => w.by === name).map((w) => w.id);
+  return (typeof allReviews === "function" ? allReviews() : []).filter((r) => {
+    const id = r.targetId || r.courseId;
+    if ((r.kind || "course") === "course") return courses.includes(id);
+    if (r.kind === "mentor") return desks.includes(id);
+    if (r.kind === "webinar") return webs.includes(id);
+    return r.name === name;
+  });
+}
+function requestInstructorCallback(name) {
+  requireAuth(() => {
+    const u = getUser();
+    const key = typeof CALL_KEY === "string" ? CALL_KEY : "tradeshalaCalls";
+    const list = readList(key);
+    list.push({
+      id: "call-" + Date.now(),
+      name: u.name,
+      email: u.email,
+      topic: "Guidance · " + name,
+      date: "",
+      time: "",
+      mentor: name,
+      status: "pending",
+      notes: "Callback requested from instructor page",
+      at: new Date().toISOString()
+    });
+    writeList(key, list);
+    pushNote({ key: "callback:ins:" + name + ":" + Date.now(), kind: "call", title: "Callback requested", body: "The desk will reach you about a 1:1 with " + name + ".", href: instructorHref(name) });
+    toast("Callback requested · the desk will reach you");
+  });
+}
+function instructorMentorCardHTML(p) {
+  return String(mentorCardHTML(p) || "").replace('class="mp-card wb-in"', 'class="mp-card wb-in ip-reveal"');
+}
+function bindInstructorReveal(root) {
+  const nodes = [...(root || document).querySelectorAll(".ip-reveal")];
+  if (!nodes.length) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    nodes.forEach((n) => n.classList.add("in"));
+    return;
+  }
+  if (!("IntersectionObserver" in window)) {
+    nodes.forEach((n) => n.classList.add("in"));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add("in");
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+  nodes.forEach((n, i) => {
+    n.style.setProperty("--ip-delay", (i % 6) * 70 + "ms");
+    io.observe(n);
+  });
+}
+function renderInstructorListing() {
+  const root = document.getElementById("instructorsRoot");
+  if (!root) return;
+  if (window.BizgarhSeo) window.BizgarhSeo.apply();
+  else document.title = `Instructors | ${BRAND}`;
+  root.innerHTML = `<div class="ip-list-stage">
+    <div class="ip-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="container">
+      <div class="ip-crumb"><a href="${homeHref()}">Home</a><span>/</span><b>Instructors</b></div>
+      <header class="ip-list-head">
+        <p class="ip-kicker"><span class="ip-pulse"></span> The Bizgarh desk</p>
+        <h1>Instructors who trade the process</h1>
+        <p>Working traders and investors. Courses, live mentorship, and 1:1 guidance — not a tip feed.</p>
+      </header>
+    </div>
+  </div>
+  <div class="container ip-list-body">
+    <div class="ip-list-grid">
+      ${MENTORS.map((m, i) => {
+        const pack = instructorPack(m.name);
+        const n = instructorCourses(m.name).length;
+        const desks = instructorMentorships(m.name).length;
+        const face = typeof traderFace === "function" ? traderFace(m) : { badge: "Expert", tone: "violet", exp: "star", years: pack.years || "8+" };
+        const badgeIcon = face.badge === "Specialist" ? "specialist" : face.badge === "Coach" ? "coach" : face.badge === "Investor" ? "investor" : "expert";
+        const tagIcon = face.tone === "amber" ? "clock" : face.tone === "orange" || face.tone === "teal" ? "bag" : face.tone === "blue" ? "pulse" : face.badge === "Coach" ? "bolt" : "pulse";
+        return `<a class="ip-list-card tone-${escapeHtml(face.tone)} ip-reveal" href="${instructorHref(m.name)}" style="--ip-delay:${i * 70}ms">
+          <span class="ip-list-shot">
+            <img src="${escapeHtml(m.img)}" alt="${escapeHtml(m.name)}">
+            <span class="tr-badge">${typeof traderIcon === "function" ? traderIcon(badgeIcon) : ""} ${escapeHtml(face.badge)}</span>
+            ${pack.topRated ? `<span class="ip-rated">${iconSvg("star")} Top rated</span>` : ""}
+            <i class="ip-list-shine" aria-hidden="true"></i>
+          </span>
+          <span class="ip-list-copy">
+            <strong>${escapeHtml(m.name)} <i class="tr-check" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/><path d="M4.6 8.2 7 10.5l4.5-5"/></svg></i></strong>
+            <em>${escapeHtml(pack.title)}</em>
+            <span class="tr-tag">${typeof traderIcon === "function" ? traderIcon(tagIcon) : ""} ${escapeHtml(m.tag)}</span>
+            <span class="tr-years">${typeof traderIcon === "function" ? traderIcon(face.exp) : ""} ${escapeHtml(face.years)} Years Experience</span>
+            <small>${escapeHtml(pack.learners)} learners · ${n} course${n === 1 ? "" : "s"}${desks ? ` · ${desks} desk${desks === 1 ? "" : "s"}` : ""}</small>
+            <div class="ip-list-tags">${pack.tags.slice(0, 3).map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>
+          </span>
+        </a>`;
+      }).join("")}
+    </div>
+  </div>`;
+  bindInstructorReveal(root);
+}
+function renderInstructorPage() {
+  const root = document.getElementById("instructorRoot");
+  if (!root) return;
+  const slug = instructorSlugFromLocation();
+  const mentor = instructorBySlug(slug) || (!slug ? null : null);
+  if (!mentor) {
+    root.innerHTML = `<div class="container"><div class="empty"><h3>Instructor not found</h3><a class="btn btn-primary" href="/instructors" style="margin-top:12px">All instructors</a></div></div>`;
+    return;
+  }
+  const pack = instructorPack(mentor.name);
+  const courses = instructorCourses(mentor.name);
+  const desks = instructorMentorships(mentor.name);
+  const reviews = instructorReviews(mentor.name);
+  const lives = (typeof listedWebinars === "function" ? listedWebinars() : []).filter((w) => w.by === mentor.name);
+  const stats = reviews.length
+    ? { avg: (reviews.reduce((s, r) => s + Number(r.stars || 0), 0) / reviews.length).toFixed(1), count: reviews.length }
+    : { avg: "4.9", count: 0 };
+  const shown = courses.slice(0, 3);
+  const more = courses.length > 3;
+  if (window.BizgarhSeo) window.BizgarhSeo.apply();
+  else document.title = `${mentor.name} | Instructor | ${BRAND}`;
+  const tabs = [
+    ["courses", "Courses", courses.length],
+    ["mentorship", "Mentorship", desks.length],
+    ["guidance", "Guidance", 1],
+    ["style", "Trading style", 1]
+  ].filter((t) => t[0] === "guidance" || t[0] === "style" || t[2] > 0 || t[0] === "courses");
+  root.innerHTML = `<div class="ip-stage">
+    <div class="ip-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="container">
+      <nav class="ip-crumb">
+        <a href="${homeHref()}">Home</a><span>/</span>
+        <a href="/instructors">Instructors</a><span>/</span>
+        <b>${escapeHtml(mentor.name)}</b>
+      </nav>
+      <section class="ip-hero">
+        <div class="ip-hero-photo">
+          <div class="ip-frame">
+            <span class="ip-ring" aria-hidden="true"></span>
+            <img src="${escapeHtml(mentor.img)}" alt="${escapeHtml(mentor.name)}">
+          </div>
+          ${pack.topRated ? `<span class="ip-rated">${iconSvg("star")} Top rated mentor</span>` : ""}
+        </div>
+        <div class="ip-hero-copy">
+          <p class="ip-kicker"><span class="ip-pulse"></span> ${escapeHtml(pack.company)} instructor</p>
+          <h1>${escapeHtml(mentor.name)}</h1>
+          <p class="ip-role">${escapeHtml(pack.title)} · ${escapeHtml(pack.languages.join(" · "))}</p>
+          <p class="ip-bio">${escapeHtml(pack.bio)}</p>
+          <div class="ip-hero-tags">${pack.tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>
+          <div class="ip-hero-actions">
+            <a class="btn btn-primary" href="#ip-courses">See classrooms</a>
+            <button type="button" class="btn btn-ghost ip-ghost" data-instructor-call="${escapeHtml(mentor.name)}">Request a callback</button>
+          </div>
+        </div>
+      </section>
+      <ul class="ip-stats">
+        <li><b>${escapeHtml(pack.years)}</b><span>Years on the desk</span></li>
+        <li><b>${escapeHtml(pack.learners)}</b><span>Learners taught</span></li>
+        <li><b>${courses.length || "—"}</b><span>Classrooms</span></li>
+        <li><b>${desks.length || lives.length || "—"}</b><span>Live desks</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="ip-tabs-wrap">
+    <div class="container">
+      <nav class="ip-tabs" aria-label="Instructor sections">
+        ${tabs.map(([id, label, n], i) => `<button type="button" data-ip-tab="${id}" class="${i === 0 ? "on" : ""}">${escapeHtml(label)}${n > 1 || id === "courses" || id === "mentorship" ? `<em>${n}</em>` : ""}</button>`).join("")}
+      </nav>
+    </div>
+  </div>
+  <div class="container ip-sections">
+    <section class="ip-block" id="ip-courses">
+      <div class="ip-block-head ip-reveal">
+        <h2>Classrooms by ${escapeHtml(mentor.name)}</h2>
+        <p>Self-paced courses from this desk. Process first. Education only.</p>
+      </div>
+      <div class="ip-course-grid" id="ipCourseGrid">
+        ${(shown.length ? shown : []).map((c) => courseCard(c, "grid-card ip-reveal")).join("") || `<p class="ip-empty">No classrooms yet.</p>`}
+      </div>
+      ${more ? `<button type="button" class="ip-more" data-ip-more>View more classrooms</button>` : ""}
+    </section>
+    ${desks.length ? `<section class="ip-block" id="ip-mentorship">
+      <div class="ip-block-head ip-reveal">
+        <h2>Live mentorship</h2>
+        <p>Multi-week desks. Show up live. Journal after.</p>
+      </div>
+      <div class="mp-grid ip-mp-grid">
+        ${desks.map(instructorMentorCardHTML).join("")}
+      </div>
+    </section>` : ""}
+    <section class="ip-block" id="ip-guidance">
+      <div class="ip-guide ip-reveal">
+        <div class="ip-guide-copy">
+          <p class="ip-kicker ip-kicker-ink"><span class="ip-pulse"></span> 1:1 desk time</p>
+          <h2>Book personal guidance</h2>
+          <p>A callback for your journal, risk, or a stuck setup. ${escapeHtml(mentor.name)} reviews the process — not a signal feed.</p>
+          <button type="button" class="btn btn-primary" data-instructor-call="${escapeHtml(mentor.name)}">Request a callback</button>
+        </div>
+        <article class="ip-guide-card">
+          <div class="ip-guide-photo"><img src="${escapeHtml(mentor.img)}" alt="${escapeHtml(mentor.name)}"></div>
+          <p class="ip-guide-stars">★ ${escapeHtml(stats.avg)}</p>
+          <h3>${escapeHtml(mentor.name)}</h3>
+          <p>${escapeHtml(pack.years)} years · ${escapeHtml(pack.languages.join(" · "))}</p>
+          <div class="ip-guide-tags">${pack.tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>
+        </article>
+      </div>
+    </section>
+    <section class="ip-block" id="ip-style">
+      <div class="ip-block-head ip-reveal">
+        <h2>Teaching style &amp; philosophy</h2>
+        <p>How this desk thinks about risk, size, and the week.</p>
+      </div>
+      <div class="ip-style">
+        <blockquote class="ip-style-board ip-reveal">
+          <i class="ip-style-glow" aria-hidden="true"></i>
+          <span class="ip-style-mark" aria-hidden="true">“</span>
+          <p>${escapeHtml(pack.quote)}</p>
+          <footer>
+            <img src="${escapeHtml(mentor.img)}" alt="">
+            <div>
+              <b>${escapeHtml(mentor.name)}</b>
+              <small>${escapeHtml(pack.title)}</small>
+            </div>
+          </footer>
+        </blockquote>
+        <ol class="ip-pillars">
+          ${pack.pillars.map((p, i) => `<li class="ip-reveal">
+            <em>${String(i + 1).padStart(2, "0")}</em>
+            <h3>${escapeHtml(p.t)}</h3>
+            <p>${escapeHtml(p.d)}</p>
+          </li>`).join("")}
+        </ol>
+      </div>
+    </section>
+  </div>`;
+
+  const moreBtn = root.querySelector("[data-ip-more]");
+  moreBtn?.addEventListener("click", () => {
+    const grid = document.getElementById("ipCourseGrid");
+    if (grid) {
+      grid.innerHTML = courses.map((c) => courseCard(c, "grid-card ip-reveal")).join("");
+      bindInstructorReveal(grid);
+    }
+    moreBtn.remove();
+  });
+  const tabBtns = [...root.querySelectorAll("[data-ip-tab]")];
+  const setTab = (id) => {
+    tabBtns.forEach((b) => b.classList.toggle("on", b.dataset.ipTab === id));
+    const el = document.getElementById("ip-" + id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  tabBtns.forEach((btn) => btn.addEventListener("click", () => setTab(btn.dataset.ipTab)));
+  root.querySelectorAll('a[href^="#ip-"]').forEach((a) => {
+    a.addEventListener("click", (e) => {
+      const id = a.getAttribute("href").slice(1);
+      const el = document.getElementById(id);
+      if (!el) return;
+      e.preventDefault();
+      setTab(id.replace(/^ip-/, ""));
+    });
+  });
+  const io = "IntersectionObserver" in window
+    ? new IntersectionObserver((entries) => {
+      const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!vis) return;
+      const id = vis.target.id.replace(/^ip-/, "");
+      tabBtns.forEach((b) => b.classList.toggle("on", b.dataset.ipTab === id));
+    }, { rootMargin: "-35% 0px -50% 0px", threshold: [0.15, 0.4] })
+    : null;
+  if (io) tabs.forEach(([id]) => {
+    const el = document.getElementById("ip-" + id);
+    if (el) io.observe(el);
+  });
+  bindInstructorReveal(root);
+}
+
 function ensureMentorLive(p) {
   const list = allWebinars();
   if (list.some((x) => x.id === p.id)) return;
@@ -2281,9 +2875,10 @@ function renderMentorProgramPage() {
       <div class="mp-ins">
         <img src="${photoFor(p.by)}" alt="">
         <div>
-          <h3>${escapeHtml(p.by)}</h3>
+          <h3><a href="${instructorHref(p.by)}">${escapeHtml(p.by)}</a></h3>
           <p>${escapeHtml(pack.bio)}</p>
           <div class="mp-ins-tags"><span>${escapeHtml(pack.role)}</span><span>Full-time desk</span><span>Bizgarh mentor</span></div>
+          <a class="btn btn-ghost" href="${instructorHref(p.by)}">View instructor profile</a>
         </div>
       </div>
     </section>
@@ -2436,7 +3031,7 @@ function renderCourses(target, filter = "trending", asGrid = false, query = "") 
 }
 
 function liveMegaHTML() {
-  const cards = allWebinars().filter((w) => w.status !== "ended").slice(0, 3).map((w, i) => `
+  const cards = (typeof listedWebinars === "function" ? listedWebinars() : allWebinars()).filter((w) => w.status !== "ended").slice(0, 3).map((w, i) => `
     <a class="mega-web" href="${webinarHref(w.id)}">
       ${webinarBannerHTML(w, i)}
       <div class="mega-web-meta">
@@ -2520,7 +3115,6 @@ function headerHTML() {
           <a class="nav-link" href="/live">Live <i class="live-dot-nav"></i></a>
           ${liveMegaHTML()}
         </div>
-        <a class="nav-link" href="/reviews">Reviews</a>
         <a class="nav-link" href="/about">About</a>
       </nav>
       <form class="search-wrap" id="searchForm">
@@ -2542,7 +3136,6 @@ function headerHTML() {
     </form>
     <a href="/courses">Courses</a>
     <a href="/live">Live classes</a>
-    <a href="/reviews">Reviews</a>
     <a href="/about">About</a>
     <a href="/dashboard">My Dashboard</a>
     <a href="/learning">My Learning</a>
@@ -2575,6 +3168,7 @@ function footerHTML() {
           </div>
           <div>
             <h4>Company</h4>
+            <a href="/instructors">Instructors</a>
             <a href="/about">About</a>
             <a href="/reviews">Reviews</a>
             <a href="/contact">Help</a>
@@ -2830,8 +3424,10 @@ function bindChrome() {
   document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) panel?.classList.remove("open"); });
   search?.addEventListener("input", () => {
     const q = search.value.toLowerCase();
-    const hits = allCourses().filter((c) => c.title.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q)).slice(0, 6);
-    document.getElementById("searchResults").innerHTML = hits.map((c) => `<a href="/course?id=${c.id}">${c.title}</a>`).join("") || "<a>No matches</a>";
+    const courseHits = allCourses().filter((c) => c.title.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q)).slice(0, 5);
+    const mentorHits = MENTORS.filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 3);
+    const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${m.name} · instructor</a>`).concat(courseHits.map((c) => `<a href="/course?id=${c.id}">${c.title}</a>`));
+    document.getElementById("searchResults").innerHTML = rows.join("") || "<a>No matches</a>";
   });
 
   document.getElementById("loginForm")?.addEventListener("submit", (e) => {
@@ -3613,23 +4209,122 @@ function bindCourseLibrary() {
   }
 }
 
+function traderFace(m) {
+  const pack = typeof instructorPack === "function" ? instructorPack(m.name) : {};
+  const faces = {
+    "Aarav Mehta": { badge: "Expert", tone: "violet", exp: "star" },
+    "Neha Kapoor": { badge: "Specialist", tone: "amber", exp: "trophy" },
+    "Vikram Singh": { badge: "Coach", tone: "purple", exp: "cap" },
+    "Ananya Rao": { badge: "Investor", tone: "orange", exp: "chart" },
+    "Kabir Joshi": { badge: "Expert", tone: "blue", exp: "shield" },
+    "Rohan Desai": { badge: "Specialist", tone: "amber", exp: "trophy" },
+    "Priya Nair": { badge: "Investor", tone: "teal", exp: "chart" },
+    "Meera Iyer": { badge: "Coach", tone: "purple", exp: "cap" }
+  };
+  return Object.assign({ badge: "Expert", tone: "violet", exp: "star", years: "8+" }, faces[m.name] || {}, { years: pack.years || "8+" });
+}
+
+function traderIcon(kind) {
+  const icons = {
+    expert: '<path d="M4 15.2 9 10.8l3.2 3L20 7"/><path d="M14.2 7H20v5.6"/>',
+    specialist: '<circle cx="12" cy="12" r="7.2"/><path d="M12 8.2V12l2.6 1.6"/>',
+    coach: '<path d="M11 4.6 6.6 13h4.2l-.8 6.4L17.6 11h-4.1L14.4 4.6H11Z"/>',
+    investor: '<path d="M8 8.2V6.8A4 4 0 0 1 16 6.8v1.4"/><rect x="5.2" y="8.2" width="13.6" height="10.4" rx="2"/><path d="M5.2 12.4h13.6"/>',
+    pulse: '<path d="M3.6 13h3.2l1.8-4.4 2.6 8.2 2-3.8H20"/>',
+    clock: '<circle cx="12" cy="12" r="7.2"/><path d="M12 8.2V12l2.6 1.6"/>',
+    bolt: '<path d="M11 4.6 6.6 13h4.2l-.8 6.4L17.6 11h-4.1L14.4 4.6H11Z"/>',
+    bag: '<path d="M8 8.2V6.8A4 4 0 0 1 16 6.8v1.4"/><rect x="5.2" y="8.2" width="13.6" height="10.4" rx="2"/>',
+    leaf: '<path d="M6.4 15.2c2.8 2.8 8.8 2.2 10.8-2.2 0-6-4.6-8.8-8.8-8.6-1.8 3.4-.8 8.2-2 10.8Z"/><path d="M8.4 14.8c1.8-2 3.2-5 3.6-8"/>',
+    star: '<path d="m12 3.6 2.1 4.3 4.7.7-3.4 3.3.8 4.7L12 14.4 7.8 16.6l.8-4.7-3.4-3.3 4.7-.7Z"/>',
+    trophy: '<path d="M8 20h8M12 16.6V20M7.4 4.6h9.2v4.2c0 3.2-2 5.8-4.6 5.8S7.4 12 7.4 8.8V4.6Z"/><path d="M7.4 6.6H5.2A2.4 2.4 0 0 0 5.2 11h2M16.6 6.6h2.2a2.4 2.4 0 0 1 0 4.4h-2"/>',
+    cap: '<path d="M3 10.2 12 5.2l9 5-9 5-9-5Z"/><path d="M7 12.4v4.2c0 .6 2.2 2 5 2s5-1.4 5-2v-4.2"/><path d="M21 11.2v5.2"/>',
+    chart: '<path d="M4 16.4 9 11.8l3.3 3.1L20 7.4"/><path d="M14.4 7.4H20V13"/>',
+    shield: '<path d="M12 3.5 5 6.2v5.6c0 4.2 2.9 7.3 7 8.7 4.1-1.4 7-4.5 7-8.7V6.2L12 3.5Z"/>'
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
+}
+
+function traderCardHTML(m, i) {
+  const face = traderFace(m);
+  const badgeIcon = face.badge === "Specialist" ? "specialist" : face.badge === "Coach" ? "coach" : face.badge === "Investor" ? "investor" : "expert";
+  const tagIcon = face.tone === "amber" ? "clock" : face.tone === "orange" || face.tone === "teal" ? "bag" : face.tone === "blue" ? "pulse" : face.badge === "Coach" ? "bolt" : "pulse";
+  return `
+      <a class="tr-card tone-${face.tone}" href="${instructorHref(m.name)}" style="--d:${0.08 + i * 0.06}s">
+        <span class="tr-shot">
+          <img src="${m.img}" alt="${m.name}">
+          <span class="tr-badge">${traderIcon(badgeIcon)} ${face.badge}</span>
+        </span>
+        <span class="tr-body">
+          <strong>${m.name} <i class="tr-check" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/><path d="M4.6 8.2 7 10.5l4.5-5"/></svg></i></strong>
+          <em>${m.role}</em>
+          <span class="tr-tag">${traderIcon(tagIcon)} ${m.tag}</span>
+          <span class="tr-years">${traderIcon(face.exp)} ${face.years} Years Experience</span>
+        </span>
+      </a>`;
+}
+
+function bindTraderCarousel(sec) {
+  const track = sec.querySelector("#mentorTrack");
+  if (!track || track.dataset.bound === "1") return;
+  track.dataset.bound = "1";
+  const stage = sec.querySelector(".tr-stage");
+  const step = () => {
+    const card = track.querySelector(".tr-card");
+    return Math.max(200, (card ? card.getBoundingClientRect().width : 220) + 16);
+  };
+  sec.querySelector("[data-tr-prev]")?.addEventListener("click", () => track.scrollBy({ left: -step(), behavior: "smooth" }));
+  sec.querySelector("[data-tr-next]")?.addEventListener("click", () => track.scrollBy({ left: step(), behavior: "smooth" }));
+  const pager = sec.querySelector("#traderPager");
+  const paint = () => {
+    const max = track.scrollWidth - track.clientWidth;
+    if (stage) {
+      stage.classList.toggle("is-start", track.scrollLeft <= 4);
+      stage.classList.toggle("is-end", max <= 4 || track.scrollLeft >= max - 4);
+    }
+    if (!pager) return;
+    const p = max <= 1 ? 0 : track.scrollLeft / max;
+    const dots = [...pager.querySelectorAll("i")];
+    const idx = Math.round(p * Math.max(0, dots.length - 1));
+    dots.forEach((d, i) => d.classList.toggle("is-on", i === idx));
+  };
+  track.addEventListener("scroll", paint, { passive: true });
+  window.addEventListener("resize", paint);
+  paint();
+}
+
+function bindTradersReveal(sec) {
+  const show = () => {
+    sec.classList.add("is-in");
+    setTimeout(() => sec.classList.add("is-ready"), 900);
+  };
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { show(); return; }
+  if (!("IntersectionObserver" in window)) { show(); return; }
+  const io = new IntersectionObserver((entries) => {
+    if (!entries[0] || !entries[0].isIntersecting) return;
+    show();
+    io.disconnect();
+  }, { threshold: 0.16, rootMargin: "0px 0px -6% 0px" });
+  io.observe(sec);
+}
+
 function renderHomeExtras() {
   const mentorTrack = document.getElementById("mentorTrack");
   if (mentorTrack) {
-    mentorTrack.innerHTML = MENTORS.map((m) => `
-      <a class="mentor-card" href="/courses">
-        <div class="mentor-photo"><img src="${m.img}" alt="${m.name}"></div>
-        <h3>${m.name}</h3><p>${m.role}</p><span class="pill">${m.tag}</span>
-      </a>`).join("");
+    mentorTrack.innerHTML = MENTORS.map((m, i) => traderCardHTML(m, i)).join("");
+    const sec = document.getElementById("workingTraders");
+    if (sec) {
+      bindTraderCarousel(sec);
+      bindTradersReveal(sec);
+    }
   }
   const web = document.getElementById("webinarTrack");
   if (web) {
-    web.innerHTML = allWebinars().filter((w) => w.status !== "ended").map((w, i) => webinarCardHTML(w, i)).join("");
+    web.innerHTML = (typeof listedWebinars === "function" ? listedWebinars() : allWebinars()).filter((w) => w.status !== "ended").map((w, i) => webinarCardHTML(w, i)).join("");
   }
   document.querySelectorAll("[data-cat-grid]").forEach((el) => { el.innerHTML = categoryCardsHTML(); });
   const pageWeb = document.getElementById("courseWebinars");
   if (pageWeb) {
-    pageWeb.innerHTML = allWebinars().filter((w) => w.status !== "ended").slice(0, 3).map((w, i) => webinarCardHTML(w, i)).join("");
+    pageWeb.innerHTML = (typeof listedWebinars === "function" ? listedWebinars() : allWebinars()).filter((w) => w.status !== "ended").slice(0, 3).map((w, i) => webinarCardHTML(w, i)).join("");
   }
 }
 
@@ -3803,7 +4498,7 @@ function mentorOverviewCardHTML(p, playable) {
 }
 
 function webinarOverviewCardHTML(w) {
-  const playable = isWebinarRegistered(w.id) || w.status === "ended";
+  const playable = (typeof webinarOwnedForPage === "function" ? webinarOwnedForPage(w) : isWebinarRegistered(w.id)) || w.status === "ended";
   const item = { t: w.title, dur: w.duration || "60 min", notes: w.notes || "", pdf: w.pdf || "", mode: w.status === "ended" && w.recordUrl ? "recorded" : "live" };
   return `
         <section class="cd-card cd-overview-card" id="webinarOverview">
@@ -4095,7 +4790,7 @@ function renderCoursePage() {
           <div class="cd-ov-head">
             <h2>About The Course</h2>
             <p class="cd-ov-meta">
-              <span>By ${c.instructor}</span>
+              <span>By <a href="${instructorHref(c.instructor)}">${escapeHtml(c.instructor)}</a></span>
               <span>${c.hours} hrs</span>
             </p>
           </div>
@@ -4571,6 +5266,11 @@ function renderAccountPage() {
 }
 
 function liveActionBtn(w) {
+  if (typeof isWebinarHost === "function" && isWebinarHost(w)) {
+    if (w.status === "ended") return `<span class="muted" style="display:block;margin:8px 14px 14px">This webinar has ended.</span>`;
+    if (w.status === "live") return `<a class="btn btn-primary" style="margin:8px 14px 14px" href="${webinarHostRoomHref(w.id)}">Enter as host</a>`;
+    return `<button class="btn btn-primary" style="margin:8px 14px 14px" data-wb-host-start="${w.id}">Start webinar</button>`;
+  }
   if (w.status === "ended") return `<span class="muted" style="display:block;margin:8px 14px 14px">This class has ended.</span>`;
   if (w.status === "live") return `<a class="btn btn-primary" style="margin:8px 14px 14px" href="/live-room?id=${w.id}">Join now</a>`;
   return `<button class="btn btn-primary" style="margin:8px 14px 14px" data-register="${w.id}">Register free</button>`;
@@ -4643,8 +5343,8 @@ async function mountHmsFrame(el, opts) {
 }
 
 function renderLive() {
-  const webinars = allWebinars().filter((w) => liveKindOf(w) === "webinar");
-  const classes = allWebinars().filter((w) => liveKindOf(w) === "class");
+  const webinars = (typeof listedWebinars === "function" ? listedWebinars() : allWebinars().filter((w) => liveKindOf(w) === "webinar"));
+  const classes = allWebinars().filter((w) => liveKindOf(w) === "class" && !w.unpublished);
   const upcoming = webinars.filter((w) => w.status !== "ended");
   const catalog = document.getElementById("liveCatalog");
   if (catalog) {
@@ -4711,16 +5411,31 @@ function consumePendingWebinar() {
 }
 
 function webinarCtaHTML(w, registered) {
+  if (typeof isWebinarHost === "function" && isWebinarHost(w)) {
+    if (w.status === "ended") {
+      return w.recordUrl
+        ? `<a class="btn btn-primary wb-cta" href="${escapeHtml(w.recordUrl)}" target="_blank" rel="noopener">Watch recording</a>`
+        : `<span class="btn btn-ghost wb-cta is-off">This webinar has ended</span>`;
+    }
+    if (w.status === "live") {
+      return `<a class="btn btn-primary wb-cta" href="${webinarHostRoomHref(w.id)}">Enter as host ›</a>
+        <button type="button" class="btn btn-ghost wb-cta" data-wb-host-end="${w.id}">End webinar</button>`;
+    }
+    return `<button type="button" class="btn btn-primary wb-cta" data-wb-host-start="${w.id}">Start webinar ›</button>
+      <a class="btn btn-ghost wb-cta" href="${webinarHostRoomHref(w.id)}">Open room</a>`;
+  }
   if (w.status === "ended") {
     return w.recordUrl
       ? `<a class="btn btn-primary wb-cta" href="${escapeHtml(w.recordUrl)}" target="_blank" rel="noopener">Watch recording</a>`
       : `<span class="btn btn-ghost wb-cta is-off">This webinar has ended</span>`;
   }
   if (registered) {
-    const join = w.status === "live"
-      ? `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(w.id)}">Join Now ›</a>`
-      : `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(w.id)}">Join Now ›</a>`;
-    return `${join}<a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(webinarCommunityUrl(w))}" target="_blank" rel="noopener">${iconSvg("wa")} Join community</a>`;
+    const join = `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(w.id)}">Join Now ›</a>`;
+    const rooms = typeof webinarLiveRooms === "function" ? webinarLiveRooms(w) : [];
+    const comm = rooms.length
+      ? `<a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(webinarCommunityUrl(w))}" target="_blank" rel="noopener">${iconSvg("wa")} Join community</a>`
+      : "";
+    return `${join}${comm}`;
   }
   return `<button type="button" class="btn btn-primary wb-cta" data-register="${w.id}">Enroll Now ›</button>`;
 }
@@ -4729,16 +5444,20 @@ function renderWebinarPage() {
   const root = document.getElementById("webinarRoot");
   if (!root) return;
   const id = new URLSearchParams(location.search).get("id");
-  const list = allWebinars();
-  const w = list.find((x) => x.id === id) || list[0];
-  if (!w) {
+  const preview = typeof staffWebinarPreview === "function" ? staffWebinarPreview() : "";
+  const list = typeof webinarCatalogAll === "function" ? webinarCatalogAll() : allWebinars().filter((x) => x.kind !== "class");
+  const w = (id && list.find((x) => x.id === id))
+    || (!id && list.find((x) => !x.unpublished))
+    || (preview ? list[0] : null);
+  if (!w || (w.unpublished && !preview && !isWebinarRegistered(w.id))) {
     root.innerHTML = `<div class="container"><div class="empty"><h3>Webinar not found</h3><a class="btn btn-primary" href="/live" style="margin-top:12px">All webinars</a></div></div>`;
     return;
   }
   const meta = webinarProfile(w);
   const user = getUser();
   const regs = readList(REGS_KEY).filter((r) => r.id === w.id);
-  const registered = isWebinarRegistered(w.id);
+  const registered = typeof webinarOwnedForPage === "function" ? webinarOwnedForPage(w) : isWebinarRegistered(w.id);
+  const liveRooms = typeof webinarLiveRooms === "function" ? webinarLiveRooms(w) : [];
   const justIn = sessionStorage.getItem("tradeshalaWebinarPop") === "1";
   if (justIn) sessionStorage.removeItem("tradeshalaWebinarPop");
   const seatsLeft = Math.max(0, meta.seats - regs.length);
@@ -4822,12 +5541,12 @@ function renderWebinarPage() {
       <div class="wb-split">
         <div>
           ${webinarOverviewCardHTML(w)}
-          ${visibleDeskRooms().length ? `<section class="cd-card cd-community-card cd-community ${registered ? "is-open" : "is-locked"}" id="deskRooms">
+          ${liveRooms.length ? `<section class="cd-card cd-community-card cd-community ${registered ? "is-open" : "is-locked"}" id="deskRooms">
             <div class="cd-ov-head">
               <h2>Community</h2>
               <p class="cd-ov-meta">${registered ? `<span class="cd-comm-open">Members only</span>` : `<span class="cd-lock-badge">${iconSvg("lock")} Locked</span>`}</p>
             </div>
-            ${deskRoomsGridHTML(registered, "Enroll to open " + visibleDeskRooms().map((r) => r.label).join(", ") + ".")}
+            ${deskRoomsGridHTML(registered, "Enroll to open " + liveRooms.map((r) => r.label).join(", ") + ".", typeof webinarRoomsOf === "function" ? webinarRoomsOf(w.id) : null)}
           </section>` : ""}
           ${itemReviewsBlockHTML("webinar", w.id)}
           ${w.status === "ended" ? pathNudgeHTML(w.title, "webinar", w.id, "live-end") : ""}
@@ -4962,11 +5681,12 @@ function renderLiveRoom() {
     root.innerHTML = `<div class="empty"><h3>Class not found</h3><a class="btn btn-primary" href="/live" style="margin-top:12px">All live classes</a></div>`;
     return;
   }
-  const isHost = staff && staff.email === session.hostEmail;
+  const isHost = typeof isWebinarHost === "function" ? isWebinarHost(session) : (staff && staff.email === session.hostEmail);
   const regs = readList(REGS_KEY).filter((r) => r.id === session.id);
   const registered = user && regs.some((r) => r.email === user.email);
   document.title = `${session.title} | Live | ${BRAND}`;
   const live = allWebinars().find((w) => w.id === id);
+  const noun = liveKindOf(live) === "class" ? "class" : "webinar";
   const showIntro = !isHost && registered && live.status === "scheduled";
   const canJoinHms = live.status !== "ended" && (isHost || (registered && live.status === "live"));
 
@@ -4994,9 +5714,9 @@ function renderLiveRoom() {
             <button class="btn btn-ghost">Save recording</button>
           </form>
           <div class="live-host-actions">
-            ${live.status === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Start class</button>` : ""}
-            ${live.status !== "ended" && live.status !== "scheduled" ? `<button class="btn btn-primary" id="endLiveBtn">End class</button>` : ""}
-            <a class="btn btn-ghost" href="/admin">Back to dashboard</a>
+            ${live.status === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Start ${noun}</button>` : ""}
+            ${live.status !== "ended" && live.status !== "scheduled" ? `<button class="btn btn-primary" id="endLiveBtn">End ${noun}</button>` : ""}
+            <a class="btn btn-ghost" href="/admin#webinar/${encodeURIComponent(live.id)}/session">Back to webinar</a>
           </div>` : `
           <div class="live-host-actions">
             ${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
@@ -5031,8 +5751,11 @@ function renderLiveRoom() {
     renderLiveRoom();
   });
   document.getElementById("startLiveBtn")?.addEventListener("click", () => {
-    updateLive(id, { status: "live" });
-    toast("Class is live · registered students can join now");
+    const staffNow = getStaffSession();
+    const patch = { status: "live" };
+    if (staffNow?.email && !live.hostEmail) patch.hostEmail = staffNow.email;
+    updateLive(id, patch);
+    toast(noun === "class" ? "Class is live · registered students can join now" : "Webinar is live · enrolled students can join now");
     renderLiveRoom();
   });
   document.getElementById("hostRecForm")?.addEventListener("submit", (e) => {
@@ -5050,7 +5773,7 @@ function renderLiveRoom() {
         body: JSON.stringify({ kind: liveKindOf(live), id: live.id })
       });
     } catch {}
-    toast("Class ended · everyone is kicked from the room");
+    toast(noun === "class" ? "Class ended · everyone is kicked from the room" : "Webinar ended · everyone is out of the room");
     renderLiveRoom();
   });
   bindOverviewExtras(root);
@@ -5727,6 +6450,33 @@ document.addEventListener("DOMContentLoaded", async () => {
       requestAnimationFrame(tick);
     });
   }
+  const trustRow = document.querySelector(".trust-row");
+  if (trustRow) {
+    const runTrust = () => {
+      trustRow.classList.add("is-in");
+      if (reduceMotion) return;
+      trustRow.querySelectorAll("[data-trust-n]").forEach((el) => {
+        const target = parseFloat(el.dataset.trustN);
+        const suffix = el.dataset.suffix || "";
+        const start = performance.now();
+        const tick = (now) => {
+          const t = Math.min(1, (now - start) / 1400);
+          const eased = 1 - Math.pow(1 - t, 3);
+          el.textContent = Math.round(target * eased).toLocaleString("en-IN") + suffix;
+          if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    };
+    if ("IntersectionObserver" in window) {
+      const tio = new IntersectionObserver((entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        runTrust();
+        tio.disconnect();
+      }, { threshold: 0.35 });
+      tio.observe(trustRow);
+    } else runTrust();
+  }
 
   if ("IntersectionObserver" in window) {
     const io = new IntersectionObserver((entries) => {
@@ -5780,15 +6530,33 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderMentorListing();
   renderMentorProgramPage();
   consumePendingMentor();
+  renderInstructorListing();
+  renderInstructorPage();
   renderLiveRoom();
 
   document.body.addEventListener("click", (e) => {
+    const hostStart = e.target.closest("[data-wb-host-start]");
+    if (hostStart) {
+      startWebinarAsHost(hostStart.dataset.wbHostStart);
+      return;
+    }
+    const hostEnd = e.target.closest("[data-wb-host-end]");
+    if (hostEnd) {
+      endWebinarAsHost(hostEnd.dataset.wbHostEnd).then(() => {
+        if (document.getElementById("webinarRoot")) renderWebinarPage();
+        if (document.getElementById("liveRoom")) renderLiveRoom();
+        if (document.getElementById("liveCatalog")) renderLive();
+      });
+      return;
+    }
     const reg = e.target.closest("[data-register]");
     if (reg) registerForWebinar(reg.dataset.register);
     const men = e.target.closest("[data-mentor-enroll]");
     if (men) enrollMentorProgram(men.dataset.mentorEnroll);
     const call = e.target.closest("[data-mentor-call]");
     if (call) requestMentorCallback(call.dataset.mentorCall);
+    const icall = e.target.closest("[data-instructor-call]");
+    if (icall) requestInstructorCallback(icall.dataset.instructorCall);
   });
 
   document.getElementById("contactForm")?.addEventListener("submit", (e) => {

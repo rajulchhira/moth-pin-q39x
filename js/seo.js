@@ -120,6 +120,8 @@
     "/about": { title: "About Bizgarh | Stock Market Classroom for Indian Traders", desc: "Bizgarh is an independent stock market classroom. We teach process, risk, and journals — not tips, PMS, or guaranteed returns." },
     "/reviews": { title: "Bizgarh Reviews | Stock Market Course Feedback from Indian Learners", desc: "520 learner notes on Bizgarh stock market courses, webinars, and mentorship desks. Honest classroom feedback, not a highlight reel." },
     "/contact": { title: "Help Centre | Stock Market Course FAQ | Bizgarh", desc: "Search 111 FAQs on enroll, live desks, certificates, and journals — or write desk@bizgarh.com. Help for Bizgarh learners." },
+    "/instructors": { title: "Instructors | Stock Market Mentors | Bizgarh", desc: "Meet Bizgarh instructors: working traders and investors who teach courses, live mentorship, and 1:1 guidance." },
+    "/instructor": { title: "Instructor | Trading Mentor | Bizgarh", desc: "Open a Bizgarh instructor profile: courses, live mentorship desks, and personal guidance." },
     "/stock-market-courses": { title: "Stock Market Courses in India 2026 | Trading & Investing Classes | Bizgarh", desc: "Compare stock market courses in India: beginners, Nifty options, price action, investing, and Hindi classrooms. Start a written process on Bizgarh." },
     "/option-trading-course": { title: "Option Trading Course in India | Nifty Options from Zero | Bizgarh", desc: "Option trading course for Indian traders: calls, puts, credit spreads, weekly income, and opening range. Defined risk, not tips." },
     "/nifty-options": { title: "Nifty Options Course & Live Webinars | Bank Nifty Classroom | Bizgarh", desc: "Learn Nifty and Bank Nifty options: gap & go, opening range, and defined-risk spreads. Courses, webinars, and mentorship." },
@@ -289,6 +291,30 @@
       trail.push({ name: "About", href: "/about" });
     } else if (path === "/reviews") {
       trail.push({ name: "Reviews", href: "/reviews" });
+    } else if (path === "/instructors") {
+      trail.push({ name: "Instructors", href: "/instructors" });
+    } else if (path === "/instructor" || path.indexOf("/instructor/") === 0) {
+      var islug = path.indexOf("/instructor/") === 0 ? path.slice("/instructor/".length) : q("id");
+      var inames = {
+        "aarav-mehta": "Aarav Mehta",
+        "neha-kapoor": "Neha Kapoor",
+        "vikram-singh": "Vikram Singh",
+        "ananya-rao": "Ananya Rao",
+        "kabir-joshi": "Kabir Joshi",
+        "rohan-desai": "Rohan Desai",
+        "priya-nair": "Priya Nair",
+        "meera-iyer": "Meera Iyer"
+      };
+      var iname = inames[islug] || "";
+      if (iname) {
+        page = { title: iname + " | Instructor | Bizgarh", desc: "Courses, live mentorship, and 1:1 guidance with " + iname + " on Bizgarh. Education only." };
+        url = abs("/instructor/" + islug);
+        trail.push({ name: "Instructors", href: "/instructors" }, { name: iname, href: url });
+        extra.push({ "@type": "Person", name: iname, url: url, worksFor: { "@id": ORIGIN + "/#org" }, jobTitle: "Instructor" });
+      } else {
+        trail.push({ name: "Instructors", href: "/instructors" });
+        url = abs("/instructors");
+      }
     } else if (path === "/contact") {
       trail.push({ name: "Help", href: "/contact" });
       extra.push({

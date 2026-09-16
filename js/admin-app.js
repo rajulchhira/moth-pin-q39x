@@ -8,7 +8,9 @@ const Ad = {
   courseId: "",
   courseTab: "",
   mentorId: "",
-  mentorTab: ""
+  mentorTab: "",
+  webinarId: "",
+  webinarTab: ""
 };
 
 const NAV = [
@@ -31,6 +33,7 @@ const NAV = [
     { id: "courses", label: "Course", mod: "courses", act: "view" },
     { id: "nextpath", label: "Next path", mod: "courses", act: "edit" },
     { id: "mentors", label: "Mentorships", mod: "courses", act: "view" },
+    { id: "webinars", label: "Webinars", mod: "live", act: "view" },
     { id: "enrolls", label: "Enrollments", mod: "enrollments", act: "view" },
     { id: "classroom", label: "Classroom LMS", mod: "classroom", act: "view" },
     { id: "live", label: "Live sessions", mod: "live", act: "view" }
@@ -162,6 +165,12 @@ function mapMentorTab(tab) {
   if (tab === "setup" || tab === "live" || tab === "students" || tab === "community" || tab === "reviews" || tab === "next") return tab;
   return "";
 }
+function mapWebinarTab(tab) {
+  if (tab === "lessons" || tab === "sessions" || tab === "session") return "session";
+  if (tab === "landing" || tab === "page") return "page";
+  if (tab === "setup" || tab === "live" || tab === "students" || tab === "community" || tab === "reviews" || tab === "next") return tab;
+  return "";
+}
 function parseAdminRoute(hash) {
   const raw = String(hash || location.hash || "#dashboard").replace(/^#/, "");
   const parts = raw.split("/").filter(Boolean);
@@ -173,6 +182,10 @@ function parseAdminRoute(hash) {
     return { route: "mentorBuilder", mentorId: decodeURIComponent(parts[1]), tab: mapMentorTab(parts[2] || "") };
   }
   if (parts[0] === "mentor") return { route: "mentors", mentorId: "", tab: "" };
+  if (parts[0] === "webinar" && parts[1]) {
+    return { route: "webinarBuilder", webinarId: decodeURIComponent(parts[1]), tab: mapWebinarTab(parts[2] || "") };
+  }
+  if (parts[0] === "webinar") return { route: "webinars", webinarId: "", tab: "" };
   return { route: VIEWS[raw] ? raw : "dashboard", courseId: "", tab: "" };
 }
 function applyAdminRoute(parsed) {
@@ -181,6 +194,8 @@ function applyAdminRoute(parsed) {
   Ad.courseTab = parsed.route === "courseBuilder" ? (parsed.tab || "") : "";
   Ad.mentorId = parsed.mentorId || "";
   Ad.mentorTab = parsed.route === "mentorBuilder" ? (parsed.tab || "") : "";
+  Ad.webinarId = parsed.webinarId || "";
+  Ad.webinarTab = parsed.route === "webinarBuilder" ? (parsed.tab || "") : "";
 }
 
 function renderSide() {
@@ -199,12 +214,19 @@ function renderSide() {
       return;
     }
   }
+  if (Ad.route === "webinarBuilder" && Ad.webinarId && typeof WebinarAdmin !== "undefined") {
+    const w = WebinarAdmin.byId(Ad.webinarId);
+    if (w) {
+      document.getElementById("adminSide").innerHTML = WebinarAdmin.sideHTML(w);
+      return;
+    }
+  }
   document.getElementById("adminSide").innerHTML = `
     <a class="ad-brand" href="/">${typeof brandLogoHTML === "function" ? brandLogoHTML("ad") : "Bizgarh"}</a>
     <div class="ad-who">${adEsc(s.name)}<br>${AdminCore.isSuperAdmin() ? "Super Admin" : (AdminCore.isOwner() ? "Owner" : (s.creatorEnabled ? "Admin · Creator" : "Admin"))}</div>
     <nav class="ad-nav">${visibleNav().map((g) => `
       <div class="ad-nav-label">${g.group}</div>
-      ${g.items.map((it) => `<button type="button" data-route="${it.id}" class="${Ad.route===it.id || (it.id==="courses" && Ad.route==="courseBuilder") || (it.id==="mentors" && Ad.route==="mentorBuilder")?"on":""}">${it.label}</button>`).join("")}
+      ${g.items.map((it) => `<button type="button" data-route="${it.id}" class="${Ad.route===it.id || (it.id==="courses" && Ad.route==="courseBuilder") || (it.id==="mentors" && Ad.route==="mentorBuilder") || (it.id==="webinars" && Ad.route==="webinarBuilder")?"on":""}">${it.label}</button>`).join("")}
     `).join("")}</nav>
     <div class="ad-side-foot">
       <button type="button" id="staffLogout">Logout</button>
@@ -222,6 +244,8 @@ function go(route, extra) {
     Ad.courseTab = extra.tab || "setup";
     Ad.mentorId = "";
     Ad.mentorTab = "";
+    Ad.webinarId = "";
+    Ad.webinarTab = "";
     location.hash = "course/" + encodeURIComponent(extra.courseId) + "/" + Ad.courseTab;
     paint();
     return;
@@ -232,7 +256,21 @@ function go(route, extra) {
     Ad.mentorTab = extra.tab || "setup";
     Ad.courseId = "";
     Ad.courseTab = "";
+    Ad.webinarId = "";
+    Ad.webinarTab = "";
     location.hash = "mentor/" + encodeURIComponent(extra.mentorId) + "/" + Ad.mentorTab;
+    paint();
+    return;
+  }
+  if (route === "webinarBuilder" && extra?.webinarId) {
+    Ad.route = "webinarBuilder";
+    Ad.webinarId = extra.webinarId;
+    Ad.webinarTab = extra.tab || "setup";
+    Ad.courseId = "";
+    Ad.courseTab = "";
+    Ad.mentorId = "";
+    Ad.mentorTab = "";
+    location.hash = "webinar/" + encodeURIComponent(extra.webinarId) + "/" + Ad.webinarTab;
     paint();
     return;
   }
@@ -240,6 +278,8 @@ function go(route, extra) {
   Ad.courseTab = "";
   Ad.mentorId = "";
   Ad.mentorTab = "";
+  Ad.webinarId = "";
+  Ad.webinarTab = "";
   Ad.route = route;
   location.hash = route;
   paint();
@@ -263,9 +303,11 @@ function paint() {
     nextpath: ["Next path", "After this classroom / webinar / desk, open that one"],
     mentors: ["Your mentorships", "Open one to edit. A new desk starts as a draft."],
     mentorBuilder: ["Mentorship", "Details, page, sessions, then go live"],
+    webinars: ["Your webinars", "Open one to edit. A new session starts as a draft."],
+    webinarBuilder: ["Webinar", "Details, page, session, then go live"],
     enrolls: ["Enrollments", "Access granted on the public site"],
     classroom: ["Classroom LMS", "Quizzes, assignments, certificates"],
-    live: ["Live sessions", "Webinars, live classes, and 1:1 rooms"],
+    live: ["Live classes", "Live classes and 1:1 rooms"],
     orders: ["Orders", "Paid enrollments"],
     payments: ["Payments", "No card numbers stored"],
     refunds: ["Refunds", "Reverses access and commission"],
@@ -280,7 +322,7 @@ function paint() {
     settings: ["Settings", "Registration and program rules"],
     footer: ["Footer links", "Public social icons — Facebook, Instagram, YouTube, X, Telegram, LinkedIn"]
   };
-  const item = NAV.flatMap((g) => g.items).find((it) => it.id === (Ad.route === "courseBuilder" ? "courses" : Ad.route === "mentorBuilder" ? "mentors" : Ad.route));
+  const item = NAV.flatMap((g) => g.items).find((it) => it.id === (Ad.route === "courseBuilder" ? "courses" : Ad.route === "mentorBuilder" ? "mentors" : Ad.route === "webinarBuilder" ? "webinars" : Ad.route));
   if (item?.mod && !AdminCore.can(item.mod, item.act)) {
     document.getElementById("adminTitle").textContent = "Not allowed";
     document.getElementById("adminSub").textContent = "Permission required";
@@ -309,9 +351,19 @@ function paint() {
       : Ad.mentorTab === "next" ? ["Next", "After the batch ends, show this next."]
       : ["What students see", "Picture, price, story, learn list, and desk copy."];
   }
+  if (Ad.route === "webinarBuilder") {
+    t = Ad.webinarTab === "setup" ? ["Details", "Name the session, host, start time, and seats."]
+      : Ad.webinarTab === "session" ? ["Session", "Notes, intro, PDF, and recording. One live room."]
+      : Ad.webinarTab === "live" ? ["Go live", "Check the list, then show this webinar on the site."]
+      : Ad.webinarTab === "students" ? ["Students", "Who enrolled in this webinar, and seats left."]
+      : Ad.webinarTab === "community" ? ["Community", "WhatsApp, Discord, YouTube, Telegram — on or off."]
+      : Ad.webinarTab === "reviews" ? ["Reviews", "Ratings for this webinar only."]
+      : Ad.webinarTab === "next" ? ["Next", "After the session ends, show this next."]
+      : ["What students see", "Picture, price, story, and learn list."];
+  }
   document.getElementById("adminTitle").textContent = t[0];
   document.getElementById("adminSub").textContent = t[1];
-  document.body.classList.toggle("is-cb", Ad.route === "courseBuilder" || Ad.route === "mentorBuilder");
+  document.body.classList.toggle("is-cb", Ad.route === "courseBuilder" || Ad.route === "mentorBuilder" || Ad.route === "webinarBuilder");
   renderSide();
   if (Ad.route === "courseBuilder" && typeof CourseAdmin !== "undefined") {
     const c = CourseAdmin.byId(Ad.courseId);
@@ -347,6 +399,25 @@ function paint() {
       document.getElementById("adminView").innerHTML = MentorAdmin.viewHTML(p, tab);
     } catch (err) {
       document.getElementById("adminView").innerHTML = `<div class="ad-card"><p>Could not load the mentorship builder.</p></div>`;
+      console.error(err);
+    }
+    return;
+  }
+  if (Ad.route === "webinarBuilder" && typeof WebinarAdmin !== "undefined") {
+    const w = WebinarAdmin.byId(Ad.webinarId);
+    if (!w) {
+      Ad.route = "webinars";
+      Ad.webinarId = "";
+      location.hash = "webinars";
+      document.getElementById("adminView").innerHTML = WebinarAdmin.catalogHTML();
+      return;
+    }
+    try {
+      const tab = Ad.webinarTab || WebinarAdmin.firstTab(w);
+      Ad.webinarTab = tab;
+      document.getElementById("adminView").innerHTML = WebinarAdmin.viewHTML(w, tab);
+    } catch (err) {
+      document.getElementById("adminView").innerHTML = `<div class="ad-card"><p>Could not load the webinar builder.</p></div>`;
       console.error(err);
     }
     return;
@@ -632,24 +703,23 @@ const VIEWS = {
   },
   live() {
     AdminCore.assert("live","view");
-    const list = AdminCore.isOwner() ? allWebinars() : allWebinars().filter((w) => w.hostEmail === AdminCore.session().email || w.by === AdminCore.session().name);
+    const list = (AdminCore.isOwner() ? allWebinars() : allWebinars().filter((w) => w.hostEmail === AdminCore.session().email || w.by === AdminCore.session().name)).filter((w) => w.kind === "class");
     const calls = (typeof callRequests === "function" ? callRequests() : []).filter((c) => AdminCore.isOwner() || c.mentorEmail === AdminCore.session().email || c.mentor === AdminCore.session().name);
     const form = AdminCore.can("live","create") ? `<form class="ad-card ad-form" id="addLiveForm" style="margin-bottom:14px;grid-template-columns:1fr 1fr">
       <input name="title" placeholder="Title" required>
       <input name="at" type="datetime-local" required>
       <input name="duration" value="60 min">
-      <select name="kind"><option value="webinar">Webinar</option><option value="class">Live class</option></select>
       <select name="chat"><option value="1">Chat on</option><option value="0">Chat off</option></select>
       <select name="record"><option value="1">Record</option><option value="0">No record</option></select>
       <input name="recordUrl" placeholder="Recording URL (optional)">
       <input name="introUrl" placeholder="Intro video (YouTube or MP4 URL)">
       <input name="pdf" placeholder="Session PDF URL (optional)">
       <textarea name="notes" placeholder="Session notes (shown in overview)"></textarea>
-      <button class="btn btn-primary">Schedule</button></form>` : "";
+      <button class="btn btn-primary">Schedule class</button></form>` : "";
     return form
-      + `<p class="muted" style="margin:0 0 8px">Rooms open inside Bizgarh on 100ms. No Meet / Zoom paste.</p>`
-      + table(["When","Type","Title","Host","Room"], list.map((w)=>`<tr>
-      <td>${adEsc(w.when||w.at)}</td><td>${adEsc(w.kind === "class" ? "Live class" : "Webinar")}</td><td>${adEsc(w.title)}</td><td>${adEsc(w.by)}</td>
+      + `<p class="muted" style="margin:0 0 8px">Public webinars live under <a href="#webinars">Webinars</a>. This list is live classes only. Rooms open inside Bizgarh on 100ms.</p>`
+      + table(["When","Title","Host","Room"], list.map((w)=>`<tr>
+      <td>${adEsc(w.when||w.at)}</td><td>${adEsc(w.title)}</td><td>${adEsc(w.by)}</td>
       <td class="admin-actions">
         <a href="/live-room?id=${adEsc(w.id)}">Open room</a>
         ${AdminCore.can("live","edit") ? `<button class="btn btn-ghost" type="button" data-live-extras="${adEsc(w.id)}">Notes / PDF</button>` : ""}
@@ -715,7 +785,7 @@ const VIEWS = {
     AdminCore.assert("courses", "edit");
     const map = typeof nextPathMap === "function" ? nextPathMap() : {};
     const courses = allCourses();
-    const webs = typeof allWebinars === "function" ? allWebinars() : [];
+    const webs = typeof webinarCatalogAll === "function" ? webinarCatalogAll() : (typeof allWebinars === "function" ? allWebinars() : []);
     const mentors = typeof allMentorPrograms === "function" ? allMentorPrograms() : [];
     const opts = (kind) => {
       const none = `<option value="">— none —</option>`;
@@ -752,6 +822,11 @@ const VIEWS = {
     AdminCore.assert("courses", "view");
     if (typeof MentorAdmin !== "undefined") return MentorAdmin.catalogHTML();
     return `<p class="muted">Mentorship builder could not load.</p>`;
+  },
+  webinars() {
+    AdminCore.assert("live", "view");
+    if (typeof WebinarAdmin !== "undefined") return WebinarAdmin.catalogHTML();
+    return `<p class="muted">Webinar builder could not load.</p>`;
   },
   footer() {
     if (!AdminCore.isOwner()) throw new Error("forbidden:settings:view");
@@ -1176,9 +1251,9 @@ function bindApp() {
       const s = AdminCore.session();
       const at = new Date(f.at.value);
       const list = allWebinars();
-      list.push({ id: "lv-"+Date.now(), title: f.title.value.trim(), by: s.name, hostEmail: s.email, at: at.toISOString(), when: at.toLocaleString("en-IN"), duration: f.duration.value, kind: f.kind?.value === "class" ? "class" : "webinar", joinUrl: "", introUrl: (f.introUrl?.value || "").trim(), notes: f.notes.value, pdf: (f.pdf?.value || "").trim(), chat: f.chat.value==="1", record: f.record.value==="1", recordUrl: f.recordUrl.value, status: "scheduled" });
+      list.push({ id: "lv-"+Date.now(), title: f.title.value.trim(), by: s.name, hostEmail: s.email, at: at.toISOString(), when: at.toLocaleString("en-IN"), duration: f.duration.value, kind: "class", joinUrl: "", introUrl: (f.introUrl?.value || "").trim(), notes: f.notes.value, pdf: (f.pdf?.value || "").trim(), chat: f.chat.value==="1", record: f.record.value==="1", recordUrl: f.recordUrl.value, status: "scheduled" });
       saveWebinars(list);
-      toast("Live scheduled");
+      toast("Live class scheduled");
       paint();
     }
     if (f.id === "regSettingsForm") {
@@ -1669,6 +1744,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindCourseOverlays();
   if (typeof CourseAdmin !== "undefined") CourseAdmin.bind();
   if (typeof MentorAdmin !== "undefined") MentorAdmin.bind();
+  if (typeof WebinarAdmin !== "undefined") WebinarAdmin.bind();
   window.addEventListener("hashchange", () => {
     if (!AdminCore.session()) return;
     applyAdminRoute(parseAdminRoute());
