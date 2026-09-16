@@ -86,10 +86,18 @@ function markLessonDone(email, courseId, idx) {
   patchProgress(email, courseId, { lessons });
   return maybeIssueCert(email, courseId);
 }
+function lessonNeedsWatch(l) {
+  const kind = l && l.kind ? l.kind : "video";
+  if (kind === "live") return false;
+  return kind === "video" || Boolean(l && (l.src || l.vdoId || l.fileKey));
+}
 function courseCompletion(email, courseId) {
-  const total = Math.max(lessonsFor(courseId).length, 1);
+  const published = typeof lessonsFor === "function" ? lessonsFor(courseId) : [];
+  const watch = published.map((l, i) => ({ l, i })).filter((x) => lessonNeedsWatch(x.l));
+  const tracked = watch.length ? watch : published.map((l, i) => ({ l, i }));
+  const total = Math.max(tracked.length, 1);
   const p = learnerProgress(email, courseId);
-  const done = Object.keys(p.lessons).filter((k) => p.lessons[k]).length;
+  const done = tracked.filter((x) => p.lessons[x.i]).length;
   const pct = Math.round((done / total) * 100);
   return { done, total, passed: 0, quizCount: 0, pct: Math.min(100, pct), cert: !!p.cert };
 }

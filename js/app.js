@@ -65,6 +65,8 @@ function ensureBrandFont() {
     link.id = "playfairBrand";
     link.rel = "stylesheet";
     link.href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap";
+    link.media = "print";
+    link.onload = function () { this.media = "all"; };
     document.head.appendChild(link);
   }
   if (!document.querySelector('link[rel="icon"]')) {
@@ -1402,16 +1404,19 @@ function providersLabel(user) {
 }
 async function restoreOAuthSession() {
   if (getUser()) return;
+  if (!/(?:^|;\s*)(bg_session|oauth_session)=/.test(document.cookie || "")) return;
   try {
-    const res = await fetch("/api/me", { credentials: "same-origin", signal: AbortSignal.timeout(1500) });
+    const res = await fetch("/api/me", { credentials: "same-origin", signal: AbortSignal.timeout(800) });
     if (!res.ok) return;
+    const type = res.headers.get("content-type") || "";
+    if (!type.includes("application/json")) return;
     const data = await res.json();
     const user = oauthUser(data.user);
     if (!user) return;
     setUser({ name: user.name, email: user.email, password: "", referredBy: user.referredBy || "", providers: user.providers || [] });
     upsertUser(user);
     afterAuthArrive();
-  } catch { /* static file server without OAuth */ }
+  } catch { /* no session API on this host */ }
 }
 
 function finishSocial(provider, profile) {
@@ -3841,8 +3846,8 @@ function courseNudgePlayerHTML(from, nextCourse, awarded) {
         </div>
       </div>
       <div class="yt-end-actions">
-        <button type="button" class="yt-end-play" data-nudge-kind="${escapeHtml(next.kind)}" data-nudge-id="${escapeHtml(next.id)}">Enroll next →</button>
-        ${awarded ? `<button type="button" data-cert-download="${escapeHtml(from.id)}">Download certificate</button>` : ""}
+        ${awarded ? `<button type="button" class="yt-end-play" data-cert-download="${escapeHtml(from.id)}">Download certificate</button>` : ""}
+        <button type="button" class="${awarded ? "" : "yt-end-play"}" data-nudge-kind="${escapeHtml(next.kind)}" data-nudge-id="${escapeHtml(next.id)}">Enroll next →</button>
         <a href="${escapeHtml(next.href)}">See syllabus</a>
         <button type="button" id="endCancel">Close</button>
       </div>
@@ -6378,8 +6383,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   syncNotesFromAccount();
   paintNoteBell(false);
   applySignupGate();
-  const oauthed = await consumeOAuth();
-  if (!oauthed) await restoreOAuthSession();
+  const bootQ = new URLSearchParams(location.search);
+  if (bootQ.get("oauth_ticket") || bootQ.get("oauth_error")) await consumeOAuth();
+  else restoreOAuthSession();
   sendLoggedInHomeToDashboard();
 
   const typedEl = document.getElementById("typed");

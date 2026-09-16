@@ -150,11 +150,17 @@
     obs.observe(document.documentElement, { childList: true });
   }
 
-  setTimeout(function () {
+  function readyHide() {
+    painted = true;
     minOk = true;
-    maybeHide();
-  }, 280);
-  setTimeout(hideBoot, 1200);
+    hideBoot();
+  }
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(readyHide, 0);
+  } else {
+    document.addEventListener("DOMContentLoaded", readyHide);
+  }
+  setTimeout(readyHide, 400);
 
   window.BizgarhLoader = {
     html: html,

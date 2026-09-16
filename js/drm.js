@@ -211,10 +211,12 @@ function renderLearnPage() {
   let painting = true;
   let wmTimer = 0;
   let waitTimer = 0;
+  let vdoWatch = 0;
   window.__drmTeardown = () => {
     painting = false;
     clearInterval(wmTimer);
     clearTimeout(waitTimer);
+    clearInterval(vdoWatch);
     clearVdo();
     drmCtl.abort();
   };
@@ -434,6 +436,12 @@ function renderLearnPage() {
     endCard.classList.remove("is-upsell");
     if (vdoFrame) vdoFrame.style.pointerEvents = "";
   }
+  function stopVdoWatch() {
+    if (vdoWatch) {
+      clearInterval(vdoWatch);
+      vdoWatch = 0;
+    }
+  }
   function paintEndCard(awarded) {
     const hasNextLesson = currentLesson < LESSONS.length - 1;
     endCard.hidden = false;
@@ -443,7 +451,7 @@ function renderLearnPage() {
       endCard.classList.add("is-upsell");
       endCard.innerHTML = typeof courseNudgePlayerHTML === "function"
         ? courseNudgePlayerHTML(c, next, Boolean(awarded))
-        : `<p>Classroom complete</p><div class="yt-end-actions"><button type="button" id="endCancel">Close</button></div>`;
+        : `<p>Classroom complete</p><div class="yt-end-actions">${awarded ? `<button type="button" class="yt-end-play" data-cert-download="${escapeHtml(c.id)}">Download certificate</button>` : ""}<button type="button" id="endCancel">Close</button></div>`;
       if (awarded && typeof refreshDeskReviews === "function") refreshDeskReviews("course", c.id);
       return;
     }
@@ -455,31 +463,69 @@ function renderLearnPage() {
         <button type="button" id="endCancel">Cancel</button>
       </div>`;
   }
+  function issueCertNow() {
+    return typeof maybeIssueCert === "function" ? maybeIssueCert(user.email, c.id) : null;
+  }
+  function completeClassroom() {
+    if (typeof markLessonDone === "function") {
+      LESSONS.forEach((_, i) => markLessonDone(user.email, c.id, i));
+    }
+    return issueCertNow();
+  }
+  function revealCertificate(row) {
+    if (!row) return;
+    if (typeof renderCertAward === "function") renderCertAward(document.getElementById("certAward"), c, row);
+    const foot = document.querySelector("#courseOverview .cd-cert");
+    if (foot && typeof awardedCertFooterHTML === "function") {
+      foot.outerHTML = awardedCertFooterHTML(c, true);
+    }
+    const ov = document.getElementById("courseOverview");
+    if (ov && typeof courseNudgeHTML === "function") {
+      const html = courseNudgeHTML(c, "done");
+      const existing = document.querySelector(".cd-nudge");
+      if (existing) existing.outerHTML = html;
+      else ov.insertAdjacentHTML("afterend", html);
+      if (typeof bindCourseNudge === "function") bindCourseNudge(ov.parentElement || document);
+    }
+    paintEndCard(true);
+    toast("Certificate ready — download it now");
+    const key = "tradeshalaAutoCertDl:" + c.id;
+    if (!sessionStorage.getItem(key) && typeof downloadBizgarhCertificate === "function") {
+      sessionStorage.setItem(key, "1");
+      downloadBizgarhCertificate(row, c);
+    }
+    document.getElementById("certAward")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
   function finishLesson() {
+    if (ended) return;
     ended = true;
     setPlaying(false);
     playBtn.innerHTML = ytIcon("replay");
-    let awarded = null;
-    if (typeof markLessonDone === "function") awarded = markLessonDone(user.email, c.id, currentLesson);
+    stopVdoWatch();
+    const last = currentLesson >= LESSONS.length - 1;
+    const awarded = last
+      ? completeClassroom()
+      : (typeof markLessonDone === "function" ? markLessonDone(user.email, c.id, currentLesson) : null);
     if (awarded) {
-      if (typeof renderCertAward === "function") renderCertAward(document.getElementById("certAward"), c, awarded);
-      const foot = document.querySelector("#courseOverview .cd-cert");
-      if (foot && typeof awardedCertFooterHTML === "function") {
-        foot.outerHTML = awardedCertFooterHTML(c, true);
-      }
-      const ov = document.getElementById("courseOverview");
-      if (ov && typeof courseNudgeHTML === "function") {
-        const html = courseNudgeHTML(c, "done");
-        const existing = document.querySelector(".cd-nudge");
-        if (existing) existing.outerHTML = html;
-        else ov.insertAdjacentHTML("afterend", html);
-        if (typeof bindCourseNudge === "function") bindCourseNudge(ov.parentElement || document);
-      }
-      paintEndCard(true);
-      toast("Certificate ready · next classroom is on the player");
+      revealCertificate(awarded);
       return;
     }
     paintEndCard(false);
+  }
+  function hookVdoEnded(player) {
+    stopVdoWatch();
+    const fire = () => { if (!ended) finishLesson(); };
+    try { player.video?.addEventListener("ended", fire); } catch { /* ignore */ }
+    try { player.addEventListener?.("ended", fire); } catch { /* ignore */ }
+    try { player.addEventListener?.("playEnded", fire); } catch { /* ignore */ }
+    vdoWatch = setInterval(() => {
+      try {
+        const v = player.video;
+        const d = Number(v?.duration || 0);
+        const t = Number(v?.currentTime || 0);
+        if (d > 1 && t >= d - 0.5) fire();
+      } catch { /* iframe API not ready */ }
+    }, 700);
   }
   async function loadVdoLesson(videoId) {
     clearVdo();
@@ -502,7 +548,7 @@ function renderLearnPage() {
     });
     try {
       const player = window.VdoPlayer && window.VdoPlayer.getInstance(vdoFrame);
-      player?.video?.addEventListener("ended", finishLesson);
+      if (player) hookVdoEnded(player);
     } catch { /* iframe still plays without API hooks */ }
   }
 
@@ -514,7 +560,18 @@ function renderLearnPage() {
       patchProgress(watcher.email, c.id, { lastIdx: i });
     }
     ended = false;
+    stopVdoWatch();
     hideEndCard();
+    const kind = LESSONS[i].kind || "video";
+    if (kind === "pdf" || kind === "article") {
+      loadEl.classList.remove("show");
+      const last = i >= LESSONS.length - 1;
+      const awarded = last
+        ? completeClassroom()
+        : (typeof markLessonDone === "function" ? markLessonDone(user.email, c.id, i) : null);
+      if (awarded) revealCertificate(awarded);
+      return;
+    }
     document.querySelectorAll("[data-lesson]").forEach((b) => b.classList.toggle("active", Number(b.dataset.lesson) === i));
     const topic = document.querySelector(`#courseOverview [data-lesson="${i}"]`);
     const sec = topic?.closest(".cd-sec");
@@ -581,9 +638,17 @@ function renderLearnPage() {
     togglePlay();
     flashBezel(willPlay ? "play" : "pause");
   });
+  function goNextLesson() {
+    if (currentLesson >= LESSONS.length - 1) {
+      finishLesson();
+      return;
+    }
+    if (typeof markLessonDone === "function") markLessonDone(user.email, c.id, currentLesson);
+    loadLesson(currentLesson + 1);
+  }
   document.getElementById("nextBtn").addEventListener("click", (e) => {
     e.stopPropagation();
-    loadLesson(currentLesson + 1);
+    goNextLesson();
   });
   muteBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -865,7 +930,7 @@ function renderLearnPage() {
     if (onCoursePage && !inClassroom(e.target) && !document.fullscreenElement) return;
     if (typeInField(e) || (e.ctrlKey && k !== "/") || e.metaKey || e.altKey) return;
     if (stage.classList.contains("is-vdo")) {
-      if (e.shiftKey && k === "n") { e.preventDefault(); loadLesson(currentLesson + 1); }
+      if (e.shiftKey && k === "n") { e.preventDefault(); goNextLesson(); }
       if (e.shiftKey && k === "p") { e.preventDefault(); loadLesson(currentLesson - 1); }
       return;
     }
@@ -897,7 +962,7 @@ function renderLearnPage() {
       t: () => document.getElementById("theaterBtn")?.click(),
       home: () => seekTo(0),
       end: () => seekTo(1),
-      n: () => { if (e.shiftKey) loadLesson(currentLesson + 1); },
+      n: () => { if (e.shiftKey) goNextLesson(); },
       p: () => { if (e.shiftKey) loadLesson(currentLesson - 1); },
       ",": () => { if (video.paused) video.currentTime = Math.max(0, video.currentTime - 1 / 30); },
       ".": () => { if (video.paused) video.currentTime = Math.min(video.duration || 0, video.currentTime + 1 / 30); }
