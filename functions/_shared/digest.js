@@ -174,7 +174,7 @@ function digestHtml(row) {
   const sales = Number(row.sales || 0);
   const earning = inr(row.earning);
   const logo = origin + "/img/bizgarh-logo-transparent.png";
-  const adminUrl = origin + "/admin.html";
+  const adminUrl = origin + "/control";
   const saleWord = sales === 1 ? "sale" : "sales";
   return `<!DOCTYPE html>
 <html lang="en">

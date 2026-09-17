@@ -386,7 +386,7 @@ function openAdminDesk() {
     role: role === "admin" ? "subadmin" : role,
     status: "active"
   });
-  location.href = "/admin";
+  location.href = adminHref();
 }
 const LIVE_KEY = "tradeshalaLives";
 const COURSE_EDITS_KEY = "tradeshalaCourseEdits";
@@ -1241,6 +1241,15 @@ function pagePath() {
   return (location.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
 }
 
+function isAdminPage() {
+  const p = pagePath();
+  return p === "/admin" || p === "/control";
+}
+
+function adminHref(hash) {
+  return "/control" + (hash ? (hash.charAt(0) === "#" ? hash : "#" + hash) : "");
+}
+
 function afterAuthArrive() {
   const pending = sessionStorage.getItem("tradeshalaPendingBuy");
     if (pending) {
@@ -1257,7 +1266,7 @@ function afterAuthArrive() {
     location.href = "/program?id=" + encodeURIComponent(pendingMentor);
     return;
   }
-  if (pagePath() === "/admin") {
+  if (isAdminPage()) {
     if (typeof AdminCore !== "undefined" && typeof showAdmin === "function") {
       try {
         if (AdminCore.session() || AdminCore.adoptPublicUser()) showAdmin();
@@ -3089,7 +3098,7 @@ function headerAuthHTML(place) {
     return `<a class="btn btn-ghost" href="/dashboard">My Dashboard</a>
       <a class="btn btn-primary" href="/learning">My Learning</a>
       <a class="btn btn-ghost" href="/account">My Profile</a>
-      ${role ? `<a class="btn btn-primary js-open-admin" href="/admin">Admin panel</a>` : ""}
+      ${role ? `<a class="btn btn-primary js-open-admin" href="/control">Admin panel</a>` : ""}
       <button class="btn btn-ghost js-logout" type="button">Logout</button>`;
   }
   return `<a class="btn btn-ghost hdr-learn" href="/learning">My Learning</a>
@@ -3100,7 +3109,7 @@ function headerAuthHTML(place) {
         <a href="/dashboard">${iconSvg("chart")} My Dashboard</a>
         <a href="/learning">${iconSvg("play")} My Learning</a>
         <a href="/account">${iconSvg("users")} My Profile</a>
-        ${role ? `<a class="js-open-admin" href="/admin">${iconSvg("lock")} Admin panel</a>` : ""}
+        ${role ? `<a class="js-open-admin" href="/control">${iconSvg("lock")} Admin panel</a>` : ""}
         <a href="/contact">${iconSvg("headset")} Help</a>
         <button type="button" class="js-logout">${iconSvg("share")} Logout</button>
       </div>
@@ -5691,7 +5700,7 @@ function renderLiveRoom() {
           <div class="live-host-actions">
             ${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
             <a class="btn btn-ghost" href="/live#call">All 1:1 calls</a>
-            ${isHost ? `<a class="btn btn-ghost" href="/admin">Back to dashboard</a>` : ""}
+            ${isHost ? `<a class="btn btn-ghost" href="/control">Back to dashboard</a>` : ""}
           </div>
         </div>
         <aside class="live-side">
@@ -5753,7 +5762,7 @@ function renderLiveRoom() {
           <div class="live-host-actions">
             ${live.status === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Start ${noun}</button>` : ""}
             ${live.status !== "ended" && live.status !== "scheduled" ? `<button class="btn btn-primary" id="endLiveBtn">End ${noun}</button>` : ""}
-            <a class="btn btn-ghost" href="/admin#webinar/${encodeURIComponent(live.id)}/session">Back to webinar</a>
+            <a class="btn btn-ghost" href="/control#webinar/${encodeURIComponent(live.id)}/session">Back to webinar</a>
           </div>` : `
           <div class="live-host-actions">
             ${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
@@ -6376,7 +6385,7 @@ async function renderCertificatePage() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const adminPage = pagePath() === "/admin";
+  const adminPage = isAdminPage();
   if (!adminPage) pingCreatorDigest();
   stripHtmlUrl();
   const ref = new URLSearchParams(location.search).get("ref");

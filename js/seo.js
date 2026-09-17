@@ -130,7 +130,7 @@
   };
 
   var NOINDEX = {
-    "/dashboard": 1, "/learning": 1, "/account": 1, "/admin": 1, "/live-room": 1,
+    "/dashboard": 1, "/learning": 1, "/account": 1, "/admin": 1, "/control": 1, "/live-room": 1,
     "/certificate": 1, "/community": 1, "/plus": 1, "/premium": 1, "/learn": 1, "/logo": 1
   };
 

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#f4f6fb;color-scheme:light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>Control | Bizgarh</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    html,body.ad-body{margin:0;background:#f4f6fb;color:#0f172a;color-scheme:light;font-family:"Segoe UI",Nunito,sans-serif}
+    #bgBoot{display:none!important}
+    .hidden{display:none!important}
+    .ad-login{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f8fafc}
+    .ad-login-card{width:min(420px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:22px;padding:28px 26px;box-shadow:0 24px 60px rgba(15,23,42,.08)}
+    .ad-login-card h2{margin:8px 0 6px;font-size:24px}
+    .muted{color:#64748b}
+    .field{margin:10px 0}
+    .field label{display:block;font-weight:700;font-size:13px;margin-bottom:4px}
+    .field input{width:100%;height:42px;border:1px solid #e2e8f0;border-radius:12px;padding:0 12px;box-sizing:border-box}
+    .btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 16px;border:0;border-radius:999px;font-weight:800;cursor:pointer;font-family:inherit}
+    .btn-block{width:100%;margin-top:8px}
+    .btn-primary{background:#4f46e5;color:#fff}
+    .btn-ghost{background:#f1f5f9;color:#0f172a}
+    .auth-or{text-align:center;color:#94a3b8;margin:16px 0 14px}
+    .overlay{display:none}
+    .overlay.open{display:flex}
+    #adminApp.hidden{display:none!important}
+  </style>
+</head>
+<body class="ad-body">
+  <div id="staffLogin" class="ad-login" style="display:grid;min-height:100vh;place-items:center;padding:24px;background:#f8fafc">
+    <form class="ad-login-card" id="staffLoginForm">
+      <div class="logo" style="margin-bottom:8px">
+        <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
+          <defs>
+            <linearGradient id="aspark" x1="8" y1="40" x2="38" y2="8" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#4F46E5"/>
+              <stop offset=".46" stop-color="#7C3AED"/>
+              <stop offset="1" stop-color="#E11D74"/>
+            </linearGradient>
+            <linearGradient id="aglass" x1="14" y1="12" x2="30" y2="36">
+              <stop offset="0" stop-color="#fff" stop-opacity=".24"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+            </linearGradient>
+            <clipPath id="adisc"><circle cx="23" cy="25.4" r="16.35"/></clipPath>
+          </defs>
+          <circle cx="23" cy="25.4" r="20.35" fill="none" stroke="url(#aspark)" stroke-width="1.75"/>
+          <circle cx="23" cy="25.4" r="16.55" fill="url(#aspark)"/>
+          <ellipse cx="18.4" cy="20" rx="8.4" ry="5.8" fill="url(#aglass)"/>
+          <circle cx="23" cy="25.4" r="15.45" stroke="#fff" stroke-width="1" opacity=".32"/>
+          <path fill="#fff" d="M14.35 35.05V21.15C14.35 15.2 18.15 11.85 23 11.85S31.65 15.2 31.65 21.15v13.9h-4.05V22.85c0-2.85-2-4.95-4.6-4.95s-4.6 2.1-4.6 4.95v12.2h-4.05Z"/>
+          <g clip-path="url(#adisc)">
+            <path d="M18.9 30.35 21.95 25.15 24.85 27.2 28.85 19.55" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path fill="#fff" d="M27.55 18.05 31.35 17.35 29.55 21.45Z"/>
+          </g>
+          <circle cx="36.35" cy="9.85" r="3.55" fill="#fff"/>
+          <circle cx="36.35" cy="9.85" r="2.55" fill="#E11D74"/>
+          <circle cx="36.35" cy="9.85" r="1.05" fill="#fff"/>
+        </svg></span>
+        <span class="logo-word">Bizgarh</span>
+      </div>
+      <h2>Control center</h2>
+      <p class="muted">Super admins and admins sign in with Google. The public classroom stays unchanged for everyone else.</p>
+      <button type="button" class="btn btn-primary btn-block" id="staffGoogleBtn">Continue with Google</button>
+      <button type="button" class="btn btn-ghost btn-block hidden" id="staffContinue">Continue as <span></span></button>
+      <p class="auth-or"><span>or password</span></p>
+      <div class="field"><label>Email</label><input name="email" type="email" required placeholder="admin email"></div>
+      <div class="field"><label>Password</label><input name="password" type="password" required></div>
+      <div class="field hidden" id="totpWrap"><label>Authenticator code</label><input name="totp" placeholder="000000"></div>
+      <button class="btn btn-ghost btn-block">Login with password</button>
+    </form>
+  </div>
+
+  <div class="ad-app hidden" id="adminApp">
+    <aside class="ad-side" id="adminSide"></aside>
+    <main class="ad-main">
+      <header class="ad-head">
+        <div>
+          <button class="btn btn-ghost ad-menu" type="button" id="adMenu">Menu</button>
+          <h1 id="adminTitle">Dashboard</h1>
+          <p class="muted" id="adminSub">Live platform control</p>
+        </div>
+        <span class="ad-pill" id="adminPill">Owner</span>
+      </header>
+      <div id="adminView"></div>
+    </main>
+  </div>
+
+  <div class="overlay" id="editCourseOverlay">
+    <div class="modal" style="width:min(560px,100%)">
+      <button class="close-x" type="button" id="closeEditCourse">×</button>
+      <h3>Edit course</h3>
+      <form id="editCourseForm" class="admin-form admin-form-edit" style="margin-top:8px">
+        <input type="hidden" name="courseId">
+        <input name="title" placeholder="Course title" required>
+        <input name="instructor" id="editInstructorField" placeholder="Instructor" required>
+        <input name="price" type="number" min="0" placeholder="Price ₹" required>
+        <select name="cat" required>
+          <option value="trending">Trending</option>
+          <option value="beginners">Beginners</option>
+          <option value="options">Options</option>
+          <option value="investing">Investing</option>
+          <option value="ta">Charts</option>
+          <option value="hindi">Hindi</option>
+          <option value="crypto">Crypto</option>
+          <option value="strategy">Strategy</option>
+        </select>
+        <input name="hours" placeholder="Hours">
+        <input name="lessons" type="number" placeholder="Lessons">
+        <textarea name="description" placeholder="Course description"></textarea>
+        <label class="admin-file-field" style="grid-column:1/-1">
+          <span>Course banner (homepage + player)</span>
+          <input name="banner" type="url" inputmode="url" placeholder="Banner image URL">
+          <input name="bannerFile" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+          <img id="editBannerPreview" alt="" hidden style="margin-top:8px;max-width:100%;max-height:140px;border-radius:12px;object-fit:cover">
+          <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:700">
+            <input name="bannerClear" type="checkbox"> Remove banner
+          </label>
+        </label>
+        <button class="btn btn-primary">Save changes</button>
+      </form>
+    </div>
+  </div>
+  <div class="overlay" id="videosOverlay">
+    <div class="modal" style="width:min(640px,100%)">
+      <button class="close-x" type="button" id="closeVideos">×</button>
+      <h3 id="videosTitle">Course videos</h3>
+      <p class="muted" style="margin:6px 0 12px">Pick an MP4 from this computer. It goes straight to VdoCipher DRM from here. Encoding takes a few minutes, then students play it encrypted.</p>
+      <div id="videosList"></div>
+      <form id="addVideoForm" class="admin-form admin-form-edit" style="margin-top:16px">
+        <input type="hidden" name="courseId">
+        <input name="title" placeholder="Lesson title" required>
+        <input name="dur" placeholder="Duration (05:20)">
+        <textarea name="notes" placeholder="Lesson notes (shown in Your Course Overview)"></textarea>
+        <input name="pdf" placeholder="PDF URL (optional)">
+        <label class="admin-file-field">
+          <span>Lesson PDF</span>
+          <input name="pdfFile" type="file" accept="application/pdf">
+        </label>
+        <label class="admin-file-field">
+          <span>Lesson video (from this computer)</span>
+          <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
+        </label>
+        <div class="admin-upload-bar" data-upload-bar hidden><i data-upload-fill></i></div>
+        <details class="admin-video-extra">
+          <summary>Already on VdoCipher? Paste ID</summary>
+          <input name="vdoId" placeholder="VdoCipher video ID">
+          <input name="src" placeholder="Direct MP4 URL (no DRM, fallback only)">
+        </details>
+        <button class="btn btn-primary" type="submit">Upload lesson</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="liveExtrasOverlay">
+    <div class="modal" style="width:min(560px,100%)">
+      <button class="close-x" type="button" id="closeLiveExtras">×</button>
+      <h3 id="liveExtrasTitle">Session extras</h3>
+      <form id="liveExtrasForm" class="admin-form">
+        <input type="hidden" name="liveId">
+        <textarea name="notes" placeholder="Session notes (shown in Your Course Overview)"></textarea>
+        <input name="pdf" placeholder="PDF URL">
+        <input name="recordUrl" placeholder="Recording URL after the live ends">
+        <button class="btn btn-primary" type="submit">Save extras</button>
+      </form>
+    </div>
+  </div>
+  <div class="overlay overlay-scroll" id="mentorLessonOverlay">
+    <div class="modal" style="width:min(640px,100%);max-height:86vh;overflow:auto">
+      <button class="close-x" type="button" id="closeMentorLessons">×</button>
+      <h3 id="mentorLessonTitle">Mentorship sessions</h3>
+      <div id="mentorLessonList" class="video-admin-list"></div>
+      <form id="addMentorLessonForm" class="admin-form">
+        <input type="hidden" name="programId">
+        <input name="title" placeholder="Session title" required>
+        <input name="dur" placeholder="Duration (60 min)">
+        <select name="mode">
+          <option value="live">Live session</option>
+          <option value="recorded">Recorded video</option>
+        </select>
+        <input name="at" type="datetime-local">
+        <textarea name="notes" placeholder="Session notes (shown in overview)"></textarea>
+        <input name="pdf" placeholder="PDF URL (optional)">
+        <label class="admin-file-field">
+          <span>Session PDF</span>
+          <input name="pdfFile" type="file" accept="application/pdf">
+        </label>
+        <label class="admin-file-field">
+          <span>Recorded video file</span>
+          <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
+        </label>
+        <input name="vdoId" placeholder="VdoCipher video ID (optional)">
+        <input name="src" placeholder="Direct MP4 URL (optional)">
+        <button class="btn btn-primary" type="submit">Add session</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      try {
+        if (location.hostname === "bizgarh.com") {
+          location.replace("https://www.bizgarh.com" + location.pathname + location.search + location.hash);
+          return;
+        }
+      } catch (e) {}
+      function sheet(href) {
+        var l = document.createElement("link");
+        l.rel = "stylesheet";
+        l.href = href;
+        document.head.appendChild(l);
+      }
+      setTimeout(function () {
+        sheet("css/admin.css?v=spd14");
+        sheet("css/style.css?v=dash65");
+        sheet("css/fonts.css?v=hang1");
+      }, 0);
+    })();
+  </script>
+  <script src="js/app.js?v=dash60" defer></script>
+  <script src="js/lms.js" defer></script>
+  <script src="js/admin-core.js?v=spd2" defer></script>
+  <script src="js/admin.js?v=drm3" defer></script>
+  <script src="js/admin-course.js?v=dash42" defer></script>
+  <script src="js/admin-mentor.js?v=dash42" defer></script>
+  <script src="js/admin-webinar.js?v=dash45" defer></script>
+  <script src="js/admin-app.js?v=dash45" defer></script>
+</body>
+</html>
