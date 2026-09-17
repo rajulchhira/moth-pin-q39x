@@ -1257,6 +1257,14 @@ function afterAuthArrive() {
     location.href = "/program?id=" + encodeURIComponent(pendingMentor);
     return;
   }
+  if (pagePath() === "/admin") {
+    if (typeof AdminCore !== "undefined" && typeof showAdmin === "function") {
+      try {
+        if (AdminCore.session() || AdminCore.adoptPublicUser()) showAdmin();
+      } catch (e) { /* keep the login card visible */ }
+    }
+    return;
+  }
   if (pagePath() === "/dashboard") {
     if (typeof bindChrome === "function") {
       const mountH = document.getElementById("site-header");
@@ -6368,7 +6376,8 @@ async function renderCertificatePage() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  pingCreatorDigest();
+  const adminPage = pagePath() === "/admin";
+  if (!adminPage) pingCreatorDigest();
   stripHtmlUrl();
   const ref = new URLSearchParams(location.search).get("ref");
   if (ref) {
@@ -6389,8 +6398,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   ensureBrandFont();
   if (mountH) mountH.innerHTML = headerHTML();
   if (mountF) mountF.innerHTML = footerHTML();
-  bindChrome();
   window.BizgarhLoader?.done?.();
+  if (adminPage) {
+    const bootQ = new URLSearchParams(location.search);
+    if (bootQ.get("oauth_ticket") || bootQ.get("oauth_error")) await consumeOAuth();
+    return;
+  }
+  bindChrome();
   syncNotesFromAccount();
   paintNoteBell(false);
   applySignupGate();

@@ -1,17 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:#f4f6fb;color-scheme:light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
   <title>Control | Bizgarh</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="js/seo.js?v=seo2" defer></script>
   <script src="js/boot.js?v=home7"></script>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-  <link rel="stylesheet" href="css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="css/style.css?v=dash64">
-  <link rel="stylesheet" href="css/admin.css?v=spd12">
+  <style>
+    html,body.ad-body{margin:0;background:#f4f6fb;color:#0f172a;color-scheme:light;font-family:Nunito,"Segoe UI",sans-serif}
+    #bgBoot{display:none!important}
+    .hidden{display:none!important}
+    .ad-login{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f8fafc}
+    .ad-login-card{width:min(420px,100%);background:#fff;border:1px solid #e2e8f0;border-radius:22px;padding:28px 26px;box-shadow:0 24px 60px rgba(15,23,42,.08)}
+    .ad-login-card h2{margin:8px 0 6px;font-size:24px}
+    .muted{color:#64748b}
+    .field{margin:10px 0}
+    .field label{display:block;font-weight:700;font-size:13px;margin-bottom:4px}
+    .field input{width:100%;height:42px;border:1px solid #e2e8f0;border-radius:12px;padding:0 12px;box-sizing:border-box}
+    .btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 16px;border:0;border-radius:999px;font-weight:800;cursor:pointer;font-family:inherit}
+    .btn-block{width:100%;margin-top:8px}
+    .btn-primary{background:#4f46e5;color:#fff}
+    .btn-ghost{background:#f1f5f9;color:#0f172a}
+    .auth-or{text-align:center;color:#94a3b8;margin:16px 0 14px}
+    .overlay{display:none}
+    .overlay.open{display:flex}
+    #adminApp.hidden{display:none!important}
+  </style>
+  <link rel="preload" href="css/fonts.css?v=hang1" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="css/style.css?v=dash65" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="stylesheet" href="css/admin.css?v=spd13">
+  <noscript>
+    <link rel="stylesheet" href="css/fonts.css?v=hang1">
+    <link rel="stylesheet" href="css/style.css?v=dash65">
+  </noscript>
+  <script>
+    window.addEventListener("load", function () {
+      document.querySelectorAll('link[rel="preload"][as="style"]').forEach(function (el) {
+        if (el.rel !== "stylesheet") el.rel = "stylesheet";
+      });
+    });
+  </script>
 </head>
 <body class="ad-body">
   <div id="bgBoot" aria-busy="true" aria-label="Loading Bizgarh"></div>
@@ -183,13 +212,13 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=dash57" defer></script>
+  <script src="js/app.js?v=dash58" defer></script>
   <script src="js/lms.js" defer></script>
   <script src="js/admin-core.js?v=spd2" defer></script>
   <script src="js/admin.js?v=drm3" defer></script>
   <script src="js/admin-course.js?v=dash42" defer></script>
   <script src="js/admin-mentor.js?v=dash42" defer></script>
   <script src="js/admin-webinar.js?v=dash45" defer></script>
-  <script src="js/admin-app.js?v=dash43" defer></script>
+  <script src="js/admin-app.js?v=dash44" defer></script>
 </body>
 </html>

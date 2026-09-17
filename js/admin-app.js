@@ -1699,15 +1699,27 @@ function bindCourseOverlays() {
 function emailSafe(s) { return s; }
 
 function showAdmin() {
-  document.getElementById("staffLogin").classList.add("hidden");
-  document.getElementById("adminApp").classList.remove("hidden");
-  applyAdminRoute(parseAdminRoute());
-  paint();
+  const login = document.getElementById("staffLogin");
+  const app = document.getElementById("adminApp");
+  try {
+    applyAdminRoute(parseAdminRoute());
+    paint();
+    login?.classList.add("hidden");
+    app?.classList.remove("hidden");
+  } catch (err) {
+    console.error(err);
+    app?.classList.add("hidden");
+    login?.classList.remove("hidden");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  if (typeof seedStaffAndAnalytics === "function") seedStaffAndAnalytics();
-  AdminCore.seedControlPlane();
+  try {
+    if (typeof seedStaffAndAnalytics === "function") seedStaffAndAnalytics();
+    AdminCore.seedControlPlane();
+  } catch (err) {
+    console.error(err);
+  }
 
   document.getElementById("staffGoogleBtn")?.addEventListener("click", () => {
     if (typeof startSocial === "function") startSocial("google");
@@ -1740,16 +1752,24 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "staffLogout" || e.target.closest("#staffLogout")) { AdminCore.logout(); location.reload(); }
   });
   document.getElementById("adMenu")?.addEventListener("click", () => document.getElementById("adminApp").classList.toggle("nav-open"));
-  bindApp();
-  bindCourseOverlays();
-  if (typeof CourseAdmin !== "undefined") CourseAdmin.bind();
-  if (typeof MentorAdmin !== "undefined") MentorAdmin.bind();
-  if (typeof WebinarAdmin !== "undefined") WebinarAdmin.bind();
+  try {
+    bindApp();
+    bindCourseOverlays();
+    if (typeof CourseAdmin !== "undefined") CourseAdmin.bind();
+    if (typeof MentorAdmin !== "undefined") MentorAdmin.bind();
+    if (typeof WebinarAdmin !== "undefined") WebinarAdmin.bind();
+  } catch (err) {
+    console.error(err);
+  }
   window.addEventListener("hashchange", () => {
     if (!AdminCore.session()) return;
     applyAdminRoute(parseAdminRoute());
     Ad.page = 1;
     paint();
   });
-  if (AdminCore.session() || AdminCore.adoptPublicUser()) showAdmin();
+  try {
+    if (AdminCore.session() || AdminCore.adoptPublicUser()) showAdmin();
+  } catch (err) {
+    console.error(err);
+  }
 });
