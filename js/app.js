@@ -1246,6 +1246,10 @@ function isAdminPage() {
   return p === "/admin" || p === "/control";
 }
 
+function isLiveRoomPage() {
+  return pagePath() === "/live-room";
+}
+
 function adminHref(hash) {
   return "/control" + (hash ? (hash.charAt(0) === "#" ? hash : "#" + hash) : "");
 }
@@ -5671,6 +5675,24 @@ function renderWebinarPage() {
   });
 }
 
+function liveMeetShellHTML(opts) {
+  return `<div class="live-room live-meet">
+    <header class="live-meet-bar">
+      <a class="live-meet-leave" href="${escapeHtml(opts.backHref || "/live")}">Leave</a>
+      <div class="live-meet-copy">
+        <strong>${escapeHtml(opts.title || "Live classroom")}</strong>
+        <span>${escapeHtml(opts.sub || "")}</span>
+      </div>
+      <span class="live-dot ${escapeHtml(opts.status || "scheduled")}">${escapeHtml(opts.statusLabel || "")}</span>
+      ${opts.barActions ? `<div class="live-meet-bar-actions">${opts.barActions}</div>` : ""}
+    </header>
+    <div class="live-meet-stage">
+      <div id="hmsMount">${opts.mount || ""}</div>
+      ${opts.actions ? `<div class="live-meet-actions">${opts.actions}</div>` : ""}
+    </div>
+  </div>`;
+}
+
 function renderLiveRoom() {
   const root = document.getElementById("liveRoom");
   if (!root) return;
@@ -5690,25 +5712,19 @@ function renderLiveRoom() {
     const isGuest = user && user.email === session.email;
     document.title = `${session.topic} | 1:1 | ${BRAND}`;
     const canJoin = session.status === "approved" && (isHost || isGuest);
-    root.innerHTML = `
-      <div class="live-room">
-        <div class="live-stage">
-          <span class="live-dot ${session.status === "approved" ? "live" : "scheduled"}">${(session.status || "pending").toUpperCase()}</span>
-          <h1>${escapeHtml(session.topic)}</h1>
-          <p>${escapeHtml(session.date)} ${escapeHtml(session.time || "")} • ${escapeHtml(session.mentor || "Mentor")} with ${escapeHtml(session.name)}</p>
-          <div id="hmsMount">${canJoin ? `<div class="live-cam">Connecting 1:1 room…</div>` : `<div class="live-cam">${session.status === "pending" ? "Waiting for mentor approval" : "This 1:1 is private to the booked student and mentor"}</div>`}</div>
-          <div class="live-host-actions">
-            ${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
-            <a class="btn btn-ghost" href="/live#call">All 1:1 calls</a>
-            ${isHost ? `<a class="btn btn-ghost" href="/control">Back to dashboard</a>` : ""}
-          </div>
-        </div>
-        <aside class="live-side">
-          <h3>1:1 details</h3>
-          <p class="muted">${escapeHtml(session.notes || "Bring your journal and the setup you want reviewed.")}</p>
-          <p class="muted" style="margin-top:8px">Camera and mic open for both of you inside Bizgarh.</p>
-        </aside>
-      </div>`;
+    root.innerHTML = liveMeetShellHTML({
+      status: session.status === "approved" ? "live" : "scheduled",
+      statusLabel: (session.status || "pending").toUpperCase(),
+      title: session.topic,
+      sub: `${session.date} ${session.time || ""} • ${session.mentor || "Mentor"}`,
+      backHref: isHost ? "/control" : "/live#call",
+      mount: canJoin
+        ? `<div class="live-cam">Connecting 1:1 room…</div>`
+        : `<div class="live-cam">${session.status === "pending" ? "Waiting for mentor approval" : "This 1:1 is private to the booked student and mentor"}</div>`,
+      actions: !canJoin
+        ? `${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}`
+        : ""
+    });
     if (canJoin) {
       mountHmsFrame(document.getElementById("hmsMount"), {
         kind: "call",
@@ -5736,49 +5752,29 @@ function renderLiveRoom() {
   const showIntro = !isHost && registered && live.status === "scheduled";
   const canJoinHms = live.status !== "ended" && (isHost || (registered && live.status === "live"));
 
-  root.innerHTML = `
-    <div class="live-room">
-      <div class="live-stage">
-        <span class="live-dot ${live.status || "scheduled"}">${(live.status || "scheduled").toUpperCase()}</span>
-        <h1>${live.title}</h1>
-        <p>${live.when} • ${live.by} • ${live.duration || "60 min"}</p>
-        <div id="hmsMount">${
-          canJoinHms
-            ? `<div class="live-cam">Connecting classroom…</div>`
-            : showIntro
-              ? introPlayerHTML(live.introUrl)
-              : `<div class="live-cam">${live.status === "ended" ? "This class has ended" : "Register, then wait here. The teacher will start the class in this room."}</div>`
-        }</div>
-        ${live.recordUrl ? `<a class="btn btn-ghost" href="${live.recordUrl}" target="_blank" rel="noopener">Watch recording</a>` : ""}
-        ${isHost ? `
-          <form id="hostIntroForm" class="live-host-form">
-            <input name="introUrl" placeholder="Intro video before class (YouTube or MP4 URL)" value="${escapeHtml(live.introUrl || "")}">
-            <button class="btn btn-ghost">Save intro</button>
-          </form>
-          <form id="hostRecForm" class="live-host-form">
-            <input name="recordUrl" placeholder="Paste recording URL after class" value="${live.recordUrl || ""}">
-            <button class="btn btn-ghost">Save recording</button>
-          </form>
-          <div class="live-host-actions">
-            ${live.status === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Start ${noun}</button>` : ""}
-            ${live.status !== "ended" && live.status !== "scheduled" ? `<button class="btn btn-primary" id="endLiveBtn">End ${noun}</button>` : ""}
-            <a class="btn btn-ghost" href="/control#webinar/${encodeURIComponent(live.id)}/session">Back to webinar</a>
-          </div>` : `
-          <div class="live-host-actions">
-            ${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
-            ${user && !registered && live.status !== "ended" ? `<button class="btn btn-primary" data-register="${live.id}">Register & stay</button>` : ""}
-            <a class="btn btn-ghost" href="/live">All live classes</a>
-          </div>`}
-      </div>
-        <aside class="live-side">
-        <h3>${isHost ? "Students in this class" : "Class details"}</h3>
-        ${isHost
-          ? (regs.length ? `<ul class="live-students">${regs.map((r) => `<li>${r.name}<small>${r.email}</small></li>`).join("")}</ul>` : `<p class="muted">No registrations yet.</p>`)
-          : `<p class="muted">${live.notes || "Bring your journal. Q&A at the end."}</p><p class="muted" style="margin-top:8px">${regs.length} learners registered.${live.chat === false ? " Chat is off for this session." : " Chat is on in the live room."}</p>`}
-      </aside>
-    </div>
-    ${live.status === "ended" ? pathNudgeHTML(live.title, "webinar", live.id, "live-end") : ""}
-    ${itemReviewsBlockHTML("webinar", live.id)}`;
+  const barActions = isHost
+    ? `${live.status === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Go live</button>` : ""}
+       ${live.status === "live" ? `<button class="btn btn-primary" id="endLiveBtn">End ${noun}</button>` : ""}`
+    : "";
+  const waitActions = !isHost && !canJoinHms
+    ? `${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
+       ${user && !registered && live.status !== "ended" ? `<button class="btn btn-primary" data-register="${live.id}">Register & stay</button>` : ""}`
+    : "";
+
+  root.innerHTML = liveMeetShellHTML({
+    status: live.status || "scheduled",
+    statusLabel: (live.status || "scheduled").toUpperCase(),
+    title: live.title,
+    sub: `${live.when} • ${live.by}`,
+    backHref: isHost ? `/control#webinar/${encodeURIComponent(live.id)}/session` : "/live",
+    mount: canJoinHms
+      ? `<div class="live-cam">Connecting classroom…</div>`
+      : showIntro
+        ? introPlayerHTML(live.introUrl)
+        : `<div class="live-cam">${live.status === "ended" ? "This class has ended" : "Register, then wait here. The teacher will start the class in this room."}</div>`,
+    barActions,
+    actions: waitActions
+  });
 
   if (canJoinHms) {
     mountHmsFrame(document.getElementById("hmsMount"), {
@@ -5790,24 +5786,12 @@ function renderLiveRoom() {
       userName: (isHost ? staff.name : (user && user.name)) || "Guest"
     });
   }
-  document.getElementById("hostIntroForm")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    updateLive(id, { introUrl: e.target.introUrl.value.trim() });
-    toast("Intro video saved · students see it until you start class");
-    renderLiveRoom();
-  });
   document.getElementById("startLiveBtn")?.addEventListener("click", () => {
     const staffNow = getStaffSession();
     const patch = { status: "live" };
     if (staffNow?.email && !live.hostEmail) patch.hostEmail = staffNow.email;
     updateLive(id, patch);
     toast(noun === "class" ? "Class is live · registered students can join now" : "Webinar is live · enrolled students can join now");
-    renderLiveRoom();
-  });
-  document.getElementById("hostRecForm")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    updateLive(id, { recordUrl: e.target.recordUrl.value.trim() });
-    toast("Recording link saved");
     renderLiveRoom();
   });
   document.getElementById("endLiveBtn")?.addEventListener("click", async () => {
@@ -5822,7 +5806,6 @@ function renderLiveRoom() {
     toast(noun === "class" ? "Class ended · everyone is kicked from the room" : "Webinar ended · everyone is out of the room");
     renderLiveRoom();
   });
-  bindOverviewExtras(root);
 }
 
 function applySignupGate() {
@@ -6405,7 +6388,8 @@ async function startPublicBoot() {
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");
   ensureBrandFont();
-  if (mountH) mountH.innerHTML = headerHTML();
+  if (isLiveRoomPage()) document.body.classList.add("live-room-page");
+  if (mountH && !isLiveRoomPage()) mountH.innerHTML = headerHTML();
   if (mountF) mountF.innerHTML = footerHTML();
   window.BizgarhLoader?.done?.();
   if (adminPage) {

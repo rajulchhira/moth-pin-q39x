@@ -6002,6 +6002,120 @@ a.cd-room:hover {
   background: #E6E0F4;
 }
 
+body.live-room-page {
+  --header-h: 0px;
+  background: #0f0f13;
+  overflow: hidden;
+}
+body.live-room-page #site-header,
+body.live-room-page .header,
+body.live-room-page .footer,
+body.live-room-page .to-top,
+body.live-room-page #bgBoot,
+body.live-room-page #bgWait {
+  display: none !important;
+}
+body.live-room-page .live-room.live-meet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  gap: 0;
+  background: #0f0f13;
+}
+body.live-room-page .live-meet-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  padding: 8px 16px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  background: #202124;
+  color: #fff;
+}
+body.live-room-page .live-meet-leave {
+  flex: 0 0 auto;
+  color: #fff;
+  background: #3c4043;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+}
+body.live-room-page .live-meet-copy {
+  flex: 1;
+  min-width: 0;
+}
+body.live-room-page .live-meet-copy strong {
+  display: block;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.live-room-page .live-meet-copy span {
+  display: block;
+  font-size: 12px;
+  color: #c4c7c5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.live-room-page .live-meet-bar-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+body.live-room-page .live-meet-bar-actions .btn {
+  min-height: 36px;
+  padding: 8px 14px;
+}
+body.live-room-page .live-meet-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: #0f0f13;
+}
+body.live-room-page #hmsMount {
+  position: absolute;
+  inset: 0;
+}
+body.live-room-page #hmsMount,
+body.live-room-page .hms-frame,
+body.live-room-page .live-meet-stage video {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #0f0f13;
+}
+body.live-room-page .live-cam {
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+  background: #1a1c1e;
+  color: #e8eaed;
+}
+body.live-room-page .live-meet-actions {
+  position: absolute;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 3;
+}
+body.live-room-page .live-meet-actions .btn-ghost {
+  background: #3c4043;
+  color: #fff;
+  border: 0;
+}
+@media (max-width: 720px) {
+  body.live-room-page .live-meet-copy span { display: none; }
+}
+
 .hdr-learn {
   border: 1.5px solid #c7d2fe !important;
   color: #4f46e5 !important;
