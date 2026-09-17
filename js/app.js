@@ -3628,7 +3628,7 @@ function bindChrome() {
     const q = search.value.toLowerCase();
     const courseHits = allCourses().filter((c) => c.title.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q)).slice(0, 5);
     const mentorHits = allMentors().filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 3);
-    const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${m.name} · instructor</a>`).concat(courseHits.map((c) => `<a href="/course?id=${c.id}">${c.title}</a>`));
+    const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${escapeHtml(m.name)} · instructor</a>`).concat(courseHits.map((c) => `<a href="/course?id=${encodeURIComponent(c.id)}">${escapeHtml(c.title)}</a>`));
     document.getElementById("searchResults").innerHTML = rows.join("") || "<a>No matches</a>";
   });
 
@@ -4470,16 +4470,16 @@ function traderCardHTML(m, i) {
   const badgeIcon = face.badge === "Specialist" ? "specialist" : face.badge === "Coach" ? "coach" : face.badge === "Investor" ? "investor" : "expert";
   const tagIcon = face.tone === "amber" ? "clock" : face.tone === "orange" || face.tone === "teal" ? "bag" : face.tone === "blue" ? "pulse" : face.badge === "Coach" ? "bolt" : "pulse";
   return `
-      <a class="tr-card tone-${face.tone}" href="${instructorHref(m.name)}" style="--d:${0.08 + i * 0.06}s">
+      <a class="tr-card tone-${escapeHtml(face.tone)}" href="${instructorHref(m.name)}" style="--d:${0.08 + i * 0.06}s">
         <span class="tr-shot">
-          <img src="${m.img}" alt="${m.name}">
-          <span class="tr-badge">${traderIcon(badgeIcon)} ${face.badge}</span>
+          <img src="${escapeHtml(m.img)}" alt="${escapeHtml(m.name)}">
+          <span class="tr-badge">${traderIcon(badgeIcon)} ${escapeHtml(face.badge)}</span>
         </span>
         <span class="tr-body">
-          <strong>${m.name} <i class="tr-check" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/><path d="M4.6 8.2 7 10.5l4.5-5"/></svg></i></strong>
-          <em>${m.role}</em>
-          <span class="tr-tag">${traderIcon(tagIcon)} ${m.tag}</span>
-          <span class="tr-years">${traderIcon(face.exp)} ${face.years} Years Experience</span>
+          <strong>${escapeHtml(m.name)} <i class="tr-check" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/><path d="M4.6 8.2 7 10.5l4.5-5"/></svg></i></strong>
+          <em>${escapeHtml(m.role)}</em>
+          <span class="tr-tag">${traderIcon(tagIcon)} ${escapeHtml(m.tag)}</span>
+          <span class="tr-years">${traderIcon(face.exp)} ${escapeHtml(face.years)} Years Experience</span>
         </span>
       </a>`;
 }
@@ -4960,24 +4960,23 @@ function renderCoursePage() {
         <nav class="cd-crumb">
           <a href="${homeHref()}">Home</a><span>/</span>
           <a href="/courses">All Courses</a><span>/</span>
-          <b>${c.title}</b>
+          <b>${escapeHtml(c.title)}</b>
         </nav>
-        <span class="cd-pill">${catLabel(c.cat).toUpperCase()}</span>
-        <h1 class="cd-title">${c.title}</h1>
+        <span class="cd-pill">${escapeHtml(catLabel(c.cat).toUpperCase())}</span>
+        <h1 class="cd-title">${escapeHtml(c.title)}</h1>
       </div>
 
       ${owned
         ? `<div id="learnRoot" class="cd-classroom"></div>`
         : `<div class="cd-preview${courseBannerOf(c) ? " has-banner" : ""}" style="${courseBannerOf(c) ? `background-image:url('${String(courseBannerOf(c)).replace(/'/g, "%27")}')` : `--cover:${art.bg}`}">
-          <video id="cdPreview" autoplay muted loop playsinline preload="metadata" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"></video>
           <div class="cd-preview-art">
-            <img class="cd-preview-person" src="${photo}" alt="${c.instructor}">
-            <div class="cd-preview-copy"><small>${BRAND}</small><b>${art.title}</b></div>
+            <img class="cd-preview-person" src="${escapeHtml(photo)}" alt="${escapeHtml(c.instructor)}">
+            <div class="cd-preview-copy"><small>${BRAND}</small><b>${escapeHtml(art.title)}</b></div>
           </div>
           <div class="cd-preview-top">
             <button type="button" class="cd-icon-btn" id="cdShare" title="Share" aria-label="Share">${iconSvg("share")}</button>
           </div>
-          <div class="cd-langs">${langs.map((l, i) => `<button type="button" class="cd-lang ${i === 0 ? "on" : ""}">${l}${i === 0 ? " <em>Original</em>" : ""}</button>`).join("")}</div>
+          <div class="cd-langs">${langs.map((l, i) => `<button type="button" class="cd-lang ${i === 0 ? "on" : ""}">${escapeHtml(l)}${i === 0 ? " <em>Original</em>" : ""}</button>`).join("")}</div>
           <div class="cd-stars">★ ${c.rating} <span>★★★★★</span></div>
         </div>
         ${courseBuyBoxHTML(c, langs, watchers)}`}
@@ -6662,7 +6661,7 @@ async function renderCertificatePage() {
   const course = allCourses().find((c) => c.id === courseId);
   const row = typeof certs === "function" ? certs().find((c) => c.courseId === courseId && c.email === email) : null;
   if (!course || !row) {
-    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><p class="muted">Finish every lesson in the classroom and it appears here.</p><a class="btn btn-primary" href="/dashboard" style="margin-top:12px">My learning</a></div>${faqSectionHTML(FAQ_SETS.cert)}`;
+    root.innerHTML = `<div class="empty"><h3>Certificate not issued yet</h3><p class="muted">Finish every lesson in the classroom and it appears here.</p><a class="btn btn-primary" href="/learning" style="margin-top:12px">My learning</a></div>${faqSectionHTML(FAQ_SETS.cert)}`;
     bindFaqs(root);
     return;
   }
@@ -6717,7 +6716,7 @@ async function startPublicBoot() {
   ensureBrandFont();
   if (isLiveRoomPage()) document.body.classList.add("live-room-page");
   if (mountH && !isLiveRoomPage()) mountH.innerHTML = headerHTML();
-  if (mountF) mountF.innerHTML = footerHTML();
+  if (mountF && !isLiveRoomPage()) mountF.innerHTML = footerHTML();
   window.BizgarhLoader?.done?.();
   if (adminPage) {
     const bootQ = new URLSearchParams(location.search);
@@ -6892,9 +6891,11 @@ async function startPublicBoot() {
     consumePendingMentor();
     renderInstructorListing();
     renderInstructorPage();
-    if (document.getElementById("instructorRoot")) {
-      ensureReviewsData().then(() => renderInstructorPage());
-    }
+    ensureReviewsData().then(() => {
+      const host = document.getElementById("deskReviews");
+      if (host) refreshDeskReviews(host.dataset.reviewBlock, host.dataset.reviewTarget);
+      if (document.getElementById("instructorRoot")) renderInstructorPage();
+    });
     renderLiveRoom();
     renderCommunityPage();
     renderCertificatePage();
