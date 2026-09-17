@@ -3218,19 +3218,26 @@ function courseCard(c, extra = "") {
   </a>`;
 }
 
+function courseSearchHay(c) {
+  const pack = typeof instructorPack === "function" ? instructorPack(c.instructor) : {};
+  const cover = (typeof COVERS === "object" && COVERS[c.cover]) || {};
+  return [
+    c.title, c.instructor, c.id, c.cat, c.cover, c.tag, c.blurb,
+    pack.title, pack.tag, Array.isArray(pack.tags) ? pack.tags.join(" ") : "",
+    pack.bio, String(cover.title || "").replace(/<br\/?>/gi, " "), cover.sub
+  ].join(" ").toLowerCase();
+}
+function courseMatchesQuery(c, query) {
+  const q = String(query || "").trim().toLowerCase();
+  return !q || courseSearchHay(c).includes(q);
+}
 function renderCourses(target, filter = "trending", asGrid = false, query = "") {
   const el = document.querySelector(target);
   if (!el) return;
-  let list = allCourses().filter((c) => {
-    const q = query.toLowerCase();
-    const matchQ = !q || c.title.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q);
-    const matchF = filter === "all" || c.cat === filter;
-    return matchQ && matchF;
-  });
-  if (!list.length && filter !== "all" && query) list = allCourses().filter((c) => !query);
+  const list = allCourses().filter((c) => courseMatchesQuery(c, query) && (filter === "all" || c.cat === filter));
   el.innerHTML = list.length
     ? list.map((c) => courseCard(c, asGrid ? "grid-card" : "")).join("")
-    : `<div class="empty">No courses match this filter.</div>`;
+    : `<div class="empty"><h3>No courses match this search</h3><p class="muted">Try options, Hindi, Nifty, or a mentor name.</p><a class="btn btn-primary" href="/courses" style="margin-top:12px">All courses</a></div>`;
 }
 
 function liveMegaHTML() {
@@ -3626,7 +3633,7 @@ function bindChrome() {
   document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) panel?.classList.remove("open"); });
   search?.addEventListener("input", () => {
     const q = search.value.toLowerCase();
-    const courseHits = allCourses().filter((c) => c.title.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q)).slice(0, 5);
+    const courseHits = allCourses().filter((c) => courseMatchesQuery(c, q)).slice(0, 5);
     const mentorHits = allMentors().filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 3);
     const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${escapeHtml(m.name)} · instructor</a>`).concat(courseHits.map((c) => `<a href="/course?id=${encodeURIComponent(c.id)}">${escapeHtml(c.title)}</a>`));
     document.getElementById("searchResults").innerHTML = rows.join("") || "<a>No matches</a>";
@@ -4411,13 +4418,15 @@ function bindCourseLibrary() {
     if (!a) return;
     e.preventDefault();
     const next = courseFilterFromCat(a.dataset.cat);
-    history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}#library`);
+    const keepQ = q ? `&q=${encodeURIComponent(q)}` : "";
+    history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}${keepQ}#library`);
     applyCourseFilter(a.dataset.cat, q, true);
   });
   document.querySelectorAll(".filters .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       const next = chip.dataset.filter;
-      history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}#library`);
+      const keepQ = q ? `&q=${encodeURIComponent(q)}` : "";
+      history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}${keepQ}#library`);
       applyCourseFilter(next, q, true);
     });
   });
