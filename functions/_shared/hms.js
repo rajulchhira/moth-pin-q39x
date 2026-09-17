@@ -159,13 +159,84 @@ export async function ensureHmsRoom({ kind, id, title, asHost, duration }) {
   const row = codes.find((c) => c.role === role) || codes[0];
   if (!row || !row.code) throw new Error("No 100ms room code for this role");
   const host = hmsSubdomain();
+  const path = asHost ? "/meeting/" : "/preview/";
   return {
     ok: true,
     kind: k,
     roomId,
     role: row.role,
-    joinUrl: "https://" + host + "/preview/" + row.code
+    hostRole: hostRole(names),
+    joinUrl: "https://" + host + path + row.code
   };
+}
+
+function isHostRoleName(role) {
+  return /broadcaster|host|teacher|speaker/i.test(String(role || ""));
+}
+
+export async function hmsRoomIdByKey(kind, id) {
+  const k = normalizeKind(kind);
+  const room = await hmsFetch("/rooms", {
+    method: "POST",
+    body: { name: roomName(k, id) }
+  });
+  return room.id || room.room_id || "";
+}
+
+function peerRows(data) {
+  const raw = data && data.peers;
+  const list = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : []);
+  return list.map((p) => ({
+    id: p.id || p.peer_id || "",
+    name: p.name || p.user_name || "Guest",
+    role: p.role || "",
+    joinedAt: p.joined_at || "",
+    host: isHostRoleName(p.role)
+  })).filter((p) => p.id);
+}
+
+export async function listHmsPeers(kind, id) {
+  const roomId = await hmsRoomIdByKey(kind, id);
+  if (!roomId) return { roomId: "", peers: [] };
+  try {
+    const data = await hmsFetch("/active-rooms/" + roomId);
+    return { roomId, peers: peerRows(data) };
+  } catch (err) {
+    if (err.status === 404) return { roomId, peers: [] };
+    throw err;
+  }
+}
+
+export async function removeHmsPeer(kind, id, peerId) {
+  const roomId = await hmsRoomIdByKey(kind, id);
+  await hmsFetch("/active-rooms/" + roomId + "/remove-peer", {
+    method: "POST",
+    body: { peer_id: peerId, reason: "Removed by host" }
+  });
+  return { ok: true, roomId, peerId };
+}
+
+export async function muteHmsPeers(kind, id, peerId, all) {
+  const { roomId, peers } = await listHmsPeers(kind, id);
+  const targets = all ? peers.filter((p) => !p.host) : peers.filter((p) => p.id === peerId);
+  for (const p of targets) {
+    try {
+      await hmsFetch("/active-rooms/" + roomId + "/peers/" + p.id, {
+        method: "POST",
+        body: { mute: { audio: true } }
+      });
+    } catch {
+      try {
+        await hmsFetch("/active-rooms/" + roomId + "/peers/" + p.id, {
+          method: "POST",
+          body: { role: "viewer" }
+        });
+      } catch {
+        /* 100ms template may already keep students muted */
+      }
+    }
+  }
+  return { ok: true, roomId, muted: targets.length };
 }
 
 export async function endHmsSession({ kind, id }) {

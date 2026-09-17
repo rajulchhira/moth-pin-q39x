@@ -234,28 +234,40 @@ const WebinarAdmin = {
     const rows = this.filtered();
     const canCreate = AdminCore.can("live", "create");
     const drafts = this.catalog().filter((w) => w.unpublished).length;
-    return `<section class="cb-home">
-      <div class="cb-home-bar">
+    return `<section class="cb-home desk-home">
+      <div class="cb-home-bar desk-toolbar">
         <input id="wbSearch" type="search" value="${adEsc(this.titleQ)}" placeholder="Find a webinar…">
         ${canCreate ? `<button type="button" class="btn btn-primary" data-wb-create>+ New webinar</button>` : ""}
       </div>
-      <p class="cb-home-note">${this.catalog().length} webinars${drafts ? ` · ${drafts} still draft` : ""}. Click a session to edit it. Use <b>Start webinar</b> when you want the room to open.</p>
-      <div class="cb-cards">
-        ${rows.map((w) => `
-          <article class="cb-card-row wb-card-row">
-            <button type="button" class="wb-card-open" data-wb-open="${adEsc(w.id)}">
+      <p class="cb-home-note">${this.catalog().length} webinars${drafts ? ` · ${drafts} still draft` : ""}. Start the room from this list. Open a row to edit details.</p>
+      <div class="cb-cards desk-cards">
+        ${rows.map((w, i) => {
+          const host = typeof deskHostOf === "function" ? deskHostOf(w.hostEmail || w.ownerEmail, w.by) : { name: w.by, photo: w.hostPhoto };
+          const regs = typeof readList === "function" ? readList(REGS_KEY).filter((r) => r.id === w.id).length : 0;
+          const when = typeof formatLiveWhen === "function" ? formatLiveWhen(w.at) : (w.when || "");
+          const mins = w.duration || ((typeof webinarMins === "function" ? webinarMins(w) : 60) + " min");
+          return `<article class="desk-row" style="--i:${i}">
+            <button type="button" class="desk-row-main" data-wb-open="${adEsc(w.id)}">
               ${this.thumb(w)}
-              <div class="cb-card-copy">
+              <div class="desk-copy">
                 <strong>${adEsc(w.title)}</strong>
-                <span>${adEsc(this.phaseLabel(w))} · ${adEsc(w.duration || (webinarMins(w) + " min"))} · ${adEsc(w.by || "")}</span>
-                <em>${adEsc(this.nextHint(w))}</em>
+                ${typeof deskMetaHTML === "function" ? deskMetaHTML([
+                  adEsc(this.phaseLabel(w)),
+                  adEsc(mins),
+                  w.seats ? regs + "/" + w.seats + " seats" : (regs ? regs + " enrolled" : ""),
+                  w.lang ? adEsc(w.lang) : "",
+                  w.free === false && w.price ? "₹" + Number(w.price).toLocaleString("en-IN") : "Free"
+                ]) : ""}
+                <div class="desk-hostline">${typeof deskFaceHTML === "function" ? deskFaceHTML(host.name, host.photo || w.hostPhoto) : ""}<span>${adEsc(host.name || w.by || "Host")}</span></div>
+                <em>${adEsc(when ? when + " · " : "")}${adEsc(this.nextHint(w))}</em>
               </div>
             </button>
-            <span class="wb-card-side">
-              <span class="cb-pill ${w.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(w))}</span>
+            <div class="desk-side">
+              <span class="cb-pill ${w.status === "live" ? "is-live" : w.unpublished ? "is-draft" : "is-live"}">${w.status === "live" ? "Live now" : adEsc(this.statusLabel(w))}</span>
               ${this.catalogHostHTML(w)}
-            </span>
-          </article>`).join("") || `<div class="cb-empty-box"><p>No webinar matches that search.</p></div>`}
+            </div>
+          </article>`;
+        }).join("") || `<div class="cb-empty-box"><p>No webinar matches that search.</p></div>`}
       </div>
       <div class="cb-modal hidden" id="wbCreateModal">
         <form class="cb-modal-card" id="wbCreateForm">
@@ -316,11 +328,13 @@ const WebinarAdmin = {
       <label class="cb-big">Webinar name
         <input name="title" required value="${adEsc(w.title)}" ${can ? "" : "readonly"} placeholder="Students see this name">
       </label>
-      <label>Who hosts it?
+      ${typeof deskHostLockHTML === "function"
+        ? deskHostLockHTML(deskHostOf(w.hostEmail || w.ownerEmail, w.by), { field: "by" })
+        : `<label>Who hosts it?
         <select name="by" ${can && AdminCore.isOwner() ? "" : "disabled"}>
           ${this.mentorOptions(w)}
         </select>
-      </label>
+      </label>`}
       <label>Tag
         <input name="tag" value="${adEsc(w.tag || "")}" ${can ? "" : "readonly"} placeholder="e.g. Nifty options">
       </label>
@@ -399,8 +413,8 @@ const WebinarAdmin = {
         <label>More about
           <textarea name="aboutMore" ${can ? "" : "readonly"} placeholder="Shown under show more.">${adEsc(pack.aboutMore || "")}</textarea>
         </label>
-        <label>Instructor bio
-          <textarea name="bio" ${can ? "" : "readonly"} placeholder="Who hosts this room.">${adEsc(pack.bio || "")}</textarea>
+        <label>Host bio <small>auto-filled from the sub-admin profile</small>
+          <textarea name="bio" ${can ? "" : "readonly"} placeholder="Filled from the host profile.">${adEsc(pack.bio || (typeof deskHostOf === "function" ? deskHostOf(w.hostEmail || w.ownerEmail, w.by).bio : "") || "")}</textarea>
         </label>
         <div class="cb-block">
           <p class="cb-say">What You Will Learn <small>minimum 4, required</small></p>
@@ -644,13 +658,16 @@ const WebinarAdmin = {
     if (!w || !canEditWebinar(w)) return;
     const at = form.at.value ? new Date(form.at.value).toISOString() : w.at;
     const mins = Number(form.mins.value || 60);
-    const by = form.by?.value || w.by;
-    const named = (typeof staffList === "function" ? staffList() : []).find((x) => x.name === by);
     const s = AdminCore.session();
+    const host = typeof deskHostOf === "function"
+      ? deskHostOf(form.hostEmail?.value || w.hostEmail || s?.email, form.by?.value || w.by)
+      : { name: form.by?.value || w.by, email: w.hostEmail || s?.email };
     updateLive(id, {
       title: form.title.value.trim(),
-      by,
-      hostEmail: named?.email || w.hostEmail || s?.email || "",
+      by: host.name,
+      hostEmail: host.email || w.hostEmail || s?.email || "",
+      ownerEmail: host.email || w.ownerEmail || s?.email || "",
+      hostPhoto: host.photo || w.hostPhoto || "",
       tag: form.tag.value.trim(),
       at,
       when: typeof formatLiveWhen === "function" ? formatLiveWhen(at) : w.when,
@@ -689,7 +706,7 @@ const WebinarAdmin = {
         about: form.about.value.trim(),
         blurb: form.about.value.trim(),
         aboutMore: form.aboutMore.value.trim(),
-        bio: form.bio.value.trim(),
+        bio: form.bio.value.trim() || (typeof deskHostOf === "function" ? deskHostOf(w.hostEmail, w.by).bio : "") || w.bio || "",
         learn,
         audience
       });
@@ -826,6 +843,8 @@ const WebinarAdmin = {
       introUrl: "",
       status: "scheduled",
       unpublished: true,
+      hostPhoto: (typeof deskHostOf === "function" ? deskHostOf(s.email, s.name).photo : "") || "",
+      bio: (typeof deskHostOf === "function" ? deskHostOf(s.email, s.name).bio : "") || "",
       free: true,
       price: 0,
       listPrice: 1999,

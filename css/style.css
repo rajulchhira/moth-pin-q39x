@@ -6075,8 +6075,55 @@ body.live-room-page .live-meet-wb {
   border: 0;
   font-weight: 800;
 }
-body.live-room-page .live-meet-wb[aria-pressed="true"] {
+body.live-room-page .live-meet-wb[aria-pressed="true"],
+body.live-room-page .live-meet-people[aria-pressed="true"] {
   background: #4f46e5;
+}
+body.live-room-page .live-meet-people {
+  background: #3c4043;
+  color: #fff;
+  border: 0;
+  font-weight: 800;
+}
+body.live-room-page .live-host-dock {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(360px, calc(100% - 24px));
+  z-index: 8;
+  background: #202124;
+  color: #fff;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+}
+body.live-room-page .live-host-dock header strong { display: block; }
+body.live-room-page .live-host-dock header span { color: #c4c7c5; font-size: 12px; }
+body.live-room-page .live-host-tools { display: flex; gap: 8px; margin: 10px 0; }
+body.live-room-page .live-host-tools .btn { color: #fff; background: #3c4043; border: 0; }
+body.live-room-page .live-host-hint { color: #c4c7c5; font-size: 12px; font-weight: 650; }
+body.live-room-page .live-host-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; max-height: 40vh; overflow: auto; }
+body.live-room-page .live-host-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid #3c4043;
+}
+body.live-room-page .live-host-list strong { display: block; }
+body.live-room-page .live-host-list span { color: #c4c7c5; font-size: 12px; }
+body.live-room-page .live-host-actions { display: flex; gap: 6px; }
+body.live-room-page .live-host-actions button {
+  border: 0;
+  background: #3c4043;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
 }
 body.live-room-page .live-wb-mount {
   position: absolute;

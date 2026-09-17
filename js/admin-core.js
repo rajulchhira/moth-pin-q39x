@@ -179,6 +179,7 @@ AdminCore.normalizeStaff = (s) => {
     status: s.status || "active",
     phone: s.phone || "",
     photo: s.photo || "",
+    bio: s.bio || "",
     creatorEnabled,
     creatorId: s.creatorId || (creatorEnabled ? "CR-" + s.email.slice(0, 4).toUpperCase() : ""),
     referralCode: s.referralCode || "",
@@ -858,6 +859,25 @@ AdminCore.trackRefClick = (code) => {
   const list = storeList(CLICK_KEY);
   list.push({ code, at: AdminCore.now() });
   saveStore(CLICK_KEY, list.slice(-2000));
+};
+
+AdminCore.hostProfile = (email, name) => {
+  const mail = String(email || "").toLowerCase();
+  const staff = (typeof staffList === "function" ? staffList() : []).map((x) => AdminCore.normalizeStaff(x));
+  const sess = AdminCore.session();
+  const row = staff.find((s) => String(s.email || "").toLowerCase() === mail)
+    || staff.find((s) => s.name && s.name === name)
+    || (sess && (sess.email === email || sess.name === name || (!email && !name)) ? sess : null);
+  const nm = row?.name || name || sess?.name || "Host";
+  const pack = (typeof INSTRUCTOR_PACKS !== "undefined" && typeof instructorSlug === "function")
+    ? INSTRUCTOR_PACKS[instructorSlug(nm)]
+    : null;
+  return {
+    name: nm,
+    email: row?.email || email || sess?.email || "",
+    photo: row?.photo || (typeof photoFor === "function" ? photoFor(nm) : ""),
+    bio: row?.bio || pack?.bio || ""
+  };
 };
 
 window.AdminCore = AdminCore;

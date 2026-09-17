@@ -216,23 +216,41 @@ const MentorAdmin = {
     const rows = this.filtered();
     const canCreate = AdminCore.can("courses", "create");
     const drafts = this.catalog().filter((p) => p.unpublished).length;
-    return `<section class="cb-home">
-      <div class="cb-home-bar">
+    return `<section class="cb-home desk-home">
+      <div class="cb-home-bar desk-toolbar">
         <input id="mbSearch" type="search" value="${adEsc(this.titleQ)}" placeholder="Find a mentorship…">
         ${canCreate ? `<button type="button" class="btn btn-primary" data-mb-create>+ New mentorship</button>` : ""}
       </div>
-      <p class="cb-home-note">${this.catalog().length} desks${drafts ? ` · ${drafts} still draft` : ""}. Click a desk to edit it.</p>
-      <div class="cb-cards">
-        ${rows.map((p) => `
-          <button type="button" class="cb-card-row" data-mb-open="${adEsc(p.id)}">
-            ${this.thumb(p)}
-            <div class="cb-card-copy">
-              <strong>${adEsc(p.title)}</strong>
-              <span>${adEsc(this.phaseLabel(p))} · ${this.sessionCount(p)} sessions · ${adEsc(p.weeks || 0)} weeks</span>
-              <em>${adEsc(this.nextHint(p))}</em>
+      <p class="cb-home-note">${this.catalog().length} desks${drafts ? ` · ${drafts} still draft` : ""}. Host a session from the row, or open the desk to edit it.</p>
+      <div class="cb-cards desk-cards">
+        ${rows.map((p, i) => {
+          const host = typeof deskHostOf === "function" ? deskHostOf(p.ownerEmail, p.by) : { name: p.by, photo: "" };
+          const lessons = typeof mentorLessonsFor === "function" ? mentorLessonsFor(p.id) : [];
+          const liveIdx = lessons.findIndex((l) => (l.mode || "live") === "live");
+          const liveNow = lessons.find((l) => l.status === "live");
+          const canHost = canEditMentor(p) && AdminCore.can("courses", "edit") && liveIdx >= 0;
+          return `<article class="desk-row" style="--i:${i}">
+            <button type="button" class="desk-row-main" data-mb-open="${adEsc(p.id)}">
+              ${this.thumb(p)}
+              <div class="desk-copy">
+                <strong>${adEsc(p.title)}</strong>
+                ${typeof deskMetaHTML === "function" ? deskMetaHTML([
+                  adEsc(this.phaseLabel(p)),
+                  this.sessionCount(p) + " sessions",
+                  (p.weeks || 0) + " weeks",
+                  p.seats ? p.seats + " seats" : "",
+                  p.price ? "₹" + Number(p.price).toLocaleString("en-IN") : ""
+                ]) : ""}
+                <div class="desk-hostline">${typeof deskFaceHTML === "function" ? deskFaceHTML(host.name, host.photo) : ""}<span>${adEsc(host.name || p.by || "Host")}</span></div>
+                <em>${adEsc(liveNow ? "Live now — students can join" : this.nextHint(p))}</em>
+              </div>
+            </button>
+            <div class="desk-side">
+              <span class="cb-pill ${p.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(p))}</span>
+              ${canHost ? `<button type="button" class="btn btn-primary cb-card-host" data-mb-host-program="${adEsc(p.id)}" data-mb-host-session="${liveNow ? lessons.indexOf(liveNow) : liveIdx}">${liveNow ? "Enter as host" : "Host meeting"}</button>` : ""}
             </div>
-            <span class="cb-pill ${p.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(p))}</span>
-          </button>`).join("") || `<div class="cb-empty-box"><p>No mentorship matches that search.</p></div>`}
+          </article>`;
+        }).join("") || `<div class="cb-empty-box"><p>No mentorship matches that search.</p></div>`}
       </div>
       <div class="cb-modal hidden" id="mbCreateModal">
         <form class="cb-modal-card" id="mbCreateForm">
@@ -292,11 +310,13 @@ const MentorAdmin = {
       <label class="cb-big">Desk name
         <input name="title" required value="${adEsc(p.title)}" ${can ? "" : "readonly"} placeholder="Students see this name">
       </label>
-      <label>Who hosts it?
+      ${typeof deskHostLockHTML === "function"
+        ? deskHostLockHTML(deskHostOf(p.ownerEmail, p.by), { field: "by" })
+        : `<label>Who hosts it?
         <select name="by" ${can && AdminCore.isOwner() ? "" : "disabled"}>
           ${this.mentorOptions(p)}
         </select>
-      </label>
+      </label>`}
       <label>Tag
         <input name="tag" value="${adEsc(p.tag || "")}" ${can ? "" : "readonly"} placeholder="e.g. Intraday">
       </label>
@@ -372,8 +392,8 @@ const MentorAdmin = {
         <label>Short story <em>required</em>
           <textarea name="blurb" required ${can ? "" : "readonly"} placeholder="2–4 lines. What this desk is.">${adEsc(p.blurb || "")}</textarea>
         </label>
-        <label>Mentor bio
-          <textarea name="bio" ${can ? "" : "readonly"} placeholder="Who hosts this desk.">${adEsc(pack.bio || "")}</textarea>
+        <label>Host bio <small>auto-filled from the sub-admin profile</small>
+          <textarea name="bio" ${can ? "" : "readonly"} placeholder="Filled from the host profile.">${adEsc(pack.bio || (typeof deskHostOf === "function" ? deskHostOf(p.ownerEmail, p.by).bio : "") || "")}</textarea>
         </label>
         <div class="cb-block">
           <p class="cb-say">What You Will Learn <small>minimum 5, required</small></p>
@@ -739,9 +759,14 @@ const MentorAdmin = {
     const p = this.byId(id);
     if (!p || !canEditMentor(p)) return;
     const at = form.at.value ? new Date(form.at.value).toISOString() : p.at;
+    const host = typeof deskHostOf === "function"
+      ? deskHostOf(form.hostEmail?.value || p.ownerEmail, form.by?.value || p.by)
+      : { name: form.by?.value || p.by, email: p.ownerEmail };
     applyMentorPatch(id, {
       title: form.title.value.trim(),
-      by: form.by?.value || p.by,
+      by: host.name,
+      ownerEmail: host.email || p.ownerEmail,
+      hostPhoto: host.photo || "",
       tag: form.tag.value.trim(),
       at,
       weeks: Number(form.weeks.value || p.weeks || 4),
@@ -779,7 +804,7 @@ const MentorAdmin = {
         price: Number(form.price.value),
         old: Number(form.old.value || form.price.value),
         blurb: form.blurb.value.trim(),
-        bio: form.bio.value.trim(),
+        bio: form.bio.value.trim() || (typeof deskHostOf === "function" ? deskHostOf(p.ownerEmail, p.by).bio : "") || p.bio || "",
         banner,
         tint: form.tint.value || p.tint || "#C7D2FE",
         learn,
@@ -852,6 +877,8 @@ const MentorAdmin = {
       tag: "Desk",
       blurb: "",
       ownerEmail: s.email,
+      hostPhoto: (typeof deskHostOf === "function" ? deskHostOf(s.email, s.name).photo : "") || "",
+      bio: (typeof deskHostOf === "function" ? deskHostOf(s.email, s.name).bio : "") || "",
       banner: "",
       unpublished: true,
       status: "unlisted",
@@ -909,8 +936,9 @@ const MentorAdmin = {
       const addSess = e.target.closest("[data-mb-add-session]");
       if (addSess) { this.openSessionModal(addSess.dataset.mbAddSession, -1); return; }
       const hostSess = e.target.closest("[data-mb-host-session]");
-      if (hostSess && Ad.mentorId) {
-        if (typeof startMentorSessionAsHost === "function") startMentorSessionAsHost(Ad.mentorId, Number(hostSess.dataset.mbHostSession));
+      if (hostSess) {
+        const pid = hostSess.dataset.mbHostProgram || Ad.mentorId;
+        if (pid && typeof startMentorSessionAsHost === "function") startMentorSessionAsHost(pid, Number(hostSess.dataset.mbHostSession));
         else toast("Could not open the live room");
         return;
       }

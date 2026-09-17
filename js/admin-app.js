@@ -59,6 +59,45 @@ const NAV = [
 ];
 
 function adEsc(s) { return escapeHtml(String(s ?? "")); }
+function deskFaceHTML(name, photo) {
+  const src = photo || (typeof photoFor === "function" ? photoFor(name) : "");
+  if (src) return `<img class="desk-face" src="${adEsc(src)}" alt="">`;
+  return `<span class="desk-face desk-face-fallback">${adEsc(String(name || "H").slice(0, 1))}</span>`;
+}
+function deskHostOf(email, name) {
+  return typeof AdminCore.hostProfile === "function"
+    ? AdminCore.hostProfile(email, name)
+    : { name: name || "Host", email: email || "", photo: typeof photoFor === "function" ? photoFor(name) : "", bio: "" };
+}
+function deskHostLockHTML(host, opts) {
+  const o = opts || {};
+  const field = o.field || "by";
+  const owner = typeof AdminCore.isOwner === "function" && AdminCore.isOwner();
+  const staff = owner && typeof staffList === "function"
+    ? staffList().map((x) => AdminCore.normalizeStaff(x)).filter((s) => s.status === "active")
+    : [];
+  const pick = owner && staff.length
+    ? `<label class="desk-host-assign">Assign this meeting to
+        <select name="hostEmail">
+          ${staff.map((s) => `<option value="${adEsc(s.email)}" ${s.email === host.email ? "selected" : ""}>${adEsc(s.name)} · ${adEsc(s.email)}</option>`).join("")}
+        </select>
+      </label>`
+    : `<input type="hidden" name="hostEmail" value="${adEsc(host.email)}">`;
+  return `<aside class="desk-host-lock">
+    ${deskFaceHTML(host.name, host.photo)}
+    <div>
+      <small>Meeting host</small>
+      <strong>${adEsc(host.name)}</strong>
+      <span>${adEsc(host.email || "Filled from this login")}</span>
+    </div>
+    <p>Name and photo fill from the sub-admin profile. Students see the same host in the room — no extra form.</p>
+    <input type="hidden" name="${adEsc(field)}" value="${adEsc(host.name)}">
+    ${pick}
+  </aside>`;
+}
+function deskMetaHTML(items) {
+  return `<ul class="desk-meta">${items.filter(Boolean).map((x) => `<li>${x}</li>`).join("")}</ul>`;
+}
 function adCourse(id) { return allCourses().find((c) => c.id === id); }
 function adTitle(id) { return adCourse(id)?.title || id || "—"; }
 function kpiRange() {
@@ -290,20 +329,20 @@ function paint() {
   if (!s) return;
   document.getElementById("adminPill").textContent = AdminCore.isSuperAdmin() ? "Super Admin" : (AdminCore.isOwner() ? "Owner" : "Admin");
   const titles = {
-    dashboard: ["Dashboard", "Command center"],
+    dashboard: ["Dashboard", "Numbers, rooms, and what needs you"],
     students: ["Students", "Accounts, enrollments, attribution"],
     leads: ["Leads", "CRM pipeline"],
-    staff: ["Sub-admins / Creators", "Access, creator flag, commission"],
+    staff: ["Sub-admins", "Each sub-admin is the meeting host. Profile fills automatically."],
     performance: ["Creator performance", "Referral and sales"],
     referrals: ["Referrals", "Clicks, signups, attributed sales"],
     commissions: ["Commission ledger", "Pending → paid"],
     payouts: ["Payouts", "Approval workflow"],
-    courses: ["Your courses", "Open one to edit. A new course starts as a draft."],
+    courses: ["Courses", "Edit a classroom or start a new draft."],
     courseBuilder: ["Course", "Details, page, lessons, then go live"],
     nextpath: ["Next path", "After this classroom / webinar / desk, open that one"],
-    mentors: ["Your mentorships", "Open one to edit. A new desk starts as a draft."],
+    mentors: ["Mentorships", "Host a live session from the list, or open a desk to edit."],
     mentorBuilder: ["Mentorship", "Details, page, sessions, then go live"],
-    webinars: ["Your webinars", "Open one to edit. A new session starts as a draft."],
+    webinars: ["Webinars", "Start the room from here. Host name fills from the sub-admin."],
     webinarBuilder: ["Webinar", "Details, page, session, then go live"],
     enrolls: ["Enrollments", "Access granted on the public site"],
     classroom: ["Classroom LMS", "Quizzes, assignments, certificates"],
@@ -506,21 +545,64 @@ const VIEWS = {
   staff() {
     AdminCore.assert("staff", "view");
     const rows = staffList().map((s) => AdminCore.normalizeStaff(s));
-    const grant = AdminCore.isSuperAdmin() ? `<form class="ad-card ad-form" id="grantAdminForm" style="margin-bottom:14px;grid-template-columns:1.4fr 1fr auto">
-      <input name="email" type="email" placeholder="Google account e.g. name@gmail.com" required>
+    const grant = AdminCore.isSuperAdmin() ? `<form class="staff-grant" id="grantAdminForm">
+      <div>
+        <strong>Google admin</strong>
+        <p>They sign in with Google. Super admin cannot be granted here.</p>
+      </div>
+      <input name="email" type="email" placeholder="Google email" required>
       <input name="name" placeholder="Name (optional)">
-      <button class="btn btn-primary" type="submit">Grant admin access</button>
-    </form>
-    <p class="muted" style="margin:-4px 0 16px">They sign in with Google on the public site. A dropdown under their name opens this panel. Super admin cannot be granted or removed here.</p>` : "";
-    return `${grant}<div class="ad-toolbar">${AdminCore.can("staff","create")?`<button class="btn btn-ghost" data-new-staff="1">Add sub-admin with password</button>`:""}</div>
-      ${table(["Name","Email","Role","Status","Creator","Last login","Actions"], rows.map((n) => {
-        const locked = n.role === "superadmin" || n.role === "owner";
-        const roleLabel = n.role === "superadmin" ? "Super admin" : (n.role === "owner" ? "Owner" : "Admin");
-        return `<tr><td><strong>${adEsc(n.name)}</strong></td><td>${adEsc(n.email)}</td><td>${adEsc(roleLabel)}</td><td>${badge(n.status)}</td>
-          <td>${n.creatorEnabled?"Yes":"No"}</td>
-          <td>${n.lastLogin?new Date(n.lastLogin).toLocaleString("en-IN"):"—"}</td>
-          <td>${locked?"—":`<button class="btn btn-ghost" data-staff="${adEsc(n.email)}">Manage</button>`}</td></tr>`;
-      }))}`;
+      <button class="btn btn-primary" type="submit">Grant access</button>
+    </form>` : "";
+    const create = AdminCore.can("staff", "create") ? `<form class="staff-create" id="addStaffForm">
+      <header>
+        <b>New sub-admin</b>
+        <p>This person becomes the meeting host. Name and photo fill every webinar and desk they create. They can mute, remove people, and share their screen.</p>
+      </header>
+      <label>Full name
+        <input name="name" required placeholder="e.g. Neha Kapoor" autocomplete="name">
+      </label>
+      <label>Work email
+        <input name="email" type="email" required placeholder="neha@bizgarh.in" autocomplete="email">
+      </label>
+      <label>Password
+        <input name="password" type="password" required minlength="4" placeholder="They use this on /control" autocomplete="new-password">
+      </label>
+      <label>Host photo
+        <input name="photo" type="url" placeholder="https://…  square photo, or leave empty">
+        <input name="photoFile" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+      </label>
+      <label class="staff-create-wide">Short host bio
+        <textarea name="bio" rows="3" placeholder="One or two lines students see under the host name."></textarea>
+      </label>
+      <label class="staff-create-check"><input type="checkbox" name="creatorEnabled" value="1" checked> Also let them sell as a creator</label>
+      <button class="btn btn-primary" type="submit">Create sub-admin</button>
+    </form>` : "";
+    const cards = rows.map((n, i) => {
+      const locked = n.role === "superadmin" || n.role === "owner";
+      const roleLabel = n.role === "superadmin" ? "Super admin" : (n.role === "owner" ? "Owner" : "Sub-admin");
+      const host = typeof deskHostOf === "function" ? deskHostOf(n.email, n.name) : n;
+      return `<article class="staff-card" style="--i:${i}">
+        ${typeof deskFaceHTML === "function" ? deskFaceHTML(host.name, host.photo) : ""}
+        <div>
+          <strong>${adEsc(n.name)}</strong>
+          <span>${adEsc(n.email)}</span>
+          <ul class="desk-meta">
+            <li>${adEsc(roleLabel)}</li>
+            <li>${n.creatorEnabled ? "Creator" : "Host only"}</li>
+            <li>${n.lastLogin ? "Last in " + new Date(n.lastLogin).toLocaleDateString("en-IN") : "No login yet"}</li>
+          </ul>
+        </div>
+        <div class="staff-card-side">
+          ${badge(n.status)}
+          ${locked ? "" : `<button class="btn btn-ghost" data-staff="${adEsc(n.email)}">Manage</button>`}
+        </div>
+      </article>`;
+    }).join("");
+    return `<section class="staff-desk">
+      <div class="staff-aside">${create}${grant}</div>
+      <div class="staff-list">${cards || `<div class="cb-empty-box"><p>No sub-admins yet.</p></div>`}</div>
+    </section>`;
   },
   performance() {
     const s = AdminCore.session();
@@ -857,6 +939,8 @@ function staffDrawer(email) {
     <button class="btn btn-ghost" data-flog="${adEsc(s.email)}">Force logout</button>
     <form class="ad-form" id="editStaffForm">
       <input type="hidden" name="email" value="${adEsc(s.email)}">
+      <label>Host photo URL</label><input name="photo" value="${adEsc(s.photo || "")}" placeholder="https://…">
+      <label>Host bio</label><textarea name="bio" rows="3">${adEsc(s.bio || "")}</textarea>
       <label>Status</label><select name="status"><option ${s.status==="active"?"selected":""}>active</option><option ${s.status==="inactive"?"selected":""}>inactive</option><option ${s.status==="suspended"?"selected":""}>suspended</option></select>
       <label>Phone</label><input name="phone" value="${adEsc(s.phone)}">
       <label>Password reset</label><input name="password" placeholder="Leave blank to keep">
@@ -1129,23 +1213,35 @@ function bindApp() {
       AdminCore.assert("staff","create");
       const email = f.email.value.trim().toLowerCase();
       if (staffList().some((s)=>s.email===email)) { toast("Email in use"); return; }
-      const creatorEnabled = f.creatorEnabled.value === "1";
+      const creatorEnabled = f.creatorEnabled?.type === "checkbox" ? f.creatorEnabled.checked : f.creatorEnabled?.value === "1";
       const code = makeCode(f.name.value.trim().slice(0,5).toUpperCase());
-      AdminCore.saveStaff(AdminCore.normalizeStaff({
-        name: f.name.value.trim(), email, password: f.password.value, role: "subadmin", status: "active",
-        creatorEnabled, referralCode: creatorEnabled ? code : "", creatorId: creatorEnabled ? "CR-"+code : "",
-        permissions: { ...CREATOR_DEFAULT_PERMS }, created: AdminCore.now()
-      }));
-      if (creatorEnabled) {
-        const aff = affiliates();
-        if (!aff.some((a)=>a.email===email)) {
-          aff.push({ email, name: f.name.value.trim(), code, rate: 20, status: "active", created: AdminCore.now() });
-          writeList(AFFILIATE_KEY, aff);
+      const finish = (photo) => {
+        AdminCore.saveStaff(AdminCore.normalizeStaff({
+          name: f.name.value.trim(), email, password: f.password.value, role: "subadmin", status: "active",
+          photo, bio: (f.bio?.value || "").trim(),
+          creatorEnabled, referralCode: creatorEnabled ? code : "", creatorId: creatorEnabled ? "CR-"+code : "",
+          permissions: { ...CREATOR_DEFAULT_PERMS }, created: AdminCore.now()
+        }));
+        if (creatorEnabled) {
+          const aff = affiliates();
+          if (!aff.some((a)=>a.email===email)) {
+            aff.push({ email, name: f.name.value.trim(), code, rate: 20, status: "active", created: AdminCore.now() });
+            writeList(AFFILIATE_KEY, aff);
+          }
         }
+        AdminCore.audit("staff_create", email, "", "subadmin");
+        toast("Sub-admin created · they are the meeting host");
+        paint();
+      };
+      const file = f.photoFile?.files?.[0];
+      if (file) {
+        const r = new FileReader();
+        r.onload = () => finish(String(r.result || ""));
+        r.onerror = () => finish((f.photo?.value || "").trim() || (typeof photoFor === "function" ? photoFor(f.name.value.trim()) : ""));
+        r.readAsDataURL(file);
+        return;
       }
-      AdminCore.audit("staff_create", email, "", "subadmin");
-      toast("Sub-admin created");
-      paint();
+      finish((f.photo?.value || "").trim() || (typeof photoFor === "function" ? photoFor(f.name.value.trim()) : ""));
     }
     if (f.id === "editStaffForm") {
       e.preventDefault();
@@ -1165,6 +1261,8 @@ function bindApp() {
         ...row,
         status: f.status.value,
         phone: f.phone.value,
+        photo: (f.photo?.value || row.photo || "").trim(),
+        bio: (f.bio?.value || row.bio || "").trim(),
         password: f.password.value || row.password,
         creatorEnabled,
         studentScope: f.studentScope.value,

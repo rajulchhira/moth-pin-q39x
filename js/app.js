@@ -5451,7 +5451,9 @@ async function mountHmsFrame(el, opts) {
     });
     const data = await res.json().catch(() => ({}));
     if (!data.ok || !data.joinUrl) throw new Error(data.error || "Could not open the live room");
-    const src = data.joinUrl + (data.joinUrl.includes("?") ? "&" : "?") + "userName=" + encodeURIComponent(opts.userName || "Guest");
+    const name = opts.userName || "Guest";
+    const join = String(data.joinUrl || "").replace("/preview/", opts.asHost ? "/meeting/" : "/preview/");
+    const src = join + (join.includes("?") ? "&" : "?") + "skip_preview=true&name=" + encodeURIComponent(name) + "&userName=" + encodeURIComponent(name);
     el.innerHTML = `<iframe class="hms-frame" title="Live classroom" src="${src}" allow="camera *; microphone *; fullscreen *; display-capture *; autoplay *; clipboard-write *" allowfullscreen></iframe>`;
   } catch (err) {
     el.innerHTML = `<div class="live-cam">${escapeHtml(err.message || "Live room unavailable")}</div>`;
@@ -5758,6 +5760,7 @@ function liveMeetShellHTML(opts) {
       <span class="live-dot ${escapeHtml(opts.status || "scheduled")}">${escapeHtml(opts.statusLabel || "")}</span>
       <div class="live-meet-bar-actions">
         <button type="button" class="btn btn-ghost live-meet-wb" id="wbToggle" aria-pressed="false">Whiteboard</button>
+        ${opts.hostDock ? `<button type="button" class="btn btn-ghost live-meet-people" id="hostPeopleBtn" aria-pressed="false">People</button>` : ""}
         ${opts.barActions || ""}
       </div>
     </header>
@@ -5767,8 +5770,85 @@ function liveMeetShellHTML(opts) {
         <iframe class="live-wb-frame" title="Classroom whiteboard" src="${escapeHtml(board)}" allow="clipboard-write *; fullscreen *" allowfullscreen></iframe>
       </div>
       ${opts.actions ? `<div class="live-meet-actions">${opts.actions}</div>` : ""}
+      ${opts.hostDock || ""}
     </div>
   </div>`;
+}
+
+function liveHostDockHTML() {
+  return `<aside class="live-host-dock" id="hostDock" hidden>
+    <header>
+      <strong>People</strong>
+      <span>Mute, remove, keep the room</span>
+    </header>
+    <div class="live-host-tools">
+      <button type="button" class="btn btn-ghost" id="hostMuteAll">Mute all mics</button>
+      <button type="button" class="btn btn-ghost" id="hostRefresh">Refresh</button>
+    </div>
+    <p class="live-host-hint">Screen share is in the classroom bar. Whiteboard is next to People. You can keep or remove anyone here.</p>
+    <ul class="live-host-list" id="hostPeerList"><li>Loading people…</li></ul>
+  </aside>`;
+}
+
+async function hostRoomAction(kind, id, action, peerId) {
+  const res = await fetch(hmsApiUrl("/api/live/host"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind, id, action, peerId, asHost: true })
+  });
+  return res.json().catch(() => ({}));
+}
+
+function bindLiveHostDock(kind, id) {
+  const btn = document.getElementById("hostPeopleBtn");
+  const dock = document.getElementById("hostDock");
+  const list = document.getElementById("hostPeerList");
+  if (!btn || !dock || !list) return;
+  const paintPeers = async () => {
+    list.innerHTML = `<li>Loading people…</li>`;
+    const data = await hostRoomAction(kind, id, "list");
+    const peers = Array.isArray(data.peers) ? data.peers : [];
+    if (!peers.length) {
+      list.innerHTML = `<li>No one else is in the room yet.</li>`;
+      return;
+    }
+    list.innerHTML = peers.map((p) => `<li>
+      <div>
+        <strong>${escapeHtml(p.name || "Guest")}</strong>
+        <span>${p.host ? "Host" : escapeHtml(p.role || "Student")}</span>
+      </div>
+      ${p.host ? "" : `<span class="live-host-actions">
+        <button type="button" data-host-mute="${escapeHtml(p.id)}">Mute mic</button>
+        <button type="button" data-host-kick="${escapeHtml(p.id)}">Remove</button>
+      </span>`}
+    </li>`).join("");
+  };
+  btn.addEventListener("click", () => {
+    const open = dock.hasAttribute("hidden");
+    dock.toggleAttribute("hidden", !open);
+    btn.setAttribute("aria-pressed", open ? "true" : "false");
+    if (open) paintPeers();
+  });
+  document.getElementById("hostMuteAll")?.addEventListener("click", async () => {
+    await hostRoomAction(kind, id, "muteall");
+    toast("All student mics muted");
+    paintPeers();
+  });
+  document.getElementById("hostRefresh")?.addEventListener("click", paintPeers);
+  list.addEventListener("click", async (e) => {
+    const mute = e.target.closest("[data-host-mute]");
+    const kick = e.target.closest("[data-host-kick]");
+    if (mute) {
+      await hostRoomAction(kind, id, "mute", mute.dataset.hostMute);
+      toast("Mic muted");
+      paintPeers();
+    }
+    if (kick) {
+      await hostRoomAction(kind, id, "kick", kick.dataset.hostKick);
+      toast("Removed from the room");
+      paintPeers();
+    }
+  });
 }
 
 function bindLiveMeetChrome() {
@@ -5811,6 +5891,7 @@ function renderLiveRoom() {
       sub: `${session.date} ${session.time || ""} • ${session.mentor || "Mentor"}`,
       backHref: isHost ? "/control" : "/live#call",
       boardId: "call-" + session.id,
+      hostDock: isHost ? liveHostDockHTML() : "",
       mount: canJoin
         ? `<div class="live-cam">Connecting 1:1 room…</div>`
         : `<div class="live-cam">${session.status === "pending" ? "Waiting for mentor approval" : "This 1:1 is private to the booked student and mentor"}</div>`,
@@ -5819,6 +5900,7 @@ function renderLiveRoom() {
         : ""
     });
     bindLiveMeetChrome();
+    if (isHost) bindLiveHostDock("call", session.id);
     if (canJoin) {
       mountHmsFrame(document.getElementById("hmsMount"), {
         kind: "call",
@@ -5826,7 +5908,7 @@ function renderLiveRoom() {
         title: session.topic,
         duration: "60 min",
         asHost: isHost,
-        userName: (isHost ? staff.name : user.name) || "Guest"
+        userName: (isHost ? (staff.name || session.mentor) : (user && user.name)) || "Guest"
       });
     }
     return;
@@ -5878,6 +5960,7 @@ function renderLiveRoom() {
     title: live.title,
     sub: `${live.when} • ${live.by}`,
     boardId: live.id,
+    hostDock: isHost ? liveHostDockHTML() : "",
     backHref: live.mentorId
       ? (isHost ? `/control#mentor/${encodeURIComponent(live.mentorId)}/sessions` : mentorHref(live.mentorId))
       : (isHost ? `/control#webinar/${encodeURIComponent(live.id)}/session` : "/live"),
@@ -5890,15 +5973,19 @@ function renderLiveRoom() {
     actions: waitActions
   });
   bindLiveMeetChrome();
+  if (isHost) bindLiveHostDock(liveKindOf(live), live.id);
 
   if (canJoinHms) {
+    const host = typeof AdminCore !== "undefined" && AdminCore.hostProfile
+      ? AdminCore.hostProfile(live.hostEmail || staff?.email, live.by || staff?.name)
+      : null;
     mountHmsFrame(document.getElementById("hmsMount"), {
       kind: liveKindOf(live),
       id: live.id,
       title: live.title,
       duration: live.duration,
       asHost: isHost,
-      userName: (isHost ? staff.name : (user && user.name)) || "Guest"
+      userName: (isHost ? (host?.name || staff?.name || live.by) : (user && user.name)) || "Guest"
     });
   }
   document.getElementById("startLiveBtn")?.addEventListener("click", () => {

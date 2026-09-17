@@ -181,23 +181,32 @@ const CourseAdmin = {
     const rows = this.filtered();
     const canCreate = AdminCore.can("courses", "create");
     const drafts = this.catalog().filter((c) => c.unpublished).length;
-    return `<section class="cb-home">
-      <div class="cb-home-bar">
+    return `<section class="cb-home desk-home">
+      <div class="cb-home-bar desk-toolbar">
         <input id="cbSearch" type="search" value="${adEsc(this.titleQ)}" placeholder="Find a course…">
         ${canCreate ? `<button type="button" class="btn btn-primary" data-cb-create>+ New course</button>` : ""}
       </div>
-      <p class="cb-home-note">${this.catalog().length} courses${drafts ? ` · ${drafts} still draft` : ""}. Click a course to edit it.</p>
-      <div class="cb-cards">
-        ${rows.map((c) => `
-          <button type="button" class="cb-card-row" data-cb-open="${adEsc(c.id)}">
+      <p class="cb-home-note">${this.catalog().length} courses${drafts ? ` · ${drafts} still draft` : ""}. Open a row to edit the page, lessons, and go live.</p>
+      <div class="cb-cards desk-cards">
+        ${rows.map((c, i) => {
+          const host = typeof deskHostOf === "function" ? deskHostOf(c.ownerEmail, c.instructor) : { name: c.instructor, photo: "" };
+          const price = Number(c.price || 0);
+          return `<button type="button" class="desk-row" style="--i:${i}" data-cb-open="${adEsc(c.id)}">
             ${this.thumb(c)}
-            <div class="cb-card-copy">
+            <div class="desk-copy">
               <strong>${adEsc(c.title)}</strong>
-              <span>${adEsc(this.formatLabel(c))} · ${this.lessonCount(c)} lessons</span>
+              ${typeof deskMetaHTML === "function" ? deskMetaHTML([
+                this.formatLabel(c),
+                this.lessonCount(c) + " lessons",
+                c.hours ? adEsc(c.hours) + " hrs" : "",
+                price ? "₹" + price.toLocaleString("en-IN") : "Free"
+              ]) : ""}
+              <div class="desk-hostline">${typeof deskFaceHTML === "function" ? deskFaceHTML(host.name, host.photo) : ""}<span>${adEsc(host.name || c.instructor || "Instructor")}</span></div>
               <em>${adEsc(this.nextHint(c))}</em>
             </div>
             <span class="cb-pill ${c.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(c))}</span>
-          </button>`).join("") || `<div class="cb-empty-box"><p>No course matches that search.</p></div>`}
+          </button>`;
+        }).join("") || `<div class="cb-empty-box"><p>No course matches that search.</p></div>`}
       </div>
       <div class="cb-modal hidden" id="cbCreateModal">
         <form class="cb-modal-card" id="cbCreateForm">
@@ -265,9 +274,11 @@ const CourseAdmin = {
           <span>A group that starts together.</span>
         </label>
       </div>
-      <label>Who teaches it?
+      ${typeof deskHostLockHTML === "function"
+        ? deskHostLockHTML(deskHostOf(c.ownerEmail, c.instructor), { field: "instructor" })
+        : `<label>Who teaches it?
         <input name="instructor" required value="${adEsc(c.instructor)}" ${can && AdminCore.isOwner() ? "" : "readonly"}>
-      </label>
+      </label>`}
       <label>Show it under
         <select name="cat" ${can ? "" : "disabled"}>
           ${[["trending","Trending"],["beginners","For beginners"],["options","Options"],["investing","Investing"],["ta","Charts"],["hindi","Hindi"],["crypto","Crypto"],["strategy","Strategy"]].map(([v,l]) => `<option value="${v}" ${c.cat===v?"selected":""}>${l}</option>`).join("")}
@@ -1026,9 +1037,13 @@ const CourseAdmin = {
     const id = form.dataset.course;
     const c = this.byId(id);
     if (!c || !canEditCourse(c)) return;
+    const host = typeof deskHostOf === "function"
+      ? deskHostOf(form.hostEmail?.value || c.ownerEmail, form.instructor?.value || c.instructor)
+      : { name: form.instructor?.value || c.instructor, email: c.ownerEmail };
     applyCoursePatch(id, {
       title: form.title.value.trim(),
-      instructor: form.instructor.value.trim(),
+      instructor: host.name,
+      ownerEmail: host.email || c.ownerEmail,
       format: form.format.value,
       cat: form.cat.value
     });
