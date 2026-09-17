@@ -6384,7 +6384,7 @@ async function renderCertificatePage() {
   bindFaqs(root);
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+async function startPublicBoot() {
   const adminPage = isAdminPage();
   if (!adminPage) pingCreatorDigest();
   stripHtmlUrl();
@@ -6680,4 +6680,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (row && course) downloadBizgarhCertificate(row, course);
   });
   window.BizgarhLoader?.done?.();
-});
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startPublicBoot);
+else startPublicBoot();

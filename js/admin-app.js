@@ -1713,7 +1713,9 @@ function showAdmin() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootAdminUi() {
+  if (window.__bgAdminUi) return;
+  window.__bgAdminUi = true;
   const note = (msg) => { if (typeof toast === "function") toast(msg); };
 
   document.getElementById("staffGoogleBtn")?.addEventListener("click", () => {
@@ -1770,4 +1772,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-});
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootAdminUi);
+else bootAdminUi();
+window.bootAdminUi = bootAdminUi;
+window.showAdmin = showAdmin;
