@@ -2398,7 +2398,7 @@ function mentorCardHTML(p) {
 function mentorCtaHTML(p, enrolled) {
   const hasComm = mentorLiveRooms(p).length > 0;
   if (enrolled) {
-    return `<a class="btn btn-primary wb-cta" href="${mentorJoinHref(p)}">Join desk ›</a>`
+    return `<a class="btn btn-primary wb-cta" href="${mentorJoinHref(p)}">Join desk ›</a>
       ${hasComm ? `<a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(mentorCommunityUrl(p))}" target="_blank" rel="noopener">${iconSvg("chat")} Join community</a>` : ""}`;
   }
   return `<button type="button" class="btn btn-primary wb-cta" data-mentor-enroll="${p.id}">Enroll Now ›</button>

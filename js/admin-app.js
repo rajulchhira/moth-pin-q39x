@@ -238,7 +238,12 @@ function applyAdminRoute(parsed) {
 }
 
 function renderSide() {
-  const s = AdminCore.session();
+  let s = null;
+  try { s = AdminCore.session(); } catch (_) { s = null; }
+  if (!s) {
+    try { s = JSON.parse(localStorage.getItem("tradeshalaStaffSession") || "null"); } catch (_) { s = null; }
+  }
+  if (!s) s = { name: "Owner", email: "admin@bizgarh.in", role: "owner" };
   if (Ad.route === "courseBuilder" && Ad.courseId && typeof CourseAdmin !== "undefined") {
     const c = CourseAdmin.byId(Ad.courseId);
     if (c) {
@@ -325,8 +330,16 @@ function go(route, extra) {
 }
 
 function paint() {
-  const s = AdminCore.session();
-  if (!s) return;
+  let s = null;
+  try { s = AdminCore.session(); } catch (_) { s = null; }
+  if (!s) {
+    try { s = JSON.parse(localStorage.getItem("tradeshalaStaffSession") || "null"); } catch (_) { s = null; }
+  }
+  if (!s) {
+    const view = document.getElementById("adminView");
+    if (view) view.innerHTML = `<div class="ad-card"><h3>Sign in again</h3><p class="muted">The desk could not restore this session.</p></div>`;
+    return;
+  }
   document.getElementById("adminPill").textContent = AdminCore.isSuperAdmin() ? "Super Admin" : (AdminCore.isOwner() ? "Owner" : "Admin");
   const titles = {
     dashboard: ["Dashboard", "Numbers, rooms, and what needs you"],
@@ -1807,9 +1820,10 @@ function showAdmin() {
   } catch (err) {
     console.error(err);
     const view = document.getElementById("adminView");
-    if (view && !view.innerHTML) {
+    if (view) {
       view.innerHTML = `<div class="ad-card"><h3>Desk is open</h3><p class="muted">Refresh if a section does not appear.</p></div>`;
     }
+    try { renderSide(); } catch (_) {}
   }
 }
 

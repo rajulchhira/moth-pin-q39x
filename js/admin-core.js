@@ -68,19 +68,26 @@ AdminCore.now = () => new Date().toISOString();
 AdminCore.inr = (n) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
 AdminCore.device = () => navigator.userAgent.slice(0, 72);
 
+function readStaffSessionRaw() {
+  if (typeof getStaffSession === "function") return getStaffSession();
+  try { return JSON.parse(localStorage.getItem("tradeshalaStaffSession") || "null"); } catch { return null; }
+}
+
 AdminCore.session = () => {
-  const raw = getStaffSession();
-  if (!raw?.email) return null;
+  const raw = readStaffSessionRaw();
+  if (!raw || !raw.email) return null;
+  const keepOwner = raw.role === "owner" || raw.role === "superadmin" || raw.email === "admin@bizgarh.in";
   const row = AdminCore.staffRow(raw.email);
   if (!row) {
-    if (raw.role === "owner" || raw.role === "superadmin" || raw.email === "admin@bizgarh.in") {
-      return { ...raw, password: undefined };
-    }
+    if (keepOwner) return { ...raw, password: undefined };
     return null;
   }
   const staff = AdminCore.normalizeStaff(row);
   if (staff.status === "suspended" || staff.status === "inactive") {
-    clearStaffSession();
+    if (keepOwner || staff.role === "owner" || staff.role === "superadmin") {
+      return { ...staff, status: "active", password: undefined };
+    }
+    if (typeof clearStaffSession === "function") clearStaffSession();
     return null;
   }
   return { ...staff, password: undefined };

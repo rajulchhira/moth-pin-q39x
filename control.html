@@ -218,7 +218,11 @@
         var s = document.createElement("script");
         s.src = src;
         s.onload = function () { done(); };
-        s.onerror = function () { done(); };
+        s.onerror = function () {
+          var view = document.getElementById("adminView");
+          if (view) view.innerHTML = "<div class=\"ad-card\"><h3>Could not load the desk</h3><p class=\"muted\">Refresh once and try again.</p></div>";
+          done();
+        };
         document.body.appendChild(s);
       }
       var loading = false;
@@ -247,14 +251,14 @@
         loading = true;
         busy(true);
         var files = [
-          "js/app.js?v=desk3",
+          "js/app.js?v=desk4",
           "js/lms.js",
-          "js/admin-core.js?v=desk2",
+          "js/admin-core.js?v=desk4",
           "js/admin.js?v=drm3",
           "js/admin-course.js?v=desk1",
           "js/admin-mentor.js?v=desk1",
           "js/admin-webinar.js?v=desk1",
-          "js/admin-app.js?v=desk3"
+          "js/admin-app.js?v=desk4"
         ];
         var i = 0;
         function finish() {
@@ -266,6 +270,8 @@
             else if (wantShow) err("Could not open the desk. Refresh once and try again.");
           } catch (x) {
             err(x.message || "Desk failed to open");
+            var view = document.getElementById("adminView");
+            if (view) view.innerHTML = "<div class=\"ad-card\"><h3>Desk failed to open</h3><p class=\"muted\">Refresh once and try again.</p></div>";
           }
         }
         function next() {
