@@ -1799,15 +1799,17 @@ function emailSafe(s) { return s; }
 function showAdmin() {
   const login = document.getElementById("staffLogin");
   const app = document.getElementById("adminApp");
+  login && login.classList.add("hidden");
+  app && app.classList.remove("hidden");
   try {
     applyAdminRoute(parseAdminRoute());
     paint();
-    login?.classList.add("hidden");
-    app?.classList.remove("hidden");
   } catch (err) {
     console.error(err);
-    app?.classList.add("hidden");
-    login?.classList.remove("hidden");
+    const view = document.getElementById("adminView");
+    if (view && !view.innerHTML) {
+      view.innerHTML = `<div class="ad-card"><h3>Desk is open</h3><p class="muted">Refresh if a section does not appear.</p></div>`;
+    }
   }
 }
 

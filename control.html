@@ -21,7 +21,7 @@
 </head>
 <body class="ad-body">
   <div id="staffLogin" class="ad-login">
-    <form class="ad-login-card" id="staffLoginForm">
+    <form class="ad-login-card" id="staffLoginForm" action="#" method="post" onsubmit="return false">
       <div class="logo" style="margin-bottom:8px">
         <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
           <defs>
@@ -56,10 +56,11 @@
       <button type="button" class="btn btn-primary btn-block" id="staffGoogleBtn">Continue with Google</button>
       <button type="button" class="btn btn-ghost btn-block hidden" id="staffContinue">Continue as <span></span></button>
       <p class="auth-or"><span>or password</span></p>
-      <div class="field"><label>Email</label><input name="email" type="email" required placeholder="admin email"></div>
-      <div class="field"><label>Password</label><input name="password" type="password" required></div>
+      <div class="field"><label>Email</label><input name="email" type="text" inputmode="email" autocomplete="username" placeholder="admin email"></div>
+      <div class="field"><label>Password</label><input name="password" type="password" autocomplete="current-password"></div>
       <div class="field hidden" id="totpWrap"><label>Authenticator code</label><input name="totp" placeholder="000000"></div>
-      <button class="btn btn-primary btn-block" id="staffPassBtn" type="submit">Login with password</button>
+      <p id="staffErr" style="color:#b91c1c;font-weight:800;margin:0;min-height:1.2em"></p>
+      <button class="btn btn-primary btn-block" id="staffPassBtn" type="button">Login with password</button>
     </form>
   </div>
 
@@ -190,41 +191,48 @@
 
   <script>
     (function () {
+      try {
+        if (location.hostname === "bizgarh.com") {
+          location.replace("https://www.bizgarh.com" + location.pathname + location.search + location.hash);
+          return;
+        }
+      } catch (x) {}
+      document.title = "Control | Bizgarh";
       var form = document.getElementById("staffLoginForm");
       var googleBtn = document.getElementById("staffGoogleBtn");
+      var passBtn = document.getElementById("staffPassBtn");
+      var totpWrap = document.getElementById("totpWrap");
       function err(msg) {
         var p = document.getElementById("staffErr");
-        if (!p) {
-          p = document.createElement("p");
-          p.id = "staffErr";
-          p.style.cssText = "color:#b91c1c;font-weight:800;margin-top:10px";
-          form.appendChild(p);
-        }
-        p.textContent = msg || "";
+        if (p) p.textContent = msg || "";
+      }
+      function openShell() {
+        var login = document.getElementById("staffLogin");
+        var app = document.getElementById("adminApp");
+        var view = document.getElementById("adminView");
+        if (login) login.className = "ad-login hidden";
+        if (app) app.className = "ad-app";
+        if (view && !view.innerHTML) view.innerHTML = "<div class=\"ad-card\"><h3>Opening desk…</h3></div>";
       }
       function add(src, done) {
         var s = document.createElement("script");
         s.src = src;
-        s.onload = done;
-        s.onerror = done;
+        s.onload = function () { done(); };
+        s.onerror = function () { done(); };
         document.body.appendChild(s);
-      }
-      function css(href) {
-        var l = document.createElement("link");
-        l.rel = "stylesheet";
-        l.href = href;
-        document.head.appendChild(l);
       }
       var loading = false;
       var wantShow = false;
-      var passBtn = document.getElementById("staffPassBtn");
       function busy(on) {
         if (!passBtn) return;
         passBtn.disabled = !!on;
         passBtn.textContent = on ? "Opening desk…" : "Login with password";
       }
       window.loadDesk = function (show) {
-        if (show) wantShow = true;
+        if (show) {
+          wantShow = true;
+          openShell();
+        }
         if (window.__bgAdminUi) {
           busy(false);
           if (wantShow && typeof showAdmin === "function") {
@@ -239,14 +247,14 @@
         loading = true;
         busy(true);
         var files = [
-          "js/app.js?v=desk2",
+          "js/app.js?v=desk3",
           "js/lms.js",
           "js/admin-core.js?v=desk2",
           "js/admin.js?v=drm3",
           "js/admin-course.js?v=desk1",
           "js/admin-mentor.js?v=desk1",
           "js/admin-webinar.js?v=desk1",
-          "js/admin-app.js?v=desk2"
+          "js/admin-app.js?v=desk3"
         ];
         var i = 0;
         function finish() {
@@ -266,14 +274,15 @@
         }
         next();
       };
-      if (googleBtn) googleBtn.onclick = function () {
-        location.href = "/auth/google?next=control";
-      };
-      if (form) form.addEventListener("submit", function (e) {
-        e.preventDefault();
-        var email = String(form.email.value || "").trim().toLowerCase();
-        var pass = String(form.password.value || "");
+      function tryLogin() {
+        if (!form) return;
+        var email = String((form.email && form.email.value) || "").replace(/\s+/g, "").toLowerCase();
+        var pass = String((form.password && form.password.value) || "");
         err("");
+        if (!email || !pass) {
+          err("Enter email and password");
+          return;
+        }
         if (email === "admin@bizgarh.in" && pass === "admin123") {
           try {
             localStorage.removeItem("tradeshalaStaffLoginFails");
@@ -287,10 +296,10 @@
           loadDesk(true);
           return;
         }
-        if (typeof AdminCore !== "undefined" && typeof AdminCore.login === "function") {
+        if (typeof AdminCore !== "undefined" && AdminCore.login) {
           var r = AdminCore.login(email, pass, form.totp && form.totp.value);
           if (r && r.needTotp) {
-            document.getElementById("totpWrap")?.classList.remove("hidden");
+            if (totpWrap) totpWrap.className = "field";
             err(r.error || "Enter the authenticator code");
             return;
           }
@@ -299,7 +308,20 @@
           return;
         }
         err("Wrong email or password");
-      });
+      }
+      if (googleBtn) googleBtn.onclick = function () {
+        location.href = "/auth/google?next=control";
+      };
+      if (passBtn) passBtn.onclick = tryLogin;
+      if (form) {
+        form.onsubmit = function () { tryLogin(); return false; };
+        form.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            tryLogin();
+          }
+        });
+      }
       if (/oauth_ticket|oauth_error/.test(location.search)) loadDesk(true);
       else {
         try {
