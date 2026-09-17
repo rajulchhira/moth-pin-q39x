@@ -83,6 +83,7 @@ const HIDDEN_COURSES_KEY = "tradeshalaHiddenCourses";
 const EXTRA_MENTORS_KEY = "tradeshalaExtraMentors";
 const HIDDEN_MENTORS_KEY = "tradeshalaHiddenMentors";
 const MENTOR_EDITS_KEY = "tradeshalaMentorEdits";
+const INSTRUCTOR_EDITS_KEY = "tradeshalaInstructorEdits";
 const MENTOR_ROOMS_KEY = "tradeshalaMentorRooms";
 const WEBINAR_ROOMS_KEY = "tradeshalaWebinarRooms";
 const STAFF_KEY = "tradeshalaStaff";
@@ -743,14 +744,52 @@ const MENTORS = [
   { name: "Meera Iyer", role: "Options coach", tag: "Defined risk", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=640&h=860&q=80" }
 ];
 
+function instructorEdits() {
+  try { return JSON.parse(localStorage.getItem(INSTRUCTOR_EDITS_KEY) || "{}"); } catch { return {}; }
+}
+function setInstructorEdits(map) {
+  localStorage.setItem(INSTRUCTOR_EDITS_KEY, JSON.stringify(map));
+}
+function instructorEditFor(name, email) {
+  const map = instructorEdits();
+  const mail = String(email || "").toLowerCase();
+  if (mail) {
+    const byMail = Object.values(map).find((e) => String(e.email || "").toLowerCase() === mail);
+    if (byMail) return byMail;
+  }
+  const key = instructorSlug(name);
+  if (map[key]) return map[key];
+  return Object.values(map).find((e) => instructorSlug(e.name) === key) || {};
+}
+function applyInstructorEdit(name, fields, email) {
+  const map = instructorEdits();
+  const mail = String(email || fields.email || "").toLowerCase();
+  let key = Object.keys(map).find((k) => mail && String(map[k].email || "").toLowerCase() === mail)
+    || Object.keys(map).find((k) => instructorSlug(map[k].name) === instructorSlug(name))
+    || instructorSlug(name);
+  if (!key) return null;
+  map[key] = { ...(map[key] || {}), ...fields, name: fields.name || name, email: mail || map[key]?.email || "" };
+  setInstructorEdits(map);
+  return map[key];
+}
 function photoFor(name) {
-  return MENTORS.find((m) => m.name === name)?.img || "https://randomuser.me/api/portraits/men/15.jpg";
+  const edit = instructorEditFor(name);
+  if (edit && edit.photo) return edit.photo;
+  const stock = MENTORS.find((m) => m.name === name)?.img;
+  if (stock) return stock;
+  try {
+    const row = (typeof staffList === "function" ? staffList() : []).find((s) => s && s.name === name && s.photo);
+    if (row && row.photo) return row.photo;
+  } catch {}
+  return "https://randomuser.me/api/portraits/men/15.jpg";
 }
 function instructorSlug(name) {
   return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 function instructorHref(name) {
-  const slug = instructorSlug(name);
+  const list = typeof allMentors === "function" ? allMentors() : MENTORS;
+  const hit = list.find((m) => m.name === name);
+  const slug = (hit && hit._slug) || instructorSlug(name);
   return slug ? "/instructor?id=" + encodeURIComponent(slug) : "/instructors";
 }
 function instructorSlugFromLocation() {
@@ -899,31 +938,102 @@ const INSTRUCTOR_PACKS = {
     ]
   }
 };
+function allMentors() {
+  const edits = instructorEdits();
+  const out = [];
+  const seen = new Set();
+  const push = (m) => {
+    const key = m._slug || instructorSlug(m.name);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(m);
+  };
+  MENTORS.forEach((m) => {
+    const slug = instructorSlug(m.name);
+    const e = instructorEditFor(m.name);
+    if (e.hidden) return;
+    push({
+      ...m,
+      name: e.name || m.name,
+      role: e.title || e.role || m.role,
+      tag: e.tag || (Array.isArray(e.tags) && e.tags[0]) || m.tag,
+      img: e.photo || m.img,
+      _slug: slug
+    });
+  });
+  try {
+    (typeof staffList === "function" ? staffList() : []).forEach((raw) => {
+      if (!raw || !raw.name) return;
+      const role = String(raw.role || "");
+      if (role === "owner" || role === "superadmin") return;
+      if (raw.status === "suspended" || raw.status === "inactive") return;
+      const slug = raw.faceKey || instructorSlug(raw.name);
+      if (seen.has(slug) || seen.has(instructorSlug(raw.name))) return;
+      const e = instructorEditFor(raw.name, raw.email);
+      if (e.hidden) return;
+      push({
+        name: e.name || raw.name,
+        role: e.title || e.role || "Mentor",
+        tag: e.tag || (Array.isArray(e.tags) && e.tags[0]) || "Desk",
+        img: e.photo || raw.photo || photoFor(raw.name),
+        _slug: slug,
+        extra: true
+      });
+    });
+  } catch {}
+  Object.keys(edits).forEach((key) => {
+    const e = edits[key];
+    if (!e || e.hidden || seen.has(key) || seen.has(instructorSlug(e.name))) return;
+    if (!e.name && !e.photo) return;
+    push({
+      name: e.name || key,
+      role: e.title || "Mentor",
+      tag: e.tag || "Desk",
+      img: e.photo || "",
+      _slug: key,
+      extra: true
+    });
+  });
+  return out;
+}
 function instructorBySlug(slug) {
   const key = instructorSlug(slug);
-  return MENTORS.find((m) => instructorSlug(m.name) === key) || MENTORS.find((m) => m.name.toLowerCase() === String(slug || "").toLowerCase()) || null;
+  const live = allMentors().find((m) => (m._slug || instructorSlug(m.name)) === key)
+    || allMentors().find((m) => instructorSlug(m.name) === key);
+  if (live) return live;
+  const stock = MENTORS.find((m) => instructorSlug(m.name) === key)
+    || MENTORS.find((m) => m.name.toLowerCase() === String(slug || "").toLowerCase());
+  if (stock && instructorEditFor(stock.name).hidden) return null;
+  return stock || null;
 }
 function instructorPack(name) {
-  const m = MENTORS.find((x) => x.name === name) || { name, role: "Mentor", tag: "Desk" };
-  const saved = INSTRUCTOR_PACKS[instructorSlug(name)] || {};
-  const courses = (typeof allCourses === "function" ? allCourses() : []).filter((c) => c.instructor === name);
+  const list = typeof allMentors === "function" ? allMentors() : MENTORS;
+  const m = list.find((x) => x.name === name) || MENTORS.find((x) => x.name === name) || { name, role: "Mentor", tag: "Desk" };
+  const stock = INSTRUCTOR_PACKS[m._slug || instructorSlug(name)] || INSTRUCTOR_PACKS[instructorSlug(m.name)] || {};
+  const saved = { ...stock, ...instructorEditFor(name, m.email) };
+  const courses = (typeof allCourses === "function" ? allCourses() : []).filter((c) => c.instructor === name || c.instructor === (saved.name || name));
   const fromCourses = courses.reduce((n, c) => n + Number(String(c.learners || "0").replace(/,/g, "") || 0), 0);
+  const langs = Array.isArray(saved.languages) ? saved.languages.filter(Boolean) : [];
+  const tags = Array.isArray(saved.tags) ? saved.tags.filter(Boolean) : [];
+  const pillars = Array.isArray(saved.pillars) ? saved.pillars.filter((p) => p && (p.t || p.d)) : [];
   return {
     title: saved.title || m.role,
     company: saved.company || "Bizgarh",
     years: saved.years || "8+",
     learners: saved.learners || (fromCourses ? fromCourses.toLocaleString("en-IN") : "1,200"),
-    topRated: saved.topRated !== false && (saved.topRated === true || fromCourses > 20000),
-    languages: saved.languages || ["English", "Hindi"],
-    tags: saved.tags || [m.tag].filter(Boolean),
+    topRated: Object.prototype.hasOwnProperty.call(saved, "topRated") ? !!saved.topRated : fromCourses > 20000,
+    languages: langs.length ? langs : ["English", "Hindi"],
+    tags: tags.length ? tags : [m.tag].filter(Boolean),
     bio: saved.bio || `${name} teaches a written process on the Bizgarh desk — setups, invalidation, and a journal. Education only.`,
     quote: saved.quote || "Write the process. Size the risk. Review the week. That is the desk.",
-    pillars: saved.pillars || [
+    pillars: pillars.length ? pillars : [
       { t: "Process over noise", d: "One setup you can explain, not a feed of calls." },
       { t: "Risk on paper", d: "Invalidation and size before the first click." },
       { t: "Journal the session", d: "What worked, what you skip next time." },
       { t: "Education only", d: "You make the decision. We teach the checklist." }
-    ]
+    ],
+    hidden: !!saved.hidden,
+    tag: saved.tag || m.tag
   };
 }
 
@@ -2082,7 +2192,7 @@ function webinarLiveRooms(w) {
   return visibleDeskRooms(typeof webinarRoomsOf === "function" && w ? webinarRoomsOf(w.id) : deskRoomsMap());
 }
 function webinarProfile(w) {
-  const mentor = MENTORS.find((m) => m.name === w.by) || {};
+  const mentor = allMentors().find((m) => m.name === w.by) || MENTORS.find((m) => m.name === w.by) || {};
   const pack = {
     w1: {
       tag: "Nifty options",
@@ -2323,7 +2433,7 @@ function mentorPack(p) {
       outcomes: ["Choose which gaps to skip", "Write invalidation before entry", "Size without chasing", "Keep a first-hour journal"]
     }
   }[p.id] || {};
-  const mentor = MENTORS.find((m) => m.name === p.by) || {};
+  const mentor = allMentors().find((m) => m.name === p.by) || MENTORS.find((m) => m.name === p.by) || {};
   const clean = (arr) => (Array.isArray(arr) ? arr.map((x) => String(x || "").trim()).filter(Boolean) : []);
   const whoOf = (arr) => (Array.isArray(arr) ? arr.map((x) => ({ t: String(x.t || "").trim(), d: String(x.d || "").trim() })).filter((x) => x.t) : []);
   const stepsOf = (arr) => (Array.isArray(arr) ? arr.map((x, i) => ({ n: String(x.n || String(i + 1).padStart(2, "0")), t: String(x.t || "").trim(), d: String(x.d || "").trim() })).filter((x) => x.t) : []);
@@ -2546,7 +2656,7 @@ function renderInstructorListing() {
   </div>
   <div class="container ip-list-body">
     <div class="ip-list-grid">
-      ${MENTORS.map((m, i) => {
+      ${allMentors().map((m, i) => {
         const pack = instructorPack(m.name);
         const n = instructorCourses(m.name).length;
         const desks = instructorMentorships(m.name).length;
@@ -3517,7 +3627,7 @@ function bindChrome() {
   search?.addEventListener("input", () => {
     const q = search.value.toLowerCase();
     const courseHits = allCourses().filter((c) => c.title.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q)).slice(0, 5);
-    const mentorHits = MENTORS.filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 3);
+    const mentorHits = allMentors().filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 3);
     const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${m.name} · instructor</a>`).concat(courseHits.map((c) => `<a href="/course?id=${c.id}">${c.title}</a>`));
     document.getElementById("searchResults").innerHTML = rows.join("") || "<a>No matches</a>";
   });
@@ -4421,7 +4531,7 @@ function bindTradersReveal(sec) {
 function renderHomeExtras() {
   const mentorTrack = document.getElementById("mentorTrack");
   if (mentorTrack) {
-    mentorTrack.innerHTML = MENTORS.map((m, i) => traderCardHTML(m, i)).join("");
+    mentorTrack.innerHTML = allMentors().map((m, i) => traderCardHTML(m, i)).join("");
     const sec = document.getElementById("workingTraders");
     if (sec) {
       bindTraderCarousel(sec);

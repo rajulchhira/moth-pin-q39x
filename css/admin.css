@@ -866,6 +866,7 @@ article.desk-row { cursor: default; }
 }
 .staff-aside { display: grid; gap: 14px; position: sticky; top: 18px; }
 .staff-create {
+  grid-template-columns: 1fr 1fr;
   background:
     radial-gradient(80% 60% at 100% 0%, rgba(79,70,229,.35), transparent 52%),
     #0b1220;
@@ -889,6 +890,10 @@ article.desk-row { cursor: default; }
   padding: 11px 12px;
   font: inherit;
 }
+.staff-create header,
+.staff-create-wide,
+.staff-create > button,
+.staff-create-check { grid-column: 1 / -1; }
 .staff-create-wide { grid-column: 1 / -1; }
 .staff-create-check {
   display: flex !important;
@@ -896,6 +901,18 @@ article.desk-row { cursor: default; }
   gap: 8px;
   color: #e2e8f0 !important;
 }
+.staff-pillars {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, .45);
+}
+.staff-pillars b { display: block; color: #fff; font-size: 13px; }
+.staff-card-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.staff-drawer { max-width: 560px; }
+.staff-face-form h4 { margin: 18px 0 8px; }
+.ad-drawer-card.staff-drawer { width: min(560px, 100%); }
 .staff-grant {
   background: #fff;
   border: 1px solid #e2e8f0;

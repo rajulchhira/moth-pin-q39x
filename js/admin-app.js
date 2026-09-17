@@ -98,6 +98,78 @@ function deskHostLockHTML(host, opts) {
 function deskMetaHTML(items) {
   return `<ul class="desk-meta">${items.filter(Boolean).map((x) => `<li>${x}</li>`).join("")}</ul>`;
 }
+function splitFaceList(value) {
+  return String(value || "").split(",").map((x) => x.trim()).filter(Boolean);
+}
+function instructorFaceFieldsHTML(pack, mode) {
+  const p = pack || {};
+  const pillars = Array.isArray(p.pillars) ? p.pillars.slice(0, 4) : [];
+  while (pillars.length < 4) pillars.push({ t: "", d: "" });
+  const langs = Array.isArray(p.languages) ? p.languages.join(", ") : (p.languages || "Hindi, English");
+  const tags = Array.isArray(p.tags) ? p.tags.join(", ") : (p.tags || "");
+  return `
+    <label>Public headline
+      <input name="title" value="${adEsc(p.title || "")}" placeholder="Full-time trader, Bizgarh desk">
+    </label>
+    <label>Listing tag
+      <input name="tag" value="${adEsc(p.tag || "")}" placeholder="Intraday">
+    </label>
+    <label>Languages
+      <input name="languages" value="${adEsc(langs)}" placeholder="Hindi, English">
+    </label>
+    <label>Topic tags
+      <input name="tags" value="${adEsc(tags)}" placeholder="Intraday, Nifty options, Gap & go">
+    </label>
+    <label>Years on the desk
+      <input name="years" value="${adEsc(p.years || "")}" placeholder="12+">
+    </label>
+    <label>Learners taught
+      <input name="learners" value="${adEsc(p.learners || "")}" placeholder="50,483">
+    </label>
+    ${mode === "full" ? `
+    <label class="staff-create-wide">Quote on the public page
+      <textarea name="quote" rows="2" placeholder="Write the invalidation before the first click.">${adEsc(p.quote || "")}</textarea>
+    </label>
+    <div class="staff-create-wide staff-pillars">
+      <b>Teaching style — 4 points students see</b>
+      ${pillars.map((row, i) => `
+        <input name="pillar${i + 1}t" value="${adEsc(row.t || "")}" placeholder="Point ${i + 1} title">
+        <textarea name="pillar${i + 1}d" rows="2" placeholder="Point ${i + 1} detail">${adEsc(row.d || "")}</textarea>
+      `).join("")}
+    </div>` : ""}
+    <label class="staff-create-check"><input type="checkbox" name="topRated" value="1" ${p.topRated ? "checked" : ""}> Top rated mentor badge</label>
+    <label class="staff-create-check"><input type="checkbox" name="showPublic" value="1" ${p.hidden ? "" : "checked"}> Show on the public Instructors page</label>`;
+}
+function staffFaceFromForm(f) {
+  const langs = splitFaceList(f.languages && f.languages.value);
+  const tags = splitFaceList(f.tags && f.tags.value);
+  const pillars = [1, 2, 3, 4].map((i) => ({
+    t: String((f["pillar" + i + "t"] && f["pillar" + i + "t"].value) || "").trim(),
+    d: String((f["pillar" + i + "d"] && f["pillar" + i + "d"].value) || "").trim()
+  })).filter((row) => row.t || row.d);
+  return {
+    title: String((f.title && f.title.value) || "").trim(),
+    tag: String((f.tag && f.tag.value) || "").trim(),
+    years: String((f.years && f.years.value) || "").trim(),
+    learners: String((f.learners && f.learners.value) || "").trim(),
+    languages: langs,
+    tags,
+    quote: String((f.quote && f.quote.value) || "").trim(),
+    topRated: !!(f.topRated && (f.topRated.type === "checkbox" ? f.topRated.checked : f.topRated.value === "1")),
+    hidden: !(f.showPublic && (f.showPublic.type === "checkbox" ? f.showPublic.checked : f.showPublic.value === "1")),
+    pillars
+  };
+}
+function syncStaffInstructor(staff, extra) {
+  if (typeof applyInstructorEdit !== "function" || !staff || !staff.name) return;
+  applyInstructorEdit(staff.name, {
+    name: staff.name,
+    email: staff.email,
+    photo: staff.photo || "",
+    bio: staff.bio || "",
+    ...(extra || {})
+  }, staff.email);
+}
 function adCourse(id) { return allCourses().find((c) => c.id === id); }
 function adTitle(id) { return adCourse(id)?.title || id || "—"; }
 function kpiRange() {
@@ -570,7 +642,7 @@ const VIEWS = {
     const create = AdminCore.can("staff", "create") ? `<form class="staff-create" id="addStaffForm">
       <header>
         <b>New sub-admin</b>
-        <p>This person becomes the meeting host. Name and photo fill every webinar and desk they create. They can mute, remove people, and share their screen.</p>
+        <p>This login is the meeting host. The same name, photo, bio, and stats fill their public instructor page — change those fields here.</p>
       </header>
       <label>Full name
         <input name="name" required placeholder="e.g. Neha Kapoor" autocomplete="name">
@@ -585,9 +657,10 @@ const VIEWS = {
         <input name="photo" type="url" placeholder="https://…  square photo, or leave empty">
         <input name="photoFile" type="file" accept="image/jpeg,image/png,image/webp,image/*">
       </label>
-      <label class="staff-create-wide">Short host bio
-        <textarea name="bio" rows="3" placeholder="One or two lines students see under the host name."></textarea>
+      <label class="staff-create-wide">Public bio
+        <textarea name="bio" rows="3" placeholder="This is the paragraph under their name on the instructor page."></textarea>
       </label>
+      ${instructorFaceFieldsHTML({ languages: ["Hindi", "English"], topRated: false, hidden: false }, "short")}
       <label class="staff-create-check"><input type="checkbox" name="creatorEnabled" value="1" checked> Also let them sell as a creator</label>
       <button class="btn btn-primary" type="submit">Create sub-admin</button>
     </form>` : "";
@@ -595,6 +668,8 @@ const VIEWS = {
       const locked = n.role === "superadmin" || n.role === "owner";
       const roleLabel = n.role === "superadmin" ? "Super admin" : (n.role === "owner" ? "Owner" : "Sub-admin");
       const host = typeof deskHostOf === "function" ? deskHostOf(n.email, n.name) : n;
+      const pack = !locked && typeof instructorPack === "function" ? instructorPack(n.name) : null;
+      const pageHref = typeof instructorHref === "function" ? instructorHref(n.name) : "";
       return `<article class="staff-card" style="--i:${i}">
         ${typeof deskFaceHTML === "function" ? deskFaceHTML(host.name, host.photo) : ""}
         <div>
@@ -603,12 +678,17 @@ const VIEWS = {
           <ul class="desk-meta">
             <li>${adEsc(roleLabel)}</li>
             <li>${n.creatorEnabled ? "Creator" : "Host only"}</li>
+            ${pack ? `<li>${adEsc(pack.years || "—")} years</li>` : ""}
+            ${pack ? `<li>${adEsc(pack.learners || "—")} learners</li>` : ""}
             <li>${n.lastLogin ? "Last in " + new Date(n.lastLogin).toLocaleDateString("en-IN") : "No login yet"}</li>
           </ul>
         </div>
         <div class="staff-card-side">
           ${badge(n.status)}
-          ${locked ? "" : `<button class="btn btn-ghost" data-staff="${adEsc(n.email)}">Manage</button>`}
+          <div class="staff-card-actions">
+            ${!locked && pageHref ? `<a class="btn btn-ghost" href="${adEsc(pageHref)}" target="_blank" rel="noopener">View page</a>` : ""}
+            ${locked ? "" : `<button class="btn btn-ghost" data-staff="${adEsc(n.email)}">Edit page</button>`}
+          </div>
         </div>
       </article>`;
     }).join("");
@@ -942,18 +1022,27 @@ function staffDrawer(email) {
   const mods = Object.keys(ADMIN_MODULES);
     const logs = AdminCore.sessions().filter((x) => x.email === s.email).slice(0, 8);
     const orders = AdminCore.orders().filter((o) => o.creatorEmail === s.email && o.status === "PAID");
-    return `<div class="ad-drawer" id="adDrawer"><div class="ad-drawer-card">
+    const pack = typeof instructorPack === "function" ? instructorPack(s.name) : {};
+    const pageHref = typeof instructorHref === "function" ? instructorHref(s.name) : "";
+    return `<div class="ad-drawer" id="adDrawer"><div class="ad-drawer-card staff-drawer">
     <button class="btn btn-ghost" data-close-drawer>Close</button>
     <h3>${adEsc(s.name)}</h3>
     <p class="muted">${adEsc(s.email)} · ${adEsc(s.phone || "no phone")}</p>
     <p class="muted">Created ${new Date(s.created).toLocaleDateString("en-IN")} · Last login ${s.lastLogin ? new Date(s.lastLogin).toLocaleString("en-IN") : "—"}</p>
     <p>Creator ${s.creatorEnabled ? "on" : "off"} · ID ${adEsc(s.creatorId || "—")} · Code <strong>${adEsc(s.referralCode || "—")}</strong></p>
     <p>Sales ${orders.length} · ${AdminCore.inr(orders.reduce((a,o)=>a+Number(o.net||0),0))}</p>
+    ${pageHref ? `<p><a class="btn btn-ghost" href="${adEsc(pageHref)}" target="_blank" rel="noopener">Open public instructor page</a></p>` : ""}
     <button class="btn btn-ghost" data-flog="${adEsc(s.email)}">Force logout</button>
-    <form class="ad-form" id="editStaffForm">
+    <form class="ad-form staff-face-form" id="editStaffForm">
       <input type="hidden" name="email" value="${adEsc(s.email)}">
-      <label>Host photo URL</label><input name="photo" value="${adEsc(s.photo || "")}" placeholder="https://…">
-      <label>Host bio</label><textarea name="bio" rows="3">${adEsc(s.bio || "")}</textarea>
+      <h4>Public instructor page</h4>
+      <p class="muted">These fields are what students see on /instructor. Save here and that page updates.</p>
+      <label>Display name</label><input name="name" value="${adEsc(s.name)}" required>
+      <label>Photo URL</label><input name="photo" value="${adEsc(s.photo || pack.photo || "")}" placeholder="https://…">
+      <label>Upload photo</label><input name="photoFile" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+      <label>Bio</label><textarea name="bio" rows="4">${adEsc(s.bio || pack.bio || "")}</textarea>
+      ${instructorFaceFieldsHTML({ ...pack, tag: pack.tag, hidden: pack.hidden }, "full")}
+      <h4>Account</h4>
       <label>Status</label><select name="status"><option ${s.status==="active"?"selected":""}>active</option><option ${s.status==="inactive"?"selected":""}>inactive</option><option ${s.status==="suspended"?"selected":""}>suspended</option></select>
       <label>Phone</label><input name="phone" value="${adEsc(s.phone)}">
       <label>Password reset</label><input name="password" placeholder="Leave blank to keep">
@@ -1229,21 +1318,26 @@ function bindApp() {
       const creatorEnabled = f.creatorEnabled?.type === "checkbox" ? f.creatorEnabled.checked : f.creatorEnabled?.value === "1";
       const code = makeCode(f.name.value.trim().slice(0,5).toUpperCase());
       const finish = (photo) => {
-        AdminCore.saveStaff(AdminCore.normalizeStaff({
-          name: f.name.value.trim(), email, password: f.password.value, role: "subadmin", status: "active",
-          photo, bio: (f.bio?.value || "").trim(),
+        const name = f.name.value.trim();
+        const bio = (f.bio?.value || "").trim();
+        const face = staffFaceFromForm(f);
+        const row = AdminCore.normalizeStaff({
+          name, email, password: f.password.value, role: "subadmin", status: "active",
+          photo, bio, faceKey: instructorSlug(name),
           creatorEnabled, referralCode: creatorEnabled ? code : "", creatorId: creatorEnabled ? "CR-"+code : "",
           permissions: { ...CREATOR_DEFAULT_PERMS }, created: AdminCore.now()
-        }));
+        });
+        AdminCore.saveStaff(row);
+        syncStaffInstructor(row, face);
         if (creatorEnabled) {
           const aff = affiliates();
           if (!aff.some((a)=>a.email===email)) {
-            aff.push({ email, name: f.name.value.trim(), code, rate: 20, status: "active", created: AdminCore.now() });
+            aff.push({ email, name, code, rate: 20, status: "active", created: AdminCore.now() });
             writeList(AFFILIATE_KEY, aff);
           }
         }
         AdminCore.audit("staff_create", email, "", "subadmin");
-        toast("Sub-admin created · they are the meeting host");
+        toast("Sub-admin created · public instructor page is ready");
         paint();
       };
       const file = f.photoFile?.files?.[0];
@@ -1270,32 +1364,50 @@ function bindApp() {
         perms[m] = ADMIN_MODULES[m].filter((a) => f["p_"+m+"_"+a]?.checked);
       });
       const creatorEnabled = f.creatorEnabled.value === "1";
-      const next = AdminCore.normalizeStaff({
-        ...row,
-        status: f.status.value,
-        phone: f.phone.value,
-        photo: (f.photo?.value || row.photo || "").trim(),
-        bio: (f.bio?.value || row.bio || "").trim(),
-        password: f.password.value || row.password,
-        creatorEnabled,
-        studentScope: f.studentScope.value,
-        totp: f.totp.value === "1",
-        permissions: perms,
-        commission: { type: f.ctype.value, newSale: Number(f.newSale.value), renewal: Number(f.renewal.value), start: row.commission?.start || "", end: row.commission?.end || "" },
-        referralCode: row.referralCode || (creatorEnabled ? makeCode(row.name.slice(0,5).toUpperCase()) : row.referralCode),
-        creatorId: row.creatorId || (creatorEnabled ? "CR-" + (row.referralCode || "") : row.creatorId)
-      });
-      AdminCore.saveStaff(next);
-      if (creatorEnabled) {
-        const aff = affiliates();
-        if (!aff.some((a)=>a.email===email)) {
-          aff.push({ email, name: next.name, code: next.referralCode, rate: next.commission.newSale, status: "active", created: AdminCore.now() });
-          writeList(AFFILIATE_KEY, aff);
+      const saveRow = (photo) => {
+        const name = String((f.name && f.name.value) || row.name || "").trim() || row.name;
+        const bio = (f.bio?.value || "").trim();
+        const face = staffFaceFromForm(f);
+        const next = AdminCore.normalizeStaff({
+          ...row,
+          name,
+          status: f.status.value,
+          phone: f.phone.value,
+          photo,
+          bio,
+          faceKey: row.faceKey || instructorSlug(row.name || name),
+          password: f.password.value || row.password,
+          creatorEnabled,
+          studentScope: f.studentScope.value,
+          totp: f.totp.value === "1",
+          permissions: perms,
+          commission: { type: f.ctype.value, newSale: Number(f.newSale.value), renewal: Number(f.renewal.value), start: row.commission?.start || "", end: row.commission?.end || "" },
+          referralCode: row.referralCode || (creatorEnabled ? makeCode(name.slice(0,5).toUpperCase()) : row.referralCode),
+          creatorId: row.creatorId || (creatorEnabled ? "CR-" + (row.referralCode || "") : row.creatorId)
+        });
+        AdminCore.saveStaff(next);
+        syncStaffInstructor(next, face);
+        if (creatorEnabled) {
+          const aff = affiliates();
+          if (!aff.some((a)=>a.email===email)) {
+            aff.push({ email, name: next.name, code: next.referralCode, rate: next.commission.newSale, status: "active", created: AdminCore.now() });
+            writeList(AFFILIATE_KEY, aff);
+          }
         }
+        AdminCore.audit("staff_update", email, JSON.stringify({ status: row.status, creator: row.creatorEnabled, newSale: row.commission?.newSale }), JSON.stringify({ status: next.status, creator: next.creatorEnabled, newSale: next.commission.newSale }));
+        toast("Instructor page saved");
+        paint();
+      };
+      const file = f.photoFile?.files?.[0];
+      const photoUrl = (f.photo?.value || row.photo || "").trim();
+      if (file) {
+        const r = new FileReader();
+        r.onload = () => saveRow(String(r.result || photoUrl));
+        r.onerror = () => saveRow(photoUrl);
+        r.readAsDataURL(file);
+        return;
       }
-      AdminCore.audit("staff_update", email, JSON.stringify({ status: row.status, creator: row.creatorEnabled, newSale: row.commission?.newSale }), JSON.stringify({ status: next.status, creator: next.creatorEnabled, newSale: next.commission.newSale }));
-      toast("Saved permissions");
-      paint();
+      saveRow(photoUrl);
     }
     if (f.id === "addPayoutForm") {
       e.preventDefault();
