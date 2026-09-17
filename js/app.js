@@ -1370,23 +1370,36 @@ function adminHref(hash) {
   return "/control" + (hash ? (hash.charAt(0) === "#" ? hash : "#" + hash) : "");
 }
 
+let pendingAuthNext = null;
+function runPendingAuthNext() {
+  const fn = pendingAuthNext;
+  pendingAuthNext = null;
+  if (typeof fn !== "function" || !getUser()) return false;
+  try { fn(); } catch { /* keep the desk usable */ }
+  return true;
+}
+
 function afterAuthArrive() {
   const pending = sessionStorage.getItem("tradeshalaPendingBuy");
     if (pending) {
+    pendingAuthNext = null;
     location.href = "/course?id=" + encodeURIComponent(pending);
     return;
   }
   const pendingWeb = sessionStorage.getItem("tradeshalaPendingWebinar");
   if (pendingWeb) {
+    pendingAuthNext = null;
     location.href = "/webinar?id=" + encodeURIComponent(pendingWeb);
     return;
   }
   const pendingMentor = sessionStorage.getItem("tradeshalaPendingMentor");
   if (pendingMentor) {
+    pendingAuthNext = null;
     location.href = "/program?id=" + encodeURIComponent(pendingMentor);
     return;
   }
   if (isAdminPage()) {
+    pendingAuthNext = null;
     if (typeof AdminCore !== "undefined" && typeof showAdmin === "function") {
       try {
         if (AdminCore.session() || AdminCore.adoptPublicUser()) showAdmin();
@@ -1403,8 +1416,15 @@ function afterAuthArrive() {
       bindChrome();
     }
     if (typeof renderDashboard === "function") renderDashboard();
+    runPendingAuthNext();
     return;
   }
+  if (isLiveRoomPage()) {
+    runPendingAuthNext();
+    if (typeof renderLiveRoom === "function") renderLiveRoom();
+    return;
+  }
+  if (runPendingAuthNext()) return;
   location.href = "/dashboard";
 }
 
@@ -2517,11 +2537,21 @@ function mentorCtaHTML(p, enrolled) {
     return `<a class="btn btn-primary wb-cta" href="${mentorJoinHref(p)}">Join desk ›</a>
       ${hasComm ? `<a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(mentorCommunityUrl(p))}" target="_blank" rel="noopener">${iconSvg("chat")} Join community</a>` : ""}`;
   }
+  if (mentorPhase(p) === "ended") {
+    return `<span class="btn btn-ghost wb-cta is-off">This desk has ended</span>
+      <button type="button" class="btn btn-ghost wb-cta" data-mentor-call="${p.id}">Request a callback</button>`;
+  }
   return `<button type="button" class="btn btn-primary wb-cta" data-mentor-enroll="${p.id}">Enroll Now ›</button>
     <button type="button" class="btn btn-ghost wb-cta" data-mentor-call="${p.id}">Request a callback</button>`;
 }
 
 function enrollMentorProgram(id) {
+  const desk = allMentorPrograms().find((x) => x.id === id);
+  if (desk && mentorPhase(desk) === "ended") {
+    sessionStorage.removeItem("tradeshalaPendingMentor");
+    toast("This mentorship desk has ended");
+    return;
+  }
   sessionStorage.setItem("tradeshalaPendingMentor", id);
   requireAuth(() => {
     sessionStorage.removeItem("tradeshalaPendingMentor");
@@ -3015,6 +3045,7 @@ function renderMentorProgramPage() {
   ensureMentorLive(p);
   const pack = mentorPack(p);
   const enrolled = typeof mentorOwnedForPage === "function" ? mentorOwnedForPage(p) : isMentorEnrolled(p.id);
+  const ended = mentorPhase(p) === "ended";
   const liveRooms = mentorLiveRooms(p);
   const just = sessionStorage.getItem("tradeshalaMentorPop") === "1";
   if (just) sessionStorage.removeItem("tradeshalaMentorPop");
@@ -3106,10 +3137,10 @@ function renderMentorProgramPage() {
     </section>
     <section class="mp-seats" data-wb>
       <div>
-        <b>First session starts on ${escapeHtml(webinarDateLabel(p))}</b>
-        <small>Only ${seats} seats left</small>
+        <b>${ended ? "This desk has ended" : "First session starts on " + escapeHtml(webinarDateLabel(p))}</b>
+        <small>${ended ? "Recordings stay open for enrolled learners" : "Only " + seats + " seats left"}</small>
       </div>
-      ${enrolled ? `<a class="btn btn-primary" href="${mentorJoinHref(p)}">Join desk ›</a>` : `<button type="button" class="btn btn-primary" data-mentor-enroll="${p.id}">Enroll Now ›</button>`}
+      ${enrolled ? `<a class="btn btn-primary" href="${mentorJoinHref(p)}">Join desk ›</a>` : ended ? `<span class="btn btn-ghost is-off">Enrollment closed</span>` : `<button type="button" class="btn btn-primary" data-mentor-enroll="${p.id}">Enroll Now ›</button>`}
     </section>
     <section class="wb-block" data-wb>
       <h2>Frequently Asked Questions</h2>
@@ -3255,9 +3286,9 @@ function liveMegaHTML() {
     <a class="mega-web" href="${webinarHref(w.id)}">
       ${webinarBannerHTML(w, i)}
       <div class="mega-web-meta">
-        <small>${w.when}</small>
-        <b>${w.title}</b>
-        <span>by ${w.by}</span>
+        <small>${escapeHtml(w.when || webinarWhenShort(w))}</small>
+        <b>${escapeHtml(w.title)}</b>
+        <span>by ${escapeHtml(w.by)}</span>
       </div>
     </a>`).join("");
   return `
@@ -3357,8 +3388,8 @@ function headerHTML() {
     <a href="/courses">Courses</a>
     <a href="/live">Live classes</a>
     <a href="/about">About</a>
-    <a href="/dashboard">My Dashboard</a>
-    <a href="/learning">My Learning</a>
+    ${getUser() ? "" : `<a href="/dashboard">My Dashboard</a>
+    <a href="/learning">My Learning</a>`}
     <a href="/contact">Help</a>
     <div class="mnav-auth">${authMobile}</div>
   </nav>`;
@@ -3409,6 +3440,12 @@ function footerHTML() {
       </div>
     </div>
   </footer>
+  ${authOverlaysHTML()}
+  <button class="to-top" id="toTop">↑</button>`;
+}
+
+function authOverlaysHTML() {
+  return `
   <div class="overlay" id="loginModal">
     <form class="modal auth-modal" id="loginForm">
       <button type="button" class="close-x" data-close>×</button>
@@ -3485,8 +3522,7 @@ function footerHTML() {
       <div class="field hidden" id="socialUserWrap"><label>Telegram username</label><input name="username" placeholder="@yourid"></div>
       <button class="btn btn-primary btn-block">Continue</button>
     </form>
-  </div>
-  <button class="to-top" id="toTop">↑</button>`;
+  </div>`;
 }
 
 function setMobileNav(open) {
@@ -3501,27 +3537,24 @@ function setMobileNav(open) {
   document.body.classList.toggle("nav-open", open);
 }
 
+let chromeDocBound = false;
+function bindChromeOnce(el, type, fn, opts) {
+  if (!el) return;
+  const flag = "__bg_" + type;
+  if (el[flag]) return;
+  el[flag] = true;
+  el.addEventListener(type, fn, opts);
+}
+
 function bindChrome() {
-  document.getElementById("menuToggle")?.addEventListener("click", () => {
+  bindChromeOnce(document.getElementById("menuToggle"), "click", () => {
     setMobileNav(!document.getElementById("mobileNav")?.classList.contains("open"));
   });
-  document.getElementById("navScrim")?.addEventListener("click", () => setMobileNav(false));
-  document.getElementById("mobileNav")?.addEventListener("click", (e) => {
+  bindChromeOnce(document.getElementById("navScrim"), "click", () => setMobileNav(false));
+  bindChromeOnce(document.getElementById("mobileNav"), "click", (e) => {
     if (e.target.closest("a, [data-open], .js-logout, .js-open-admin, button[type=submit]")) {
       setMobileNav(false);
     }
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      setMobileNav(false);
-      if (document.body.classList.contains("modal-open")) dismissAuthModals();
-      else closeModals();
-      document.querySelectorAll(".acct-wrap, .note-wrap, .nav-item.mega").forEach((el) => el.classList.remove("open"));
-      document.body.classList.remove("nav-dim");
-    }
-  });
-  window.addEventListener("resize", () => {
-    if (window.innerWidth > 980) setMobileNav(false);
   });
   const finePointer = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   const closeDeskMenus = (except) => {
@@ -3533,7 +3566,8 @@ function bindChrome() {
     if (!except?.classList.contains("mega")) document.body.classList.remove("nav-dim");
   };
   const armHoverDesk = (el, onOpen) => {
-    if (!el) return;
+    if (!el || el.__bgHover) return;
+    el.__bgHover = true;
     const openNow = () => {
       clearTimeout(el._deskT);
       closeDeskMenus(el);
@@ -3561,7 +3595,21 @@ function bindChrome() {
   });
   armHoverDesk(document.querySelector(".note-wrap"), () => paintNoteBell(false));
   armHoverDesk(document.querySelector(".acct-wrap"));
-  document.body.addEventListener("click", (e) => {
+  if (!chromeDocBound) {
+    chromeDocBound = true;
+    document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      setMobileNav(false);
+      if (document.body.classList.contains("modal-open")) dismissAuthModals();
+      else closeModals();
+      document.querySelectorAll(".acct-wrap, .note-wrap, .nav-item.mega").forEach((el) => el.classList.remove("open"));
+      document.body.classList.remove("nav-dim");
+    }
+    });
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 980) setMobileNav(false);
+    });
+    document.body.addEventListener("click", (e) => {
     const opener = e.target.closest("[data-open]");
     if (opener) openModal(opener.dataset.open);
     if (e.target.closest("[data-close]")) dismissAuthModals();
@@ -3624,25 +3672,29 @@ function bindChrome() {
       location.href = "/dashboard";
     }
   }, true);
-  window.addEventListener("popstate", sendLoggedInHomeToDashboard);
-  window.addEventListener("pageshow", sendLoggedInHomeToDashboard);
-  document.querySelectorAll(".overlay").forEach((o) => o.addEventListener("click", (e) => { if (e.target === o) dismissAuthModals(); }));
+    window.addEventListener("popstate", sendLoggedInHomeToDashboard);
+    window.addEventListener("pageshow", sendLoggedInHomeToDashboard);
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-wrap")) document.getElementById("searchPanel")?.classList.remove("open");
+    });
+    window.addEventListener("scroll", () => document.getElementById("toTop")?.classList.toggle("show", window.scrollY > 500));
+  }
+  document.querySelectorAll(".overlay").forEach((o) => bindChromeOnce(o, "click", (e) => { if (e.target === o) dismissAuthModals(); }));
 
   const search = document.getElementById("searchInput");
   const panel = document.getElementById("searchPanel");
   const goSearch = (q) => { location.href = q ? `/courses?q=${encodeURIComponent(q)}` : "/courses"; };
-  document.getElementById("searchForm")?.addEventListener("submit", (e) => {
+  bindChromeOnce(document.getElementById("searchForm"), "submit", (e) => {
     e.preventDefault();
     goSearch(search?.value.trim());
   });
-  document.getElementById("mobileSearchForm")?.addEventListener("submit", (e) => {
+  bindChromeOnce(document.getElementById("mobileSearchForm"), "submit", (e) => {
     e.preventDefault();
     setMobileNav(false);
     goSearch(document.getElementById("mobileSearchInput")?.value.trim());
   });
-  search?.addEventListener("focus", () => panel?.classList.add("open"));
-  document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) panel?.classList.remove("open"); });
-  search?.addEventListener("input", () => {
+  bindChromeOnce(search, "focus", () => panel?.classList.add("open"));
+  bindChromeOnce(search, "input", () => {
     const q = search.value.toLowerCase();
     const courseHits = allCourses().filter((c) => courseMatchesQuery(c, q)).slice(0, 4);
     const mentorHits = allMentors().filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 2);
@@ -3652,10 +3704,10 @@ function bindChrome() {
       .concat(courseHits.map((c) => `<a href="/course?id=${encodeURIComponent(c.id)}">${escapeHtml(c.title)}</a>`))
       .concat(liveHits.map((w) => `<a href="${webinarHref(w.id)}">${escapeHtml(w.title)} · webinar</a>`))
       .concat(deskHits.map((p) => `<a href="${mentorHref(p.id)}">${escapeHtml(p.title)} · mentorship</a>`));
-    document.getElementById("searchResults").innerHTML = rows.join("") || "<a>No matches</a>";
+    document.getElementById("searchResults").innerHTML = rows.join("") || "<span class=\"muted\">No matches</span>";
   });
 
-  document.getElementById("loginForm")?.addEventListener("submit", (e) => {
+  bindChromeOnce(document.getElementById("loginForm"), "submit", (e) => {
     e.preventDefault();
     const email = e.target.email.value.trim().toLowerCase();
     const password = e.target.password.value;
@@ -3680,7 +3732,7 @@ function bindChrome() {
     toast("Logged in");
     afterAuthArrive();
   });
-  document.getElementById("signupForm")?.addEventListener("submit", (e) => {
+  bindChromeOnce(document.getElementById("signupForm"), "submit", (e) => {
     e.preventDefault();
     const st = typeof platformSettings === "function" ? platformSettings() : { publicSignup: true };
     const code = (e.target.code?.value || "").trim();
@@ -3731,7 +3783,7 @@ function bindChrome() {
     showOtpModal(email, "signup");
   });
 
-  document.getElementById("forgotForm")?.addEventListener("submit", (e) => {
+  bindChromeOnce(document.getElementById("forgotForm"), "submit", (e) => {
     e.preventDefault();
     const email = e.target.email.value.trim().toLowerCase();
     const user = findStudent(email);
@@ -3745,7 +3797,7 @@ function bindChrome() {
     showOtpModal(email, "reset");
   });
 
-  document.getElementById("otpForm")?.addEventListener("submit", (e) => {
+  bindChromeOnce(document.getElementById("otpForm"), "submit", (e) => {
     e.preventDefault();
     if (AuthPending?.kind === "reset" && !document.getElementById("otpStepReset")?.classList.contains("hidden")) {
       document.getElementById("otpSavePass")?.click();
@@ -3767,7 +3819,7 @@ function bindChrome() {
     completeStudentSession(user, user.providers?.includes("google") ? "Google account verified" : "Welcome to Bizgarh");
   });
 
-  document.getElementById("otpSavePass")?.addEventListener("click", () => {
+  bindChromeOnce(document.getElementById("otpSavePass"), "click", () => {
     const pass = document.querySelector("#otpStepReset [name=password]")?.value || "";
     if (pass.length < 4) { toast("Password must be at least 4 characters"); return; }
     const email = AuthPending?.email;
@@ -3778,7 +3830,7 @@ function bindChrome() {
     completeStudentSession({ ...user, password: pass }, "Password updated");
   });
 
-  document.getElementById("otpResend")?.addEventListener("click", () => {
+  bindChromeOnce(document.getElementById("otpResend"), "click", () => {
     const email = document.getElementById("otpEmailLabel")?.textContent;
     if (!email) return;
     const purpose = readOtp()?.purpose || AuthPending?.kind || "signup";
@@ -3786,20 +3838,20 @@ function bindChrome() {
   });
 
   const otpBox = document.getElementById("otpInputs");
-  otpBox?.addEventListener("input", (e) => {
+  bindChromeOnce(otpBox, "input", (e) => {
     const input = e.target;
     if (!(input instanceof HTMLInputElement)) return;
     input.value = input.value.replace(/\D/g, "").slice(0, 1);
     if (input.value && input.nextElementSibling) input.nextElementSibling.focus();
     if (otpDigits().length === 6) document.getElementById("otpForm")?.requestSubmit();
   });
-  otpBox?.addEventListener("keydown", (e) => {
+  bindChromeOnce(otpBox, "keydown", (e) => {
     const input = e.target;
     if (e.key === "Backspace" && input instanceof HTMLInputElement && !input.value && input.previousElementSibling) {
       input.previousElementSibling.focus();
     }
   });
-  otpBox?.addEventListener("paste", (e) => {
+  bindChromeOnce(otpBox, "paste", (e) => {
     const text = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 6);
     if (!text) return;
     e.preventDefault();
@@ -3807,7 +3859,7 @@ function bindChrome() {
     if (text.length === 6) document.getElementById("otpForm")?.requestSubmit();
   });
 
-  document.getElementById("socialForm")?.addEventListener("submit", (e) => {
+  bindChromeOnce(document.getElementById("socialForm"), "submit", (e) => {
     e.preventDefault();
     const f = e.target;
     finishSocial(f.provider.value, {
@@ -3818,8 +3870,7 @@ function bindChrome() {
     });
   });
 
-  document.getElementById("toTop")?.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
-  window.addEventListener("scroll", () => document.getElementById("toTop")?.classList.toggle("show", window.scrollY > 500));
+  bindChromeOnce(document.getElementById("toTop"), "click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 }
 
 function openModal(id) {
@@ -3840,10 +3891,12 @@ function closeModals() {
 function dismissAuthModals() {
   closeModals();
   clearPendingEnroll();
+  pendingAuthNext = null;
 }
 
 function requireAuth(next) {
   if (getUser()) return next();
+  pendingAuthNext = typeof next === "function" ? next : null;
   const st = typeof platformSettings === "function" ? platformSettings() : { publicSignup: true };
   if (!st.publicSignup) {
     openModal("loginModal");
@@ -4450,7 +4503,7 @@ function bindCourseLibrary() {
     const next = courseFilterFromCat(a.dataset.cat);
     const query = libraryQuery();
     pushLibrary(next, query);
-    applyCourseFilter(a.dataset.cat, query, true);
+    applyCourseFilter(next, query, true);
   });
   document.querySelectorAll(".filters .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -4934,8 +4987,8 @@ function courseOverviewCardHTML(c, playable) {
 }
 
 function courseAbout(c) {
-  if (c.description) return c.description;
-  return `${c.title} is taught by ${c.instructor}. The classroom is built around a written setup, a clear invalidation, and a journal you can keep after the video ends. You will learn how to choose the trade, size it, and review the week — not a list of tips. The lessons are short, practical, and meant to be replayed before the next session.`;
+  if (c.description) return escapeHtml(String(c.description));
+  return escapeHtml(`${c.title} is taught by ${c.instructor}. The classroom is built around a written setup, a clear invalidation, and a journal you can keep after the video ends. You will learn how to choose the trade, size it, and review the week — not a list of tips. The lessons are short, practical, and meant to be replayed before the next session.`);
 }
 
 function courseLiveRooms(c) {
@@ -5690,9 +5743,13 @@ function webinarCtaHTML(w, registered) {
       <a class="btn btn-ghost wb-cta" href="${webinarHostRoomHref(w.id)}">Open room</a>`;
   }
   if (w.status === "ended") {
-    return w.recordUrl
-      ? `<a class="btn btn-primary wb-cta" href="${escapeHtml(w.recordUrl)}" target="_blank" rel="noopener">Watch recording</a>`
-      : `<span class="btn btn-ghost wb-cta is-off">This webinar has ended</span>`;
+    if (w.recordUrl) {
+      return `<a class="btn btn-primary wb-cta" href="${escapeHtml(w.recordUrl)}" target="_blank" rel="noopener">Watch recording</a>`;
+    }
+    if (registered) {
+      return `<span class="btn btn-ghost wb-cta is-off">Recording will appear here when the mentor uploads it</span>`;
+    }
+    return `<button type="button" class="btn btn-primary wb-cta" data-register="${w.id}">Enroll for replay ›</button>`;
   }
   if (registered) {
     const join = `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(w.id)}">Join Now ›</a>`;
@@ -6753,16 +6810,20 @@ async function startPublicBoot() {
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");
   ensureBrandFont();
-  if (isLiveRoomPage()) document.body.classList.add("live-room-page");
-  if (mountH && !isLiveRoomPage()) mountH.innerHTML = headerHTML();
-  if (mountF && !isLiveRoomPage()) mountF.innerHTML = footerHTML();
+  if (isLiveRoomPage()) {
+    document.body.classList.add("live-room-page");
+    if (!document.getElementById("loginModal")) document.body.insertAdjacentHTML("beforeend", authOverlaysHTML());
+  } else {
+    if (mountH) mountH.innerHTML = headerHTML();
+    if (mountF) mountF.innerHTML = footerHTML();
+  }
   window.BizgarhLoader?.done?.();
   if (adminPage) {
     const bootQ = new URLSearchParams(location.search);
     if (bootQ.get("oauth_ticket") || bootQ.get("oauth_error")) await consumeOAuth();
     return;
   }
-  if (!isLiveRoomPage()) bindChrome();
+  bindChrome();
   syncNotesFromAccount();
   paintNoteBell(false);
   applySignupGate();

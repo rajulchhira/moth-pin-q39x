@@ -6007,6 +6007,9 @@ body.live-room-page {
   background: #0f0f13;
   overflow: hidden;
 }
+body.live-room-page .overlay {
+  z-index: 5000;
+}
 body.live-room-page #site-header,
 body.live-room-page .header,
 body.live-room-page .footer,

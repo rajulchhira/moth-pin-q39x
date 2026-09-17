@@ -82,7 +82,9 @@
   var WEBINARS = {
     w1: { name: "Gap & Go for Nifty Options", title: "Gap & Go Nifty Options Webinar | Live Trading Class | Bizgarh", desc: "Live Nifty options webinar on gap selection, opening acceptance, and a journal — 18 Sep 2026. Free for registered learners.", by: "Aarav Mehta", start: "2026-09-18T11:00:00+05:30" },
     w2: { name: "Defined-Risk Credit Spreads", title: "Credit Spreads Webinar | Defined-Risk Options Live Class | Bizgarh", desc: "Live webinar on defined-risk credit spreads for Indian options traders. 20 Sep 2026 with Neha Kapoor.", by: "Neha Kapoor", start: "2026-09-20T20:00:00+05:30" },
-    w3: { name: "Reading Weekly Structure", title: "Weekly Market Structure Webinar | Price Action Live Class | Bizgarh", desc: "Live class on reading weekly structure and real levels. 22 Sep 2026 with Vikram Singh. Education only.", by: "Vikram Singh", start: "2026-09-22T19:30:00+05:30" }
+    w3: { name: "Reading Weekly Structure", title: "Weekly Market Structure Webinar | Price Action Live Class | Bizgarh", desc: "Live class on reading weekly structure and real levels. 22 Sep 2026 with Vikram Singh. Education only.", by: "Vikram Singh", start: "2026-09-22T19:30:00+05:30" },
+    w4: { name: "Opening Range Playbook", title: "Opening Range Playbook Webinar | Index Open Live Class | Bizgarh", desc: "Live class on the index open, first hour, and defined invalidation. 30 Sep 2026 with Kabir Joshi.", by: "Kabir Joshi", start: "2026-09-30T20:00:00+05:30" },
+    w0: { name: "Gap & Go Replay Desk", title: "Gap & Go Replay Desk | Nifty Options Recording | Bizgarh", desc: "Ended replay of the Nifty gap desk with Aarav Mehta. Register to review the recording when it is uploaded.", by: "Aarav Mehta", start: "2026-09-08T11:00:00+05:30" }
   };
 
   var PROGRAMS = {
@@ -94,7 +96,8 @@
     "mp-port": { name: "Portfolio Construction Lab", title: "Portfolio Mentorship | 10-Year Investing Desk | Bizgarh", desc: "Build a 10-year book: SIP, allocation, and a quarterly review. Investing mentorship, not tips.", by: "Ananya Rao" },
     "mp-opt0": { name: "Options from Zero Mentorship", title: "Options Mentorship for Beginners | Live Desk | Bizgarh", desc: "Calls, puts, expiry, and defined risk before you size up. Beginner options mentorship.", by: "Meera Iyer" },
     "mp-sip": { name: "SIP & Allocation Mentorship", title: "SIP Mentorship | Asset Allocation Live Desk | Bizgarh", desc: "A patient desk for SIP, rebalance, and what not to chase. Long-term investing mentorship.", by: "Priya Nair" },
-    "mp-pa": { name: "Price Action Mentorship", title: "Price Action Mentorship | Chart Structure Desk | Bizgarh", desc: "Read the chart without the indicator pile. Live price-action mentorship with Vikram Singh.", by: "Vikram Singh" }
+    "mp-pa": { name: "Price Action Mentorship", title: "Price Action Mentorship | Chart Structure Desk | Bizgarh", desc: "Read the chart without the indicator pile. Live price-action mentorship with Vikram Singh.", by: "Vikram Singh" },
+    "mp-closed": { name: "Intraday Journal Cohort", title: "Intraday Journal Cohort | Closed Mentorship Desk | Bizgarh", desc: "A finished journal cohort with Aarav Mehta. Recordings stay open for members who sat through it.", by: "Aarav Mehta" }
   };
 
   var CATS = {
