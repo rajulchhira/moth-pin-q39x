@@ -159,14 +159,13 @@ export async function ensureHmsRoom({ kind, id, title, asHost, duration }) {
   const row = codes.find((c) => c.role === role) || codes[0];
   if (!row || !row.code) throw new Error("No 100ms room code for this role");
   const host = hmsSubdomain();
-  const path = asHost ? "/meeting/" : "/preview/";
   return {
     ok: true,
     kind: k,
     roomId,
     role: row.role,
     hostRole: hostRole(names),
-    joinUrl: "https://" + host + path + row.code
+    joinUrl: "https://" + host + "/preview/" + row.code
   };
 }
 

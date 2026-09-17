@@ -5451,9 +5451,8 @@ async function mountHmsFrame(el, opts) {
     });
     const data = await res.json().catch(() => ({}));
     if (!data.ok || !data.joinUrl) throw new Error(data.error || "Could not open the live room");
-    const name = opts.userName || "Guest";
-    const join = String(data.joinUrl || "").replace("/preview/", opts.asHost ? "/meeting/" : "/preview/");
-    const src = join + (join.includes("?") ? "&" : "?") + "skip_preview=true&name=" + encodeURIComponent(name) + "&userName=" + encodeURIComponent(name);
+    const join = String(data.joinUrl || "").replace("/meeting/", "/preview/");
+    const src = join + (join.includes("?") ? "&" : "?") + "userName=" + encodeURIComponent(opts.userName || "Guest");
     el.innerHTML = `<iframe class="hms-frame" title="Live classroom" src="${src}" allow="camera *; microphone *; fullscreen *; display-capture *; autoplay *; clipboard-write *" allowfullscreen></iframe>`;
   } catch (err) {
     el.innerHTML = `<div class="live-cam">${escapeHtml(err.message || "Live room unavailable")}</div>`;
