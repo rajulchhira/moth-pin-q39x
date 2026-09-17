@@ -1837,6 +1837,7 @@ function bootAdminUi() {
 
   document.getElementById("staffLoginForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
+    if (AdminCore.session()) { showAdmin(); return; }
     const r = AdminCore.login(e.target.email.value.trim().toLowerCase(), e.target.password.value, e.target.totp.value);
     if (r.needTotp) { document.getElementById("totpWrap").classList.remove("hidden"); note(r.error); return; }
     if (!r.ok) { note(r.error); return; }
