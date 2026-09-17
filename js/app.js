@@ -3415,7 +3415,6 @@ function bindChrome() {
     }
     if (e.target.closest(".js-logout")) {
       localStorage.removeItem(USER_KEY);
-      clearStaffSession();
       fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
       toast("Logged out");
       location.href = "/";
@@ -6397,7 +6396,7 @@ async function startPublicBoot() {
     if (bootQ.get("oauth_ticket") || bootQ.get("oauth_error")) await consumeOAuth();
     return;
   }
-  bindChrome();
+  if (!isLiveRoomPage()) bindChrome();
   syncNotesFromAccount();
   paintNoteBell(false);
   applySignupGate();

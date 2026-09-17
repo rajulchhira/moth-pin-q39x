@@ -224,14 +224,14 @@
         }
         loading = true;
         var files = [
-          "js/app.js?v=dash61",
+          "js/app.js?v=livefs2",
           "js/lms.js",
-          "js/admin-core.js?v=spd2",
+          "js/admin-core.js?v=spd3",
           "js/admin.js?v=drm3",
           "js/admin-course.js?v=dash42",
           "js/admin-mentor.js?v=dash42",
           "js/admin-webinar.js?v=dash45",
-          "js/admin-app.js?v=dash46"
+          "js/admin-app.js?v=dash47"
         ];
         var i = 0;
         function next() {
@@ -267,6 +267,12 @@
         err("Wrong email or password");
       });
       if (/oauth_ticket|oauth_error/.test(location.search)) loadDesk(true);
+      else {
+        try {
+          var sess = JSON.parse(localStorage.getItem("tradeshalaStaffSession") || "null");
+          if (sess && sess.email) loadDesk(true);
+        } catch (x) {}
+      }
     })();
   </script>
 </body>

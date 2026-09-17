@@ -1734,6 +1734,7 @@ function bootAdminUi() {
         showAdmin();
       }
     });
+    if (existing) showAdmin();
   }
 
   document.getElementById("staffLoginForm")?.addEventListener("submit", (e) => {
