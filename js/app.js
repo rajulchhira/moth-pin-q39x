@@ -3368,8 +3368,8 @@ function headerHTML() {
         </div>
         <a class="nav-link" href="/about">About</a>
       </nav>
-      <form class="search-wrap" id="searchForm">
-        <input id="searchInput" placeholder="Search courses, mentors..." autocomplete="off">
+      <form class="search-wrap" id="searchForm" action="/courses" method="get" role="search">
+        <input id="searchInput" name="q" type="search" placeholder="Search courses, mentors..." autocomplete="off" enterkeyhint="search">
         <button class="search-btn" type="submit" aria-label="Search">⌕</button>
         <div class="search-panel" id="searchPanel"><div id="searchResults"></div></div>
       </form>
@@ -3683,15 +3683,21 @@ function bindChrome() {
 
   const search = document.getElementById("searchInput");
   const panel = document.getElementById("searchPanel");
+  const liveSearchQ = () => (document.getElementById("searchInput")?.value || "").trim();
   const goSearch = (q) => { location.href = q ? `/courses?q=${encodeURIComponent(q)}` : "/courses"; };
   bindChromeOnce(document.getElementById("searchForm"), "submit", (e) => {
     e.preventDefault();
-    goSearch(search?.value.trim());
+    goSearch(liveSearchQ());
   });
   bindChromeOnce(document.getElementById("mobileSearchForm"), "submit", (e) => {
     e.preventDefault();
     setMobileNav(false);
-    goSearch(document.getElementById("mobileSearchInput")?.value.trim());
+    goSearch((document.getElementById("mobileSearchInput")?.value || "").trim());
+  });
+  bindChromeOnce(search, "keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    goSearch(liveSearchQ());
   });
   bindChromeOnce(search, "focus", () => panel?.classList.add("open"));
   bindChromeOnce(search, "input", () => {
