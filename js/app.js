@@ -2398,7 +2398,7 @@ function mentorCardHTML(p) {
 function mentorCtaHTML(p, enrolled) {
   const hasComm = mentorLiveRooms(p).length > 0;
   if (enrolled) {
-    return `<a class="btn btn-primary wb-cta" href="/live-room?id=${encodeURIComponent(p.id)}">Join desk ›</a>
+    return `<a class="btn btn-primary wb-cta" href="${mentorJoinHref(p)}">Join desk ›</a>`
       ${hasComm ? `<a class="btn btn-ghost wb-cta wb-wa" href="${escapeHtml(mentorCommunityUrl(p))}" target="_blank" rel="noopener">${iconSvg("chat")} Join community</a>` : ""}`;
   }
   return `<button type="button" class="btn btn-primary wb-cta" data-mentor-enroll="${p.id}">Enroll Now ›</button>
@@ -2753,7 +2753,7 @@ function renderInstructorPage() {
 
 function ensureMentorLive(p) {
   const list = allWebinars();
-  if (list.some((x) => x.id === p.id)) return;
+  if (list.some((x) => x.id === p.id)) return p.id;
   list.push({
     id: p.id,
     title: p.title,
@@ -2762,12 +2762,79 @@ function ensureMentorLive(p) {
     when: formatLiveWhen(p.at),
     duration: "90 min",
     kind: "class",
-    hostEmail: (p.by || "desk").split(" ")[0].toLowerCase() + "@bizgarh.in",
+    hostEmail: p.ownerEmail || "",
+    mentorId: p.id,
     notes: p.blurb,
     status: "scheduled",
     joinUrl: ""
   });
   saveWebinars(list);
+  return p.id;
+}
+
+function mentorSessionLiveId(p, lesson, index) {
+  return (lesson && lesson.id) || (p.id + "-l" + index);
+}
+
+function ensureMentorSessionLive(p, lesson, index) {
+  const id = mentorSessionLiveId(p, lesson, index);
+  const list = allWebinars();
+  const staff = typeof getStaffSession === "function" ? getStaffSession() : null;
+  const i = list.findIndex((x) => x.id === id);
+  const row = {
+    id,
+    title: (p.title || "Mentorship") + " · " + (lesson?.t || "Live session"),
+    by: p.by,
+    at: lesson?.at || p.at,
+    when: formatLiveWhen(lesson?.at || p.at),
+    duration: lesson?.dur || "60 min",
+    kind: "class",
+    hostEmail: p.ownerEmail || staff?.email || "",
+    ownerEmail: p.ownerEmail || "",
+    mentorId: p.id,
+    sessionIndex: index,
+    notes: lesson?.notes || p.blurb || "",
+    status: lesson?.status || (i >= 0 ? list[i].status : "scheduled"),
+    joinUrl: ""
+  };
+  if (i >= 0) list[i] = { ...list[i], ...row, status: list[i].status || row.status };
+  else list.push(row);
+  saveWebinars(list);
+  return id;
+}
+
+function mentorJoinHref(p, sessionIndex) {
+  const lessons = typeof mentorLessonsFor === "function" ? mentorLessonsFor(p.id) : [];
+  const idx = Number.isInteger(sessionIndex)
+    ? sessionIndex
+    : lessons.findIndex((l) => (l.mode || "live") === "live" && l.status === "live");
+  if (idx >= 0 && lessons[idx] && (lessons[idx].mode || "live") === "live") {
+    return "/live-room?id=" + encodeURIComponent(ensureMentorSessionLive(p, lessons[idx], idx));
+  }
+  return "/live-room?id=" + encodeURIComponent(ensureMentorLive(p));
+}
+
+function startMentorSessionAsHost(programId, index, goRoom) {
+  const p = (typeof mentorProgramById === "function" ? mentorProgramById(programId) : null)
+    || allMentorPrograms().find((x) => x.id === programId);
+  if (!p) {
+    toast("Mentorship not found");
+    return null;
+  }
+  const lessons = mentorLessonsFor(p.id);
+  const lesson = lessons[index];
+  if (!lesson || (lesson.mode || "live") === "recorded") {
+    toast("This session is a recording");
+    return null;
+  }
+  const id = ensureMentorSessionLive(p, lesson, index);
+  lessons[index] = { ...lesson, id, status: "live", mode: "live" };
+  setMentorLessons(p.id, lessons);
+  const staff = getStaffSession();
+  updateLive(id, { status: "live", hostEmail: p.ownerEmail || staff?.email || "" });
+  toast("Session is live · students can join now");
+  if (goRoom !== false) location.href = webinarHostRoomHref(id);
+  return id;
 }
 
 function downloadMentorCurriculum(id) {
@@ -2926,7 +2993,7 @@ function renderMentorProgramPage() {
         <b>First session starts on ${escapeHtml(webinarDateLabel(p))}</b>
         <small>Only ${seats} seats left</small>
       </div>
-      ${enrolled ? `<a class="btn btn-primary" href="/live-room?id=${encodeURIComponent(p.id)}">Join desk ›</a>` : `<button type="button" class="btn btn-primary" data-mentor-enroll="${p.id}">Enroll Now ›</button>`}
+      ${enrolled ? `<a class="btn btn-primary" href="${mentorJoinHref(p)}">Join desk ›</a>` : `<button type="button" class="btn btn-primary" data-mentor-enroll="${p.id}">Enroll Now ›</button>`}
     </section>
     <section class="wb-block" data-wb>
       <h2>Frequently Asked Questions</h2>
@@ -2962,7 +3029,7 @@ function renderMentorProgramPage() {
       const lesson = mentorLessonsFor(p.id)[Number(btn.dataset.mpLesson)];
       if (!lesson) return;
       if ((lesson.mode || "live") === "live") {
-        location.href = "/live-room?id=" + encodeURIComponent(p.id);
+        location.href = mentorJoinHref(p, Number(btn.dataset.mpLesson));
         return;
       }
       playMentorRecording(lesson);
@@ -5674,7 +5741,13 @@ function renderWebinarPage() {
   });
 }
 
+function liveBoardHref(id) {
+  const key = String(id || "desk").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+  return "https://wbo.ophir.dev/boards/bizgarh-" + (key || "desk");
+}
+
 function liveMeetShellHTML(opts) {
+  const board = liveBoardHref(opts.boardId || "desk");
   return `<div class="live-room live-meet">
     <header class="live-meet-bar">
       <a class="live-meet-leave" href="${escapeHtml(opts.backHref || "/live")}">Leave</a>
@@ -5683,13 +5756,33 @@ function liveMeetShellHTML(opts) {
         <span>${escapeHtml(opts.sub || "")}</span>
       </div>
       <span class="live-dot ${escapeHtml(opts.status || "scheduled")}">${escapeHtml(opts.statusLabel || "")}</span>
-      ${opts.barActions ? `<div class="live-meet-bar-actions">${opts.barActions}</div>` : ""}
+      <div class="live-meet-bar-actions">
+        <button type="button" class="btn btn-ghost live-meet-wb" id="wbToggle" aria-pressed="false">Whiteboard</button>
+        ${opts.barActions || ""}
+      </div>
     </header>
     <div class="live-meet-stage">
       <div id="hmsMount">${opts.mount || ""}</div>
+      <div class="live-wb-mount" id="wbMount" hidden>
+        <iframe class="live-wb-frame" title="Classroom whiteboard" src="${escapeHtml(board)}" allow="clipboard-write *; fullscreen *" allowfullscreen></iframe>
+      </div>
       ${opts.actions ? `<div class="live-meet-actions">${opts.actions}</div>` : ""}
     </div>
   </div>`;
+}
+
+function bindLiveMeetChrome() {
+  const root = document.querySelector(".live-meet");
+  const btn = document.getElementById("wbToggle");
+  const board = document.getElementById("wbMount");
+  if (!root || !btn || !board) return;
+  btn.addEventListener("click", () => {
+    const open = board.hasAttribute("hidden");
+    board.toggleAttribute("hidden", !open);
+    root.classList.toggle("is-board", open);
+    btn.setAttribute("aria-pressed", open ? "true" : "false");
+    btn.textContent = open ? "Back to video" : "Whiteboard";
+  });
 }
 
 function renderLiveRoom() {
@@ -5717,6 +5810,7 @@ function renderLiveRoom() {
       title: session.topic,
       sub: `${session.date} ${session.time || ""} • ${session.mentor || "Mentor"}`,
       backHref: isHost ? "/control" : "/live#call",
+      boardId: "call-" + session.id,
       mount: canJoin
         ? `<div class="live-cam">Connecting 1:1 room…</div>`
         : `<div class="live-cam">${session.status === "pending" ? "Waiting for mentor approval" : "This 1:1 is private to the booked student and mentor"}</div>`,
@@ -5724,6 +5818,7 @@ function renderLiveRoom() {
         ? `${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}`
         : ""
     });
+    bindLiveMeetChrome();
     if (canJoin) {
       mountHmsFrame(document.getElementById("hmsMount"), {
         kind: "call",
@@ -5737,16 +5832,33 @@ function renderLiveRoom() {
     return;
   }
 
-  const session = allWebinars().find((w) => w.id === id);
+  let session = allWebinars().find((w) => w.id === id);
+  if (!session) {
+    const program = (typeof mentorProgramById === "function" ? mentorProgramById(id) : null)
+      || allMentorPrograms().find((x) => x.id === id);
+    if (program) {
+      ensureMentorLive(program);
+      const liveIdx = mentorLessonsFor(program.id).findIndex((l) => (l.mode || "live") === "live" && l.status === "live");
+      if (liveIdx >= 0) {
+        const lesson = mentorLessonsFor(program.id)[liveIdx];
+        ensureMentorSessionLive(program, lesson, liveIdx);
+        session = allWebinars().find((w) => w.id === mentorSessionLiveId(program, lesson, liveIdx));
+      } else {
+        session = allWebinars().find((w) => w.id === program.id);
+      }
+    }
+  }
   if (!session) {
     root.innerHTML = `<div class="empty"><h3>Class not found</h3><a class="btn btn-primary" href="/live" style="margin-top:12px">All live classes</a></div>`;
     return;
   }
-  const isHost = typeof isWebinarHost === "function" ? isWebinarHost(session) : (staff && staff.email === session.hostEmail);
-  const regs = readList(REGS_KEY).filter((r) => r.id === session.id);
-  const registered = user && regs.some((r) => r.email === user.email);
-  document.title = `${session.title} | Live | ${BRAND}`;
-  const live = allWebinars().find((w) => w.id === id);
+  const live = session;
+  const isHost = typeof isWebinarHost === "function" ? isWebinarHost(live) : (staff && staff.email === live.hostEmail);
+  const regs = readList(REGS_KEY).filter((r) => r.id === live.id || r.id === live.mentorId);
+  const programId = live.mentorId || (allMentorPrograms().some((p) => p.id === live.id) ? live.id : "");
+  const mentorOk = programId && user && typeof isMentorEnrolled === "function" && isMentorEnrolled(programId);
+  const registered = (user && regs.some((r) => r.email === user.email)) || mentorOk;
+  document.title = `${live.title} | Live | ${BRAND}`;
   const noun = liveKindOf(live) === "class" ? "class" : "webinar";
   const showIntro = !isHost && registered && live.status === "scheduled";
   const canJoinHms = live.status !== "ended" && (isHost || (registered && live.status === "live"));
@@ -5765,7 +5877,10 @@ function renderLiveRoom() {
     statusLabel: (live.status || "scheduled").toUpperCase(),
     title: live.title,
     sub: `${live.when} • ${live.by}`,
-    backHref: isHost ? `/control#webinar/${encodeURIComponent(live.id)}/session` : "/live",
+    boardId: live.id,
+    backHref: live.mentorId
+      ? (isHost ? `/control#mentor/${encodeURIComponent(live.mentorId)}/sessions` : mentorHref(live.mentorId))
+      : (isHost ? `/control#webinar/${encodeURIComponent(live.id)}/session` : "/live"),
     mount: canJoinHms
       ? `<div class="live-cam">Connecting classroom…</div>`
       : showIntro
@@ -5774,6 +5889,7 @@ function renderLiveRoom() {
     barActions,
     actions: waitActions
   });
+  bindLiveMeetChrome();
 
   if (canJoinHms) {
     mountHmsFrame(document.getElementById("hmsMount"), {
@@ -5789,12 +5905,28 @@ function renderLiveRoom() {
     const staffNow = getStaffSession();
     const patch = { status: "live" };
     if (staffNow?.email && !live.hostEmail) patch.hostEmail = staffNow.email;
-    updateLive(id, patch);
+    updateLive(live.id, patch);
+    if (live.mentorId && typeof setMentorLessons === "function") {
+      const lessons = mentorLessonsFor(live.mentorId);
+      const idx = Number.isInteger(live.sessionIndex) ? live.sessionIndex : lessons.findIndex((l) => (l.id || "") === live.id);
+      if (idx >= 0 && lessons[idx]) {
+        lessons[idx] = { ...lessons[idx], status: "live" };
+        setMentorLessons(live.mentorId, lessons);
+      }
+    }
     toast(noun === "class" ? "Class is live · registered students can join now" : "Webinar is live · enrolled students can join now");
     renderLiveRoom();
   });
   document.getElementById("endLiveBtn")?.addEventListener("click", async () => {
-    updateLive(id, { status: "ended" });
+    updateLive(live.id, { status: "ended" });
+    if (live.mentorId && typeof setMentorLessons === "function") {
+      const lessons = mentorLessonsFor(live.mentorId);
+      const idx = Number.isInteger(live.sessionIndex) ? live.sessionIndex : lessons.findIndex((l) => (l.id || "") === live.id);
+      if (idx >= 0 && lessons[idx]) {
+        lessons[idx] = { ...lessons[idx], status: "ended" };
+        setMentorLessons(live.mentorId, lessons);
+      }
+    }
     try {
       await fetch(hmsApiUrl("/api/live/end"), {
         method: "POST",

@@ -490,6 +490,8 @@ body.is-cb .ad-side-foot { margin-top: auto; }
 .cb-drag { color: #94a3b8; letter-spacing: -2px; cursor: grab; }
 .cb-icon-btn { border: 0; background: transparent; color: #94a3b8; cursor: pointer; }
 .cb-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-top: 1px solid #f1f5f9; background: #fff; }
+.mb-session { flex-wrap: wrap; }
+.mb-session .cb-card-host { flex: 0 0 auto; min-height: 36px; padding: 8px 12px; margin-left: auto; }
 .cb-item-copy { flex: 1; min-width: 0; }
 .cb-item-copy b { display: block; }
 .cb-item-copy small { color: #94a3b8; font-weight: 700; }

@@ -6027,12 +6027,14 @@ body.live-room-page .live-meet-bar {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 10px 14px;
   min-height: 56px;
   padding: 8px 16px;
   padding-top: calc(8px + env(safe-area-inset-top, 0px));
   background: #202124;
   color: #fff;
+  z-index: 6;
 }
 body.live-room-page .live-meet-leave {
   flex: 0 0 auto;
@@ -6066,6 +6068,29 @@ body.live-room-page .live-meet-bar-actions {
   flex: 0 0 auto;
   display: flex;
   gap: 8px;
+}
+body.live-room-page .live-meet-wb {
+  background: #3c4043;
+  color: #fff;
+  border: 0;
+  font-weight: 800;
+}
+body.live-room-page .live-meet-wb[aria-pressed="true"] {
+  background: #4f46e5;
+}
+body.live-room-page .live-wb-mount {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: #fff;
+}
+body.live-room-page .live-wb-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  margin: 0;
+  border-radius: 0;
 }
 body.live-room-page .live-meet-bar-actions .btn {
   min-height: 36px;

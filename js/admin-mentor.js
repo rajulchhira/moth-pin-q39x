@@ -158,6 +158,37 @@ const MentorAdmin = {
     </div>`;
   },
 
+  hostBarHTML(p) {
+    const can = canEditMentor(p) && AdminCore.can("courses", "edit");
+    if (!can) return "";
+    const liveSessions = mentorLessonsFor(p.id).map((l, i) => ({ l, i })).filter((x) => (x.l.mode || "live") === "live");
+    const nextLive = liveSessions.find((x) => x.l.status === "live") || liveSessions[0];
+    if (!nextLive) {
+      return `<aside class="wb-hostbar">
+        <div>
+          <strong>Host a live meeting</strong>
+          <p>Add a live session first. Then host it from Sessions.</p>
+        </div>
+        <div class="wb-hostbar-actions">
+          <button type="button" class="btn btn-primary" data-mb-tab="sessions">Open sessions</button>
+        </div>
+      </aside>`;
+    }
+    const live = nextLive.l.status === "live";
+    return `<aside class="wb-hostbar ${live ? "is-live" : ""}">
+      <div>
+        <strong>${live ? "Session is live now" : "Host this meeting"}</strong>
+        <p>${live
+          ? "Students can join from the program page. Stay in the room as host."
+          : `Start ${adEsc(nextLive.l.t)} from here. Students join after you go live.`}</p>
+      </div>
+      <div class="wb-hostbar-actions">
+        <button type="button" class="btn btn-primary" data-mb-host-session="${nextLive.i}">${live ? "Enter as host" : "Host meeting"}</button>
+        <button type="button" class="btn btn-ghost" data-mb-tab="sessions">All sessions</button>
+      </div>
+    </aside>`;
+  },
+
   screenHTML(p, tab, body) {
     return `<section class="cb-desk">
       <div class="cb-desk-top">
@@ -167,6 +198,7 @@ const MentorAdmin = {
         </div>
         ${this.seeHTML(p)}
       </div>
+      ${this.hostBarHTML(p)}
       ${this.stepperHTML(p, tab)}
       ${body}
     </section>`;
@@ -413,14 +445,15 @@ const MentorAdmin = {
     const can = canEditMentor(p) && AdminCore.can("courses", "edit");
     const list = mentorLessonsFor(p.id);
     const body = `<div class="cb-panel">
-      <p class="cb-say">${list.length ? "Live sessions need a time. Recorded sessions need a video or a note." : "Add the first live session. Recordings can be uploaded after the desk runs."}</p>
+      <p class="cb-say">${list.length ? "Host a live session from this list. Students join after you start." : "Add the first live session. Recordings can be uploaded after the desk runs."}</p>
       <div class="cb-sy-list" data-mentor="${adEsc(p.id)}">
         ${list.map((l, i) => `<article class="cb-item mb-session">
           <span class="cb-ico ${ (l.mode || "live") === "recorded" ? "is-video" : "is-live"}">${typeof iconSvg === "function" ? iconSvg((l.mode || "live") === "recorded" ? "play" : "wifi") : ""}</span>
           <div class="cb-item-copy">
             <b>${adEsc(l.t)}</b>
-            <small>${(l.mode || "live") === "recorded" ? "Recorded" : "Live"}${l.dur ? " · " + adEsc(l.dur) : ""}${l.at ? " · " + adEsc(new Date(l.at).toLocaleString("en-IN")) : ""}</small>
+            <small>${(l.mode || "live") === "recorded" ? "Recorded" : (l.status === "live" ? "Live now" : "Live")}${l.dur ? " · " + adEsc(l.dur) : ""}${l.at ? " · " + adEsc(new Date(l.at).toLocaleString("en-IN")) : ""}</small>
           </div>
+          ${can && (l.mode || "live") === "live" ? `<button type="button" class="btn btn-primary cb-card-host" data-mb-host-session="${i}">${l.status === "live" ? "Enter as host" : "Host meeting"}</button>` : ""}
           ${can ? `<button type="button" class="cb-icon-btn" data-mb-edit-session="${i}" title="Edit">✎</button>
             <button type="button" class="cb-icon-btn" data-mb-del-session="${i}" title="Remove">✕</button>` : ""}
         </article>`).join("") || `<div class="cb-empty-box"><p>No sessions yet.</p></div>`}
@@ -875,6 +908,12 @@ const MentorAdmin = {
       if (e.target.closest("[data-mb-back]")) { go("mentors"); return; }
       const addSess = e.target.closest("[data-mb-add-session]");
       if (addSess) { this.openSessionModal(addSess.dataset.mbAddSession, -1); return; }
+      const hostSess = e.target.closest("[data-mb-host-session]");
+      if (hostSess && Ad.mentorId) {
+        if (typeof startMentorSessionAsHost === "function") startMentorSessionAsHost(Ad.mentorId, Number(hostSess.dataset.mbHostSession));
+        else toast("Could not open the live room");
+        return;
+      }
       const editSess = e.target.closest("[data-mb-edit-session]");
       if (editSess) { this.openSessionModal("", Number(editSess.dataset.mbEditSession)); return; }
       const delSess = e.target.closest("[data-mb-del-session]");
