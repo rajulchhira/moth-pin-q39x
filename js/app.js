@@ -1088,14 +1088,20 @@ const WEB_BANNERS = [
   "linear-gradient(135deg,#1d4ed8,#1e3a8a)"
 ];
 
+const CERT_COURSE_IDS = ["first-month", "charts-101", "opt-start", "mf-guide", "candles", "levels"];
 function courseFilterFromCat(id) {
-  return !id || id === "cert" ? "all" : id;
+  return id || "all";
+}
+function courseMatchesFilter(c, filter) {
+  if (!filter || filter === "all") return true;
+  if (filter === "cert") return CERT_COURSE_IDS.includes(c.id);
+  return c.cat === filter;
 }
 
 function categoryCardsHTML(active) {
   return CATEGORIES.map((c) => {
     const filter = courseFilterFromCat(c.id);
-    const on = active && ((c.id === active) || (c.id !== "cert" && filter === active)) ? " on" : "";
+    const on = active && (c.id === active || filter === active) ? " on" : "";
     return `
     <a class="cat-card${on}" data-cat="${c.id}" href="/courses?cat=${filter}#library">
       <div class="cat-icon" style="background:${c.tint};color:${c.color}">${iconSvg(c.icon)}</div>
@@ -3209,10 +3215,10 @@ function courseCard(c, extra = "") {
     ${courseThumbHTML(c)}
     <div class="course-body">
       <div class="course-head">
-        <div class="course-title">${c.title}</div>
-        <span class="star">★ ${c.rating || "4.8"}</span>
+        <div class="course-title">${escapeHtml(c.title)}</div>
+        <span class="star">★ ${escapeHtml(c.rating || "4.8")}</span>
       </div>
-      <div class="meta">${c.learners || "New"} learners • by ${c.instructor}</div>
+      <div class="meta">${escapeHtml(c.learners || "New")} learners • by ${escapeHtml(c.instructor)}</div>
       ${priceRow}
     </div>
   </a>`;
@@ -3221,10 +3227,14 @@ function courseCard(c, extra = "") {
 function courseSearchHay(c) {
   const pack = typeof instructorPack === "function" ? instructorPack(c.instructor) : {};
   const cover = (typeof COVERS === "object" && COVERS[c.cover]) || {};
+  const catTitle = typeof catLabel === "function" ? catLabel(c.cat) : c.cat;
   return [
-    c.title, c.instructor, c.id, c.cat, c.cover, c.tag, c.blurb,
+    c.title, c.instructor, c.id, c.cat, catTitle, c.cover, c.tag, c.blurb,
     pack.title, pack.tag, Array.isArray(pack.tags) ? pack.tags.join(" ") : "",
-    pack.bio, String(cover.title || "").replace(/<br\/?>/gi, " "), cover.sub
+    pack.bio, String(cover.title || "").replace(/<br\/?>/gi, " "), cover.sub,
+    "share market stock market",
+    c.cat === "hindi" ? "hindi हिंदी शेयर मार्केट share market hindi" : "",
+    CERT_COURSE_IDS.includes(c.id) ? "finance certification exam" : ""
   ].join(" ").toLowerCase();
 }
 function courseMatchesQuery(c, query) {
@@ -3234,7 +3244,7 @@ function courseMatchesQuery(c, query) {
 function renderCourses(target, filter = "trending", asGrid = false, query = "") {
   const el = document.querySelector(target);
   if (!el) return;
-  const list = allCourses().filter((c) => courseMatchesQuery(c, query) && (filter === "all" || c.cat === filter));
+  const list = allCourses().filter((c) => courseMatchesQuery(c, query) && courseMatchesFilter(c, filter));
   el.innerHTML = list.length
     ? list.map((c) => courseCard(c, asGrid ? "grid-card" : "")).join("")
     : `<div class="empty"><h3>No courses match this search</h3><p class="muted">Try options, Hindi, Nifty, or a mentor name.</p><a class="btn btn-primary" href="/courses" style="margin-top:12px">All courses</a></div>`;
@@ -3504,7 +3514,8 @@ function bindChrome() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       setMobileNav(false);
-      closeModals();
+      if (document.body.classList.contains("modal-open")) dismissAuthModals();
+      else closeModals();
       document.querySelectorAll(".acct-wrap, .note-wrap, .nav-item.mega").forEach((el) => el.classList.remove("open"));
       document.body.classList.remove("nav-dim");
     }
@@ -3553,7 +3564,7 @@ function bindChrome() {
   document.body.addEventListener("click", (e) => {
     const opener = e.target.closest("[data-open]");
     if (opener) openModal(opener.dataset.open);
-    if (e.target.closest("[data-close]")) closeModals();
+    if (e.target.closest("[data-close]")) dismissAuthModals();
     const social = e.target.closest("[data-social]");
     if (social) {
       e.preventDefault();
@@ -3615,7 +3626,7 @@ function bindChrome() {
   }, true);
   window.addEventListener("popstate", sendLoggedInHomeToDashboard);
   window.addEventListener("pageshow", sendLoggedInHomeToDashboard);
-  document.querySelectorAll(".overlay").forEach((o) => o.addEventListener("click", (e) => { if (e.target === o) closeModals(); }));
+  document.querySelectorAll(".overlay").forEach((o) => o.addEventListener("click", (e) => { if (e.target === o) dismissAuthModals(); }));
 
   const search = document.getElementById("searchInput");
   const panel = document.getElementById("searchPanel");
@@ -3633,9 +3644,14 @@ function bindChrome() {
   document.addEventListener("click", (e) => { if (!e.target.closest(".search-wrap")) panel?.classList.remove("open"); });
   search?.addEventListener("input", () => {
     const q = search.value.toLowerCase();
-    const courseHits = allCourses().filter((c) => courseMatchesQuery(c, q)).slice(0, 5);
-    const mentorHits = allMentors().filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 3);
-    const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${escapeHtml(m.name)} · instructor</a>`).concat(courseHits.map((c) => `<a href="/course?id=${encodeURIComponent(c.id)}">${escapeHtml(c.title)}</a>`));
+    const courseHits = allCourses().filter((c) => courseMatchesQuery(c, q)).slice(0, 4);
+    const mentorHits = allMentors().filter((m) => m.name.toLowerCase().includes(q) || (m.role || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)).slice(0, 2);
+    const liveHits = (typeof listedWebinars === "function" ? listedWebinars() : []).filter((w) => `${w.title} ${w.by}`.toLowerCase().includes(q)).slice(0, 2);
+    const deskHits = (typeof allMentorPrograms === "function" ? allMentorPrograms() : []).filter((p) => `${p.title} ${p.by} ${p.tag || ""} ${p.blurb || ""}`.toLowerCase().includes(q)).slice(0, 2);
+    const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${escapeHtml(m.name)} · instructor</a>`)
+      .concat(courseHits.map((c) => `<a href="/course?id=${encodeURIComponent(c.id)}">${escapeHtml(c.title)}</a>`))
+      .concat(liveHits.map((w) => `<a href="${webinarHref(w.id)}">${escapeHtml(w.title)} · webinar</a>`))
+      .concat(deskHits.map((p) => `<a href="${mentorHref(p.id)}">${escapeHtml(p.title)} · mentorship</a>`));
     document.getElementById("searchResults").innerHTML = rows.join("") || "<a>No matches</a>";
   });
 
@@ -3812,9 +3828,18 @@ function openModal(id) {
   document.getElementById(id)?.classList.add("open");
   document.body.classList.add("modal-open");
 }
+function clearPendingEnroll() {
+  sessionStorage.removeItem("tradeshalaPendingBuy");
+  sessionStorage.removeItem("tradeshalaPendingWebinar");
+  sessionStorage.removeItem("tradeshalaPendingMentor");
+}
 function closeModals() {
   document.querySelectorAll(".overlay").forEach((o) => o.classList.remove("open"));
   document.body.classList.remove("modal-open");
+}
+function dismissAuthModals() {
+  closeModals();
+  clearPendingEnroll();
 }
 
 function requireAuth(next) {
@@ -4285,7 +4310,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "js/reviews-data.js?v=8";
+    s.src = "/js/reviews-data.js?v=8";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4396,7 +4421,7 @@ function applyCourseFilter(cat, query, scroll) {
   const filter = courseFilterFromCat(cat);
   document.querySelectorAll(".filters .chip").forEach((c) => c.classList.toggle("active", c.dataset.filter === filter));
   document.querySelectorAll(".cat-card").forEach((a) => {
-    a.classList.toggle("on", a.dataset.cat === cat || (a.dataset.cat !== "cert" && courseFilterFromCat(a.dataset.cat) === filter && filter !== "all"));
+    a.classList.toggle("on", a.dataset.cat === cat || (filter !== "all" && courseFilterFromCat(a.dataset.cat) === filter));
   });
   renderCourses("#allCoursesGrid", filter, true, query || "");
   if (scroll) document.getElementById("courseLibrary")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -4405,29 +4430,34 @@ function applyCourseFilter(cat, query, scroll) {
 function bindCourseLibrary() {
   const grid = document.getElementById("allCoursesGrid");
   if (!grid) return;
+  const libraryQuery = () => new URLSearchParams(location.search).get("q") || "";
   const params = new URLSearchParams(location.search);
-  const q = params.get("q") || "";
+  const q = libraryQuery();
   const cat = params.get("cat") || "all";
   if (q) {
     const si = document.getElementById("searchInput");
     if (si) si.value = q;
   }
   applyCourseFilter(cat, q, false);
+  const pushLibrary = (next, query) => {
+    const keepQ = query ? `&q=${encodeURIComponent(query)}` : "";
+    history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}${keepQ}#library`);
+  };
   document.querySelector("[data-cat-grid]")?.addEventListener("click", (e) => {
     const a = e.target.closest("a.cat-card");
     if (!a) return;
     e.preventDefault();
     const next = courseFilterFromCat(a.dataset.cat);
-    const keepQ = q ? `&q=${encodeURIComponent(q)}` : "";
-    history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}${keepQ}#library`);
-    applyCourseFilter(a.dataset.cat, q, true);
+    const query = libraryQuery();
+    pushLibrary(next, query);
+    applyCourseFilter(a.dataset.cat, query, true);
   });
   document.querySelectorAll(".filters .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       const next = chip.dataset.filter;
-      const keepQ = q ? `&q=${encodeURIComponent(q)}` : "";
-      history.pushState({ cat: next }, "", `/courses?cat=${encodeURIComponent(next)}${keepQ}#library`);
-      applyCourseFilter(next, q, true);
+      const query = libraryQuery();
+      pushLibrary(next, query);
+      applyCourseFilter(next, query, true);
     });
   });
   window.addEventListener("popstate", () => {
@@ -5014,7 +5044,7 @@ function renderCoursePage() {
             </p>
           </div>
           <ul class="cd-learn">
-            ${points.map((p, i) => `<li style="--i:${i}"><span class="cd-learn-ico">${iconSvg("check")}</span><span>${p}</span></li>`).join("")}
+            ${points.map((p, i) => `<li style="--i:${i}"><span class="cd-learn-ico">${iconSvg("check")}</span><span>${escapeHtml(p)}</span></li>`).join("")}
           </ul>
         </section>
 
