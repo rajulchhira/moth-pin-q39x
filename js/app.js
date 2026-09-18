@@ -1398,6 +1398,33 @@ function afterAuthArrive() {
     location.href = "/program?id=" + encodeURIComponent(pendingMentor);
     return;
   }
+  const pendingCall = sessionStorage.getItem("tradeshalaPendingMentorCall");
+  if (pendingCall) {
+    pendingAuthNext = null;
+    const here = new URLSearchParams(location.search).get("id");
+    if (pagePath() === "/program" && here === pendingCall) consumePendingMentorCall();
+    else location.href = "/program?id=" + encodeURIComponent(pendingCall);
+    return;
+  }
+  const pendingIns = sessionStorage.getItem("tradeshalaPendingInstructorCall");
+  if (pendingIns) {
+    pendingAuthNext = null;
+    const here = instructorSlugFromLocation();
+    const slug = (typeof instructorSlug === "function" ? instructorSlug(pendingIns) : "") || pendingIns;
+    if (pagePath() === "/instructor" && (here === pendingIns || here === slug)) consumePendingInstructorCall();
+    else location.href = typeof instructorHref === "function" ? instructorHref(pendingIns) : "/instructor?id=" + encodeURIComponent(pendingIns);
+    return;
+  }
+  if (sessionStorage.getItem("tradeshalaPendingReview")) {
+    pendingAuthNext = null;
+    consumePendingReview();
+    return;
+  }
+  if (sessionStorage.getItem("tradeshalaPendingCallForm")) {
+    pendingAuthNext = null;
+    consumePendingCallForm();
+    return;
+  }
   if (isAdminPage()) {
     pendingAuthNext = null;
     if (typeof AdminCore !== "undefined" && typeof showAdmin === "function") {
@@ -1425,6 +1452,7 @@ function afterAuthArrive() {
     return;
   }
   if (runPendingAuthNext()) return;
+  if (pagePath() !== "/" && pagePath() !== "/index") return;
   location.href = "/dashboard";
 }
 
@@ -1503,11 +1531,28 @@ function verifyOtpCode() {
   return true;
 }
 
+const OAUTH_NEXT_KEY = "tradeshalaOAuthNext";
+function rememberAuthReturn() {
+  try {
+    sessionStorage.setItem(OAUTH_NEXT_KEY, location.pathname + location.search + location.hash);
+  } catch { /* ignore */ }
+}
+function takeAuthReturn() {
+  try {
+    const raw = sessionStorage.getItem(OAUTH_NEXT_KEY) || "";
+    sessionStorage.removeItem(OAUTH_NEXT_KEY);
+    if (!raw.startsWith("/") || raw.startsWith("//")) return "";
+    if (/oauth_ticket|oauth_error/.test(raw)) return "";
+    return raw;
+  } catch { return ""; }
+}
+
 function startSocial(provider) {
   if (provider === "facebook") {
     toast("Facebook login is not available. Use Google or Telegram.");
     return;
   }
+  rememberAuthReturn();
   const next = currentPageName();
   window.BizgarhLoader?.show?.();
   location.href = "/auth/" + encodeURIComponent(provider) + "?next=" + encodeURIComponent(next);
@@ -1533,18 +1578,37 @@ async function consumeOAuth() {
   const params = new URLSearchParams(location.search);
   const err = params.get("oauth_error");
   const ticket = params.get("oauth_ticket");
+  const dest = takeAuthReturn();
+  const stripTo = dest || prettyPath();
   if (err) {
     toast(err.replace(/\+/g, " "));
-    history.replaceState({}, "", prettyPath());
+    history.replaceState({}, "", stripTo);
   }
   if (!ticket) return false;
-  history.replaceState({}, "", prettyPath());
+  history.replaceState({}, "", stripTo);
   try {
     const res = await fetch("/api/auth/ticket/" + encodeURIComponent(ticket), { credentials: "same-origin" });
     const data = await res.json();
     const user = oauthUser(data.user);
     if (!user) {
       toast(data.error || "OAuth login failed");
+      return true;
+    }
+    let otherPage = false;
+    try {
+      otherPage = dest && new URL(dest, location.origin).pathname !== location.pathname;
+    } catch { otherPage = false; }
+    if (otherPage) {
+      setUser({
+        name: user.name,
+        email: user.email,
+        password: user.password || "",
+        referredBy: user.referredBy || "",
+        providers: user.providers || []
+      });
+      upsertUser(user);
+      closeModals();
+      location.replace(dest);
       return true;
     }
     completeStudentSession(user, "Logged in with " + (data.provider || providersLabel(user)));
@@ -1807,7 +1871,12 @@ function seedLiveClasses() {
 function allWebinars() {
   seedLiveClasses();
   ensureCatalogWebinars();
-  return readList(LIVE_KEY);
+  return readList(LIVE_KEY).map((w) => {
+    const phase = webinarPhase(w);
+    if (phase === "ended" && w.status !== "ended") return { ...w, status: "ended" };
+    if (phase === "live" && w.status !== "live") return { ...w, status: "live" };
+    return w;
+  });
 }
 function webinarCatalogAll() {
   return allWebinars().filter((w) => w.kind !== "class");
@@ -1893,7 +1962,11 @@ async function endWebinarAsHost(id) {
   toast("Webinar ended · everyone is out of the room");
 }
 function webinarStart(w) {
-  const d = new Date(w.at || w.when || "");
+  const raw = w?.at || w?.when || "";
+  let d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) return d;
+  const cleaned = String(raw).replace(/[•·]/g, " ").replace(/\s+/g, " ").trim();
+  d = new Date(cleaned);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 function webinarMins(w) {
@@ -1902,10 +1975,10 @@ function webinarMins(w) {
 function webinarPhase(w) {
   if (w?.unpublished) return "draft";
   if (w?.status === "ended") return "ended";
-  if (w?.status === "live") return "live";
   const end = webinarEnd(w);
   const start = webinarStart(w);
   if (end && Date.now() > end.getTime()) return "ended";
+  if (w?.status === "live") return "live";
   if (start && Date.now() >= start.getTime()) return "live";
   return "upcoming";
 }
@@ -2578,7 +2651,9 @@ function enrollMentorProgram(id) {
 }
 
 function requestMentorCallback(id) {
+  try { sessionStorage.setItem("tradeshalaPendingMentorCall", id); } catch { /* ignore */ }
   requireAuth(() => {
+    sessionStorage.removeItem("tradeshalaPendingMentorCall");
     const u = getUser();
     const p = allMentorPrograms().find((x) => x.id === id);
     const key = typeof CALL_KEY === "string" ? CALL_KEY : "tradeshalaCalls";
@@ -2607,6 +2682,59 @@ function consumePendingMentor() {
   sessionStorage.removeItem("tradeshalaPendingMentor");
   enrollMentorProgram(id);
 }
+function consumePendingMentorCall() {
+  const id = sessionStorage.getItem("tradeshalaPendingMentorCall");
+  if (!id || !getUser()) return;
+  requestMentorCallback(id);
+}
+function consumePendingInstructorCall() {
+  const name = sessionStorage.getItem("tradeshalaPendingInstructorCall");
+  if (!name || !getUser()) return;
+  requestInstructorCallback(name);
+}
+function consumePendingReview() {
+  if (!getUser()) return;
+  let data;
+  try { data = JSON.parse(sessionStorage.getItem("tradeshalaPendingReview") || "null"); } catch { data = null; }
+  if (!data?.kind || !data.id) return;
+  sessionStorage.removeItem("tradeshalaPendingReview");
+  const row = typeof submitLearnerReview === "function" ? submitLearnerReview(data.kind, data.id, {
+    stars: data.stars,
+    text: data.text,
+    city: data.city
+  }) : null;
+  if (!row) return;
+  toast("Review is live");
+  if (typeof refreshDeskReviews === "function") refreshDeskReviews(data.kind, data.id);
+}
+function consumePendingCallForm() {
+  if (!getUser()) return;
+  let data;
+  try { data = JSON.parse(sessionStorage.getItem("tradeshalaPendingCallForm") || "null"); } catch { data = null; }
+  if (!data) return;
+  sessionStorage.removeItem("tradeshalaPendingCallForm");
+  const u = getUser();
+  const mentorName = data.mentor || "";
+  const mentor = typeof staffList === "function" ? staffList().find((s) => s.name === mentorName) : null;
+  const list = typeof callRequests === "function" ? callRequests() : readList(CALL_KEY);
+  list.push({
+    id: "call-" + Date.now(),
+    name: u.name,
+    email: u.email,
+    topic: data.topic || "",
+    date: data.date || "",
+    time: data.time || "18:00",
+    mentor: mentorName,
+    mentorEmail: mentor?.email || "",
+    status: "pending",
+    meetUrl: "",
+    notes: data.notes || "",
+    at: new Date().toISOString()
+  });
+  writeList(CALL_KEY, list);
+  pushNote({ key: "call:" + list[list.length - 1].id, kind: "call", title: "1:1 call requested", body: (data.topic || "Guidance") + " is with the desk for approval.", href: "/live#call" });
+  toast("1:1 call request sent to the mentor");
+}
 
 function instructorCourses(name) {
   return (typeof allCourses === "function" ? allCourses() : []).filter((c) => c.instructor === name);
@@ -2627,7 +2755,9 @@ function instructorReviews(name) {
   });
 }
 function requestInstructorCallback(name) {
+  try { sessionStorage.setItem("tradeshalaPendingInstructorCall", name); } catch { /* ignore */ }
   requireAuth(() => {
+    sessionStorage.removeItem("tradeshalaPendingInstructorCall");
     const u = getUser();
     const key = typeof CALL_KEY === "string" ? CALL_KEY : "tradeshalaCalls";
     const list = readList(key);
@@ -3889,6 +4019,11 @@ function clearPendingEnroll() {
   sessionStorage.removeItem("tradeshalaPendingBuy");
   sessionStorage.removeItem("tradeshalaPendingWebinar");
   sessionStorage.removeItem("tradeshalaPendingMentor");
+  sessionStorage.removeItem("tradeshalaPendingMentorCall");
+  sessionStorage.removeItem("tradeshalaPendingInstructorCall");
+  sessionStorage.removeItem("tradeshalaPendingReview");
+  sessionStorage.removeItem("tradeshalaPendingCallForm");
+  try { sessionStorage.removeItem(OAUTH_NEXT_KEY); } catch { /* ignore */ }
 }
 function closeModals() {
   document.querySelectorAll(".overlay").forEach((o) => o.classList.remove("open"));
@@ -3903,6 +4038,7 @@ function dismissAuthModals() {
 function requireAuth(next) {
   if (getUser()) return next();
   pendingAuthNext = typeof next === "function" ? next : null;
+  rememberAuthReturn();
   const st = typeof platformSettings === "function" ? platformSettings() : { publicSignup: true };
   if (!st.publicSignup) {
     openModal("loginModal");
@@ -4332,7 +4468,15 @@ function bindReviewForm(root = document) {
       const kind = form.dataset.reviewKind;
       const id = form.dataset.reviewId;
       if (!getUser()) {
-        if (typeof requireAuth === "function") requireAuth(() => form.requestSubmit());
+        try {
+          sessionStorage.setItem("tradeshalaPendingReview", JSON.stringify({
+            kind, id,
+            stars: form.stars.value,
+            text: form.text.value,
+            city: form.city?.value || ""
+          }));
+        } catch { /* ignore */ }
+        if (typeof requireAuth === "function") requireAuth(() => consumePendingReview());
         else toast("Login to submit a review");
         return;
       }
@@ -5509,7 +5653,7 @@ function renderAccountPage() {
   const tkMap = {
     open: tickets.filter((t) => t.status === "OPEN"),
     progress: tickets.filter((t) => t.status === "PENDING" || t.status === "IN_PROGRESS"),
-    closed: tickets.filter((t) => t.status === "CLOSED")
+    closed: tickets.filter((t) => t.status === "CLOSED" || t.status === "RESOLVED")
   };
   const panes = {
     edit: `<h2>Account info</h2>
@@ -5668,7 +5812,7 @@ async function mountHmsFrame(el, opts) {
 
 function renderLive() {
   const webinars = (typeof listedWebinars === "function" ? listedWebinars() : allWebinars().filter((w) => liveKindOf(w) === "webinar"));
-  const classes = allWebinars().filter((w) => liveKindOf(w) === "class" && !w.unpublished);
+  const classes = allWebinars().filter((w) => liveKindOf(w) === "class" && !w.unpublished && w.status !== "ended");
   const upcoming = webinars.filter((w) => w.status !== "ended");
   const catalog = document.getElementById("liveCatalog");
   if (catalog) {
@@ -6995,6 +7139,10 @@ async function startPublicBoot() {
     renderMentorListing();
     renderMentorProgramPage();
     consumePendingMentor();
+    consumePendingMentorCall();
+    consumePendingInstructorCall();
+    consumePendingReview();
+    consumePendingCallForm();
     renderInstructorListing();
     renderInstructorPage();
     ensureReviewsData().then(() => {
@@ -7063,30 +7211,19 @@ async function startPublicBoot() {
 
   document.getElementById("callForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    requireAuth(() => {
-      const f = e.target;
-      const u = getUser();
-      const mentorName = f.mentor?.value || "";
-      const mentor = typeof staffList === "function" ? staffList().find((s) => s.name === mentorName) : null;
-      const list = typeof callRequests === "function" ? callRequests() : [];
-      list.push({
-        id: "call-" + Date.now(),
-        name: u.name,
-        email: u.email,
+    const f = e.target;
+    try {
+      sessionStorage.setItem("tradeshalaPendingCallForm", JSON.stringify({
+        mentor: f.mentor?.value || "",
         topic: f.topic.value,
         date: f.date.value,
         time: f.time?.value || "18:00",
-        mentor: mentorName,
-        mentorEmail: mentor?.email || "",
-        status: "pending",
-        meetUrl: "",
-        notes: f.notes?.value || "",
-        at: new Date().toISOString()
-      });
-      writeList(CALL_KEY, list);
-      pushNote({ key: "call:" + list[list.length - 1].id, kind: "call", title: "1:1 call requested", body: (f.topic.value || "Guidance") + " is with the desk for approval.", href: "/live#call" });
+        notes: f.notes?.value || ""
+      }));
+    } catch { /* ignore */ }
+    requireAuth(() => {
+      consumePendingCallForm();
       f.reset();
-      toast("1:1 call request sent to the mentor");
     });
   });
   document.addEventListener("click", (e) => {
@@ -7094,8 +7231,10 @@ async function startPublicBoot() {
     if (!btn) return;
     const u = getUser();
     const course = allCourses().find((c) => c.id === btn.dataset.certDownload);
-    const row = u && course && typeof certFor === "function" ? certFor(u.email, course.id) : null;
+    const email = (new URLSearchParams(location.search).get("email") || u?.email || "").trim().toLowerCase();
+    const row = email && course && typeof certFor === "function" ? certFor(email, course.id) : null;
     if (row && course) downloadBizgarhCertificate(row, course);
+    else toast("Certificate is not ready to download yet");
   });
   window.BizgarhLoader?.done?.();
 }

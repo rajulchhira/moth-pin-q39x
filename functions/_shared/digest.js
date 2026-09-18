@@ -282,7 +282,7 @@ function digestText(row) {
     courses.length ? "Today by classroom:" : null,
     ...courses,
     "",
-    `Open your admin desk: ${publicOrigin()}/admin.html`,
+    `Open your admin desk: ${publicOrigin()}/control`,
     "",
     "Warm regards,",
     "The Bizgarh desk"

@@ -251,7 +251,7 @@
         loading = true;
         busy(true);
         var files = [
-          "/js/app.js?v=desk11",
+          "/js/app.js?v=desk12",
           "/js/lms.js",
           "/js/admin-core.js?v=desk6",
           "/js/admin.js?v=drm3",
@@ -328,12 +328,18 @@
           }
         });
       }
-      if (/oauth_ticket|oauth_error/.test(location.search)) loadDesk(true);
+      var q = new URLSearchParams(location.search);
+      if (q.get("oauth_ticket")) loadDesk(true);
       else {
         try {
           var sess = JSON.parse(localStorage.getItem("tradeshalaStaffSession") || "null");
           if (sess && sess.email) loadDesk(true);
         } catch (x) {}
+        var oerr = q.get("oauth_error");
+        if (oerr) {
+          err(String(oerr).replace(/\+/g, " ") || "Google sign-in was cancelled");
+          try { history.replaceState({}, "", location.pathname); } catch (x) {}
+        }
       }
     })();
   </script>
