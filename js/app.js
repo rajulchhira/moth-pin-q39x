@@ -1937,6 +1937,10 @@ function startWebinarAsHost(id, goRoom) {
     toast("Only the host can start this webinar");
     return null;
   }
+  if (typeof webinarPhase === "function" && webinarPhase(w) === "ended") {
+    toast("This webinar has ended");
+    return null;
+  }
   const staff = getStaffSession();
   const patch = { status: "live" };
   if (staff?.email && !w.hostEmail) patch.hostEmail = staff.email;

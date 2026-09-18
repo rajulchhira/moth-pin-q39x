@@ -9,6 +9,10 @@ function canEditWebinar(w) {
     || w.by === s.name;
 }
 
+function roomPhase(w) {
+  return typeof webinarPhase === "function" ? webinarPhase(w) : (w?.status || "upcoming");
+}
+
 function wbLocal(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -99,8 +103,9 @@ const WebinarAdmin = {
     }
     if (!prog.session) return "Next: add notes or an intro for the room";
     if (!prog.live) return "Publish it, then start the room";
-    if (w.status === "live") return "Room is live — enter as host";
-    if (w.status === "ended") return "Ended";
+    const phase = roomPhase(w);
+    if (phase === "live") return "Room is live — enter as host";
+    if (phase === "ended") return "Ended";
     return "On the site — start the room when ready";
   },
 
@@ -172,8 +177,9 @@ const WebinarAdmin = {
   hostBarHTML(w) {
     const can = canEditWebinar(w) && AdminCore.can("live", "edit");
     if (!can) return "";
-    const live = w.status === "live";
-    const ended = w.status === "ended";
+    const phase = roomPhase(w);
+    const live = phase === "live";
+    const ended = phase === "ended";
     const href = this.hostRoomHref(w.id);
     return `<aside class="wb-hostbar ${live ? "is-live" : ended ? "is-ended" : ""}">
       <div>
@@ -199,8 +205,9 @@ const WebinarAdmin = {
 
   catalogHostHTML(w) {
     const can = canEditWebinar(w) && AdminCore.can("live", "edit");
-    if (!can || w.status === "ended") return "";
-    if (w.status === "live") {
+    const phase = roomPhase(w);
+    if (!can || phase === "ended") return "";
+    if (phase === "live") {
       return `<a class="btn btn-primary cb-card-host" href="${this.hostRoomHref(w.id)}" data-wb-enter="${adEsc(w.id)}">Enter as host</a>`;
     }
     return `<button type="button" class="btn btn-primary cb-card-host" data-wb-start="${adEsc(w.id)}">Start webinar</button>`;
@@ -211,7 +218,7 @@ const WebinarAdmin = {
       <div class="cb-desk-top">
         <div>
           <span class="cb-pill ${w.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(w))}</span>
-          <span class="cb-pill ${w.status === "live" ? "is-live" : "is-draft"}">${w.status === "live" ? "Room live" : w.status === "ended" ? "Ended" : "Room not started"}</span>
+          <span class="cb-pill ${roomPhase(w) === "live" ? "is-live" : "is-draft"}">${roomPhase(w) === "live" ? "Room live" : roomPhase(w) === "ended" ? "Ended" : "Room not started"}</span>
           <h2>${adEsc(w.title)}</h2>
         </div>
         ${this.seeHTML(w)}
@@ -263,7 +270,7 @@ const WebinarAdmin = {
               </div>
             </button>
             <div class="desk-side">
-              <span class="cb-pill ${w.status === "live" ? "is-live" : w.unpublished ? "is-draft" : "is-live"}">${w.status === "live" ? "Live now" : adEsc(this.statusLabel(w))}</span>
+              <span class="cb-pill ${roomPhase(w) === "live" ? "is-live" : roomPhase(w) === "ended" || w.unpublished ? "is-draft" : "is-live"}">${roomPhase(w) === "live" ? "Live now" : roomPhase(w) === "ended" ? "Ended" : adEsc(this.statusLabel(w))}</span>
               ${this.catalogHostHTML(w)}
             </div>
           </article>`;
@@ -797,6 +804,10 @@ const WebinarAdmin = {
       toast("You cannot host this webinar");
       return;
     }
+    if (roomPhase(w) === "ended") {
+      toast("This webinar has ended");
+      return;
+    }
     const s = AdminCore.session();
     updateLive(id, { status: "live", hostEmail: w.hostEmail || s?.email || "" });
     AdminCore.audit("webinar_start", id, w.status || "scheduled", "live");
@@ -822,7 +833,7 @@ const WebinarAdmin = {
     const id = "lv-" + Date.now();
     const title = form.title.value.trim();
     const at = new Date(Date.now() + 3 * 86400000).toISOString();
-    const list = allWebinars();
+    const list = readList(typeof LIVE_KEY === "string" ? LIVE_KEY : "tradeshalaLives");
     list.push({
       id,
       title,

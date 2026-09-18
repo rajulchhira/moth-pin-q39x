@@ -217,13 +217,13 @@ AdminCore.migrateStaff = () => {
       status: "active",
       creatorEnabled: false,
       permissions: {},
-      totp: true,
+      totp: false,
       created: "2026-01-01T00:00:00.000Z",
       lastLogin: ""
     });
   } else {
     const owner = list.find((s) => s.email === "admin@bizgarh.in");
-    if (owner && owner.totp == null) owner.totp = true;
+    if (owner) owner.totp = false;
   }
   if (typeof SUPER_ADMINS !== "undefined") {
     SUPER_ADMINS.forEach((sa) => {
@@ -514,7 +514,7 @@ AdminCore.login = (email, password, totp) => {
   if (staff.status === "suspended" || staff.status === "inactive") {
     return { ok: false, error: "This account is " + staff.status };
   }
-  if (staff.totp && totp !== "000000") return { ok: false, needTotp: true, error: "Enter authenticator code (demo 000000)" };
+  if (!ownerOk && staff.totp && totp !== "000000") return { ok: false, needTotp: true, error: "Enter authenticator code (demo 000000)" };
   AdminCore.clearLoginFails();
   staff.lastLogin = AdminCore.now();
   AdminCore.saveStaff(staff);

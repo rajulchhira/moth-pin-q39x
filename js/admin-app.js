@@ -878,9 +878,13 @@ const VIEWS = {
   },
   live() {
     AdminCore.assert("live","view");
+    const phaseOf = (w) => typeof webinarPhase === "function" ? webinarPhase(w) : (w.status || "scheduled");
     const list = (AdminCore.isOwner() ? allWebinars() : allWebinars().filter((w) => w.hostEmail === AdminCore.session().email || w.by === AdminCore.session().name)).filter((w) => w.kind === "class");
     const calls = (typeof callRequests === "function" ? callRequests() : []).filter((c) => AdminCore.isOwner() || c.mentorEmail === AdminCore.session().email || c.mentor === AdminCore.session().name);
+    const sess = AdminCore.session();
+    const host = typeof deskHostOf === "function" ? deskHostOf(sess.email, sess.name) : { name: sess.name, email: sess.email };
     const form = AdminCore.can("live","create") ? `<form class="ad-card ad-form" id="addLiveForm" style="margin-bottom:14px;grid-template-columns:1fr 1fr">
+      ${typeof deskHostLockHTML === "function" ? deskHostLockHTML(host, { field: "by" }) : `<input type="hidden" name="by" value="${adEsc(sess.name)}"><input type="hidden" name="hostEmail" value="${adEsc(sess.email)}">`}
       <input name="title" placeholder="Title" required>
       <input name="at" type="datetime-local" required>
       <input name="duration" value="60 min">
@@ -896,7 +900,7 @@ const VIEWS = {
       + table(["When","Title","Host","Room"], list.map((w)=>`<tr>
       <td>${adEsc(w.when||w.at)}</td><td>${adEsc(w.title)}</td><td>${adEsc(w.by)}</td>
       <td class="admin-actions">
-        <a href="/live-room?id=${adEsc(w.id)}">Open room</a>
+        ${phaseOf(w) === "ended" ? `<span class="muted">Ended</span>` : `<a class="btn btn-primary" href="/live-room?id=${adEsc(w.id)}&host=1">${phaseOf(w) === "live" ? "Enter as host" : "Host meeting"}</a>`}
         ${AdminCore.can("live","edit") ? `<button class="btn btn-ghost" type="button" data-live-extras="${adEsc(w.id)}">Notes / PDF</button>` : ""}
       </td></tr>`))
       + `<h3 style="margin:22px 0 8px">1:1 calls</h3>`
@@ -1473,8 +1477,11 @@ function bindApp() {
       AdminCore.assert("live","create");
       const s = AdminCore.session();
       const at = new Date(f.at.value);
-      const list = allWebinars();
-      list.push({ id: "lv-"+Date.now(), title: f.title.value.trim(), by: s.name, hostEmail: s.email, at: at.toISOString(), when: at.toLocaleString("en-IN"), duration: f.duration.value, kind: "class", joinUrl: "", introUrl: (f.introUrl?.value || "").trim(), notes: f.notes.value, pdf: (f.pdf?.value || "").trim(), chat: f.chat.value==="1", record: f.record.value==="1", recordUrl: f.recordUrl.value, status: "scheduled" });
+      const hostEmail = (f.hostEmail && f.hostEmail.value) || s.email;
+      const hostName = (f.by && f.by.value) || s.name;
+      const host = typeof deskHostOf === "function" ? deskHostOf(hostEmail, hostName) : { name: hostName, email: hostEmail };
+      const list = readList(typeof LIVE_KEY === "string" ? LIVE_KEY : "tradeshalaLives");
+      list.push({ id: "lv-"+Date.now(), title: f.title.value.trim(), by: host.name, hostEmail: host.email, at: at.toISOString(), when: at.toLocaleString("en-IN"), duration: f.duration.value, kind: "class", joinUrl: "", introUrl: (f.introUrl?.value || "").trim(), notes: f.notes.value, pdf: (f.pdf?.value || "").trim(), chat: f.chat.value==="1", record: f.record.value==="1", recordUrl: f.recordUrl.value, status: "scheduled" });
       saveWebinars(list);
       toast("Live class scheduled");
       paint();
@@ -1960,7 +1967,14 @@ function bootAdminUi() {
         showAdmin();
       }
     });
-    if (existing) showAdmin();
+    if (existing) {
+      try {
+        const logs = typeof AdminCore.sessions === "function" ? AdminCore.sessions() : [];
+        const fresh = logs.some((x) => x.ok && x.email === existing.email && Date.now() - new Date(x.at).getTime() < 10 * 60 * 1000);
+        if (!fresh) AdminCore.recordSession(existing, true);
+      } catch (_) {}
+      showAdmin();
+    }
   }
 
   document.getElementById("staffLoginForm")?.addEventListener("submit", (e) => {
