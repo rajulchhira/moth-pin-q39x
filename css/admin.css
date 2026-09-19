@@ -296,6 +296,9 @@
   .wb-hostbar-actions .btn { width: 100%; justify-content: center; }
   .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .chart-labels { overflow: hidden; gap: 4px; }
+  .cb-home-bar, .desk-toolbar { flex-wrap: wrap; }
+  .cb-home-bar input { min-width: 0; flex: 1 1 160px; }
+  .cb-home-bar > button { flex: 0 0 auto; }
 }
 
 body.is-cb .ad-head h1,
@@ -1058,6 +1061,8 @@ article.desk-row { cursor: default; }
   .ad-login { padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
   .ad-login-card { padding: 22px 18px; }
   .ad-perm-row { grid-template-columns: 1fr; }
+  .cb-home-bar input { flex: 1 1 100%; }
+  .cb-home-bar > button { width: 100%; justify-content: center; }
 }
 @media (hover: none) {
   .ad-kpi:hover, .ad-card:hover, .desk-row:hover, .cb-card-row:hover { transform: none; box-shadow: 0 12px 32px rgba(15, 23, 42, .05); }
