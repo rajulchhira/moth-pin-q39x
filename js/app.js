@@ -2402,7 +2402,7 @@ function webinarProfile(w) {
   const audience = Array.isArray(w.audience) ? w.audience.filter((a) => a && (a.t || a.d)) : [];
   const paid = w.free !== true && Number(w.price) > 0;
   return {
-    tag: w.tag || pack.tag || (liveKindOf(w) === "class" ? "Live class" : "Live webinar"),
+    tag: w.tag || pack.tag || (w.status === "ended" ? "Replay" : liveKindOf(w) === "class" ? "Live class" : "Live webinar"),
     listPrice: Number(w.listPrice || pack.listPrice || 1999),
     price: paid ? Number(w.price || 0) : 0,
     seats: Number(w.seats || pack.seats || 80),
@@ -3298,7 +3298,7 @@ function renderMentorProgramPage() {
   </div>
   <div class="mp-stick">
     <div class="mp-stick-in">
-      <span>Starts on <b>${escapeHtml(webinarDateLabel(p))}</b></span>
+      <span>${ended ? "Started on" : "Starts on"} <b>${escapeHtml(webinarDateLabel(p))}</b></span>
       <span>Duration <b>${p.weeks} weeks</b></span>
       <span>Price <b>₹${Number(p.price).toLocaleString("en-IN")}</b> <s>₹${Number(p.old).toLocaleString("en-IN")}</s></span>
       <div class="mp-stick-cta">${mentorCtaHTML(p, enrolled)}</div>
@@ -3854,7 +3854,7 @@ function bindChrome() {
     const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${escapeHtml(m.name)} · instructor</a>`)
       .concat(courseHits.map((c) => `<a href="/course?id=${encodeURIComponent(c.id)}">${escapeHtml(c.title)}</a>`))
       .concat(liveHits.map((w) => `<a href="${webinarHref(w.id)}">${escapeHtml(w.title)} · webinar${w.status === "ended" ? " · ended" : ""}</a>`))
-      .concat(deskHits.map((p) => `<a href="${mentorHref(p.id)}">${escapeHtml(p.title)} · mentorship</a>`));
+      .concat(deskHits.map((p) => `<a href="${mentorHref(p.id)}">${escapeHtml(p.title)} · mentorship${(typeof mentorPhase === "function" && mentorPhase(p) === "ended") ? " · ended" : ""}</a>`));
     document.getElementById("searchResults").innerHTML = rows.join("") || "<span class=\"muted\">No matches</span>";
   });
 
@@ -6025,10 +6025,10 @@ function renderWebinarPage() {
         </div>
         ${priceHTML}
         ${webinarCtaHTML(w, false)}
-        <div class="wb-seats">
+        ${w.status === "ended" ? "" : `<div class="wb-seats">
           <div class="wb-faces">${faces.map((src) => `<img src="${src}" alt="">`).join("")}</div>
           <small>Limited seats · ${seatsLeft} left</small>
-        </div>
+        </div>`}
       </div>
     </section>`;
 
