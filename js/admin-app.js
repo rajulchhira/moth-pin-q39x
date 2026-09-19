@@ -350,7 +350,16 @@ function renderSide() {
     </div>`;
 }
 
+function setAdminNav(open) {
+  const app = document.getElementById("adminApp");
+  if (!app) return;
+  app.classList.toggle("nav-open", !!open);
+  document.body.classList.toggle("ad-nav-lock", !!open);
+}
+function closeAdminNav() { setAdminNav(false); }
+
 function go(route, extra) {
+  closeAdminNav();
   Ad.page = 1;
   Ad.q = "";
   Ad.drawer = null;
@@ -1991,9 +2000,17 @@ function bootAdminUi() {
     if (btn) go(btn.dataset.route);
     if (e.target.id === "staffLogout" || e.target.closest("#staffLogout")) { AdminCore.logout(); location.reload(); }
   });
-  document.getElementById("adMenu")?.addEventListener("click", () => document.getElementById("adminApp").classList.toggle("nav-open"));
+  document.getElementById("adMenu")?.addEventListener("click", () => {
+    const app = document.getElementById("adminApp");
+    setAdminNav(!app?.classList.contains("nav-open"));
+  });
+  document.getElementById("adNavScrim")?.addEventListener("click", closeAdminNav);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAdminNav();
+  });
   window.addEventListener("hashchange", () => {
     if (!AdminCore.session()) return;
+    closeAdminNav();
     applyAdminRoute(parseAdminRoute());
     Ad.page = 1;
     paint();
