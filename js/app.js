@@ -3853,7 +3853,7 @@ function bindChrome() {
     const deskHits = (typeof allMentorPrograms === "function" ? allMentorPrograms() : []).filter((p) => `${p.title} ${p.by} ${p.tag || ""} ${p.blurb || ""}`.toLowerCase().includes(q)).slice(0, 2);
     const rows = mentorHits.map((m) => `<a href="${instructorHref(m.name)}">${escapeHtml(m.name)} · instructor</a>`)
       .concat(courseHits.map((c) => `<a href="/course?id=${encodeURIComponent(c.id)}">${escapeHtml(c.title)}</a>`))
-      .concat(liveHits.map((w) => `<a href="${webinarHref(w.id)}">${escapeHtml(w.title)} · webinar</a>`))
+      .concat(liveHits.map((w) => `<a href="${webinarHref(w.id)}">${escapeHtml(w.title)} · webinar${w.status === "ended" ? " · ended" : ""}</a>`))
       .concat(deskHits.map((p) => `<a href="${mentorHref(p.id)}">${escapeHtml(p.title)} · mentorship</a>`));
     document.getElementById("searchResults").innerHTML = rows.join("") || "<span class=\"muted\">No matches</span>";
   });
@@ -4870,6 +4870,7 @@ function topicRowHTML(it, playable) {
   const mode = it.mode || "";
   const live = mode === "live" || it.kind === "live";
   const rec = mode === "recorded";
+  const ended = mode === "ended" || it.status === "ended";
   if (it.kind === "pdf") {
     const href = String(it.pdf || "").trim();
     return `<div class="cd-topic-row">
@@ -4903,21 +4904,21 @@ function topicRowHTML(it, playable) {
       ${topicResHTML(it, true)}
     </div>`;
   }
-  if (playable && (live || rec)) {
+  if (playable && (live || rec || ended)) {
     return `<div class="cd-topic-row">
-      <button type="button" class="cd-topic playable" data-mp-lesson="${escapeHtml(String(it.i ?? ""))}" data-mp-mode="${escapeHtml(mode)}">
-        <span class="cd-topic-ico">${iconSvg(live ? "wifi" : "play")}</span>
+      <button type="button" class="cd-topic playable" data-mp-lesson="${escapeHtml(String(it.i ?? ""))}" data-mp-mode="${escapeHtml(ended ? "ended" : mode)}">
+        <span class="cd-topic-ico">${iconSvg(rec ? "play" : "wifi")}</span>
         <span>${escapeHtml(it.t)}</span>
-        <em>${live ? "Live" : "Recorded"}${it.dur ? " · " + escapeHtml(it.dur) : ""}</em>
+        <em>${ended ? "Ended" : live ? "Live" : "Recorded"}${it.dur ? " · " + escapeHtml(it.dur) : ""}</em>
       </button>
       ${topicResHTML(it, true)}
     </div>`;
   }
   return `<div class="cd-topic-row">
     <div class="cd-topic">
-      <span class="cd-topic-ico">${iconSvg(live ? "wifi" : "play")}</span>
+      <span class="cd-topic-ico">${iconSvg(rec ? "play" : "wifi")}</span>
       <span>${escapeHtml(it.t)}</span>
-      ${mode ? `<em>${live ? "Live" : rec ? "Recorded" : ""}</em>` : ""}
+      ${mode ? `<em>${ended ? "Ended" : live ? "Live" : rec ? "Recorded" : ""}</em>` : ""}
     </div>
     ${topicResHTML(it, false)}
   </div>`;
@@ -4986,7 +4987,7 @@ function mentorOverviewCardHTML(p, playable) {
 
 function webinarOverviewCardHTML(w) {
   const playable = (typeof webinarOwnedForPage === "function" ? webinarOwnedForPage(w) : isWebinarRegistered(w.id)) || w.status === "ended";
-  const item = { t: w.title, dur: w.duration || "60 min", notes: w.notes || "", pdf: w.pdf || "", mode: w.status === "ended" && w.recordUrl ? "recorded" : "live" };
+  const item = { t: w.title, dur: w.duration || "60 min", notes: w.notes || "", pdf: w.pdf || "", mode: w.status === "ended" ? (w.recordUrl ? "recorded" : "ended") : "live" };
   return `
         <section class="cd-card cd-overview-card" id="webinarOverview">
           <div class="cd-ov-head">
@@ -4997,7 +4998,7 @@ function webinarOverviewCardHTML(w) {
             <div class="cd-sec open">
               <button type="button" class="cd-sec-h" aria-expanded="true">
                 <span class="cd-sec-num">01</span>
-                <span class="cd-sec-title">Live session</span>
+                <span class="cd-sec-title">${w.status === "ended" ? "Session" : "Live session"}</span>
                 <em class="cd-sec-dur">${iconSvg("clock")} ${escapeHtml(w.duration || "60 min")}</em>
                 <i class="cd-sec-arrow" aria-hidden="true"></i>
               </button>
