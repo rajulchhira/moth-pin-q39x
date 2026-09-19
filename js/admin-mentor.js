@@ -161,6 +161,17 @@ const MentorAdmin = {
   hostBarHTML(p) {
     const can = canEditMentor(p) && AdminCore.can("courses", "edit");
     if (!can) return "";
+    if (typeof mentorPhase === "function" && mentorPhase(p) === "ended") {
+      return `<aside class="wb-hostbar is-ended">
+        <div>
+          <strong>This desk has ended</strong>
+          <p>Open Sessions to host a leftover room or add a recording.</p>
+        </div>
+        <div class="wb-hostbar-actions">
+          <button type="button" class="btn btn-ghost" data-mb-tab="sessions">Open sessions</button>
+        </div>
+      </aside>`;
+    }
     const liveSessions = mentorLessonsFor(p.id).map((l, i) => ({ l, i })).filter((x) => (x.l.mode || "live") === "live");
     const nextLive = liveSessions.find((x) => x.l.status === "live") || liveSessions[0];
     if (!nextLive) {
@@ -228,7 +239,8 @@ const MentorAdmin = {
           const lessons = typeof mentorLessonsFor === "function" ? mentorLessonsFor(p.id) : [];
           const liveIdx = lessons.findIndex((l) => (l.mode || "live") === "live");
           const liveNow = lessons.find((l) => l.status === "live");
-          const canHost = canEditMentor(p) && AdminCore.can("courses", "edit") && liveIdx >= 0;
+          const ended = typeof mentorPhase === "function" && mentorPhase(p) === "ended";
+          const canHost = !ended && canEditMentor(p) && AdminCore.can("courses", "edit") && liveIdx >= 0;
           return `<article class="desk-row" style="--i:${i}">
             <button type="button" class="desk-row-main" data-mb-open="${adEsc(p.id)}">
               ${this.thumb(p)}

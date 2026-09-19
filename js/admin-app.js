@@ -2008,6 +2008,9 @@ function bootAdminUi() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAdminNav();
   });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 860) closeAdminNav();
+  });
   window.addEventListener("hashchange", () => {
     if (!AdminCore.session()) return;
     closeAdminNav();

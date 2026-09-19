@@ -1064,6 +1064,25 @@ article.desk-row { cursor: default; }
   .cb-home-bar input { flex: 1 1 100%; }
   .cb-home-bar > button { width: 100%; justify-content: center; }
 }
+@media (max-width: 860px) {
+  body.is-cb .ad-head h1 { display: block; font-size: 18px; }
+  body.is-cb .ad-nav { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .ad-side { height: 100dvh; max-height: 100dvh; }
+  .ad-nav { -webkit-overflow-scrolling: touch; }
+  .ad-head { background: #f4f6fb; }
+  .ad-login-card input,
+  .ad-login-card select { font-size: 16px; }
+  .cb-modal {
+    padding: 12px;
+    align-items: end;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .cb-modal-card { width: 100%; }
+  .cb-modal-actions { flex-direction: column-reverse; align-items: stretch; }
+  .cb-modal-actions .btn { width: 100%; justify-content: center; }
+  .cb-desk-top { flex-wrap: wrap; }
+  .cb-see { width: 100%; }
+}
 @media (hover: none) {
   .ad-kpi:hover, .ad-card:hover, .desk-row:hover, .cb-card-row:hover { transform: none; box-shadow: 0 12px 32px rgba(15, 23, 42, .05); }
 }
