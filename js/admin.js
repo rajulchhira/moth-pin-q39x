@@ -730,7 +730,7 @@ document.addEventListener("DOMContentLoaded", () => {
       introUrl: f.introUrl ? f.introUrl.value.trim() : "",
       status: "scheduled"
     };
-    const list = allWebinars();
+    const list = typeof rawLives === "function" ? rawLives() : readList(LIVE_KEY);
     list.push(live);
     saveWebinars(list);
     f.reset();
@@ -1080,7 +1080,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const live = allWebinars().find((w) => w.id === delLive.dataset.delLive);
       const s = staffNow();
       if (live && (isOwner() || live.hostEmail === s.email)) {
-        saveWebinars(allWebinars().filter((w) => w.id !== live.id));
+        saveWebinars((typeof rawLives === "function" ? rawLives() : readList(LIVE_KEY)).filter((w) => w.id !== live.id));
         toast("Live class removed");
         refreshAdmin();
       }

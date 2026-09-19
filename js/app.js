@@ -1868,15 +1868,27 @@ function seedLiveClasses() {
   writeList(LIVE_KEY, seed);
   localStorage.setItem("tradeshalaLivesSeeded", "1");
 }
-function allWebinars() {
+function rawLives() {
   seedLiveClasses();
   ensureCatalogWebinars();
-  return readList(LIVE_KEY).map((w) => {
+  return readList(LIVE_KEY);
+}
+function allWebinars() {
+  return rawLives().map((w) => {
     const phase = webinarPhase(w);
     if (phase === "ended" && w.status !== "ended") return { ...w, status: "ended" };
     if (phase === "live" && w.status !== "live") return { ...w, status: "live" };
     return w;
   });
+}
+function webinarRoomState(w) {
+  if (!w) return "scheduled";
+  if (typeof webinarPhase === "function" && webinarPhase(w) === "ended") return "ended";
+  if (w.status === "ended") return "ended";
+  const raw = rawLives().find((x) => x.id === w.id);
+  const status = raw?.status || w.status || "scheduled";
+  if (status === "live" || status === "ended") return status;
+  return "scheduled";
 }
 function webinarCatalogAll() {
   return allWebinars().filter((w) => w.kind !== "class");
@@ -3032,7 +3044,7 @@ function renderInstructorPage() {
 }
 
 function ensureMentorLive(p) {
-  const list = allWebinars();
+  const list = rawLives();
   if (list.some((x) => x.id === p.id)) return p.id;
   list.push({
     id: p.id,
@@ -3058,7 +3070,7 @@ function mentorSessionLiveId(p, lesson, index) {
 
 function ensureMentorSessionLive(p, lesson, index) {
   const id = mentorSessionLiveId(p, lesson, index);
-  const list = allWebinars();
+  const list = rawLives();
   const staff = typeof getStaffSession === "function" ? getStaffSession() : null;
   const i = list.findIndex((x) => x.id === id);
   const row = {
@@ -3089,9 +3101,9 @@ function mentorJoinHref(p, sessionIndex) {
     ? sessionIndex
     : lessons.findIndex((l) => (l.mode || "live") === "live" && l.status === "live");
   if (idx >= 0 && lessons[idx] && (lessons[idx].mode || "live") === "live") {
-    return "/live-room?id=" + encodeURIComponent(ensureMentorSessionLive(p, lessons[idx], idx));
+    return "/live-room?id=" + encodeURIComponent(mentorSessionLiveId(p, lessons[idx], idx));
   }
-  return "/live-room?id=" + encodeURIComponent(ensureMentorLive(p));
+  return "/live-room?id=" + encodeURIComponent(p.id);
 }
 
 function startMentorSessionAsHost(programId, index, goRoom) {
@@ -3176,7 +3188,6 @@ function renderMentorProgramPage() {
     root.innerHTML = `<div class="container"><div class="empty"><h3>Program not found</h3><a class="btn btn-primary" href="/mentorship" style="margin-top:12px">All programs</a></div></div>`;
     return;
   }
-  ensureMentorLive(p);
   const pack = mentorPack(p);
   const enrolled = typeof mentorOwnedForPage === "function" ? mentorOwnedForPage(p) : isMentorEnrolled(p.id);
   const ended = mentorPhase(p) === "ended";
@@ -3197,7 +3208,7 @@ function renderMentorProgramPage() {
         <div class="mp-when">
           <b>${new Date(p.at).toLocaleString("en-IN", { month: "short" }).toUpperCase()}<span>${new Date(p.at).getDate()}</span></b>
           <div>
-            <strong>Starts on ${escapeHtml(webinarDateLabel(p))}</strong>
+            <strong>${ended ? "Started on" : "Starts on"} ${escapeHtml(webinarDateLabel(p))}</strong>
             <small>${escapeHtml(webinarTimeLabel({ ...p, durationMinutes: 60 }))}</small>
           </div>
         </div>
@@ -3230,7 +3241,7 @@ function renderMentorProgramPage() {
     <section class="mp-overview" data-wb>
       <h2>Program overview</h2>
       <div class="mp-ov-facts">
-        <div><small>Starts on</small><b>${escapeHtml(webinarDateLabel(p))}</b></div>
+        <div><small>${ended ? "Started" : "Starts on"}</small><b>${escapeHtml(webinarDateLabel(p))}</b></div>
         <div><small>Duration</small><b>${p.weeks} weeks</b></div>
         <div><small>Sessions</small><b>${p.sessions} live sessions</b></div>
       </div>
@@ -3321,7 +3332,7 @@ function renderMentorProgramPage() {
 
 function saveWebinars(list) { writeList(LIVE_KEY, list); }
 function updateLive(id, patch) {
-  const list = allWebinars();
+  const list = rawLives();
   const i = list.findIndex((x) => x.id === id);
   if (i < 0) return null;
   list[i] = { ...list[i], ...patch };
@@ -4562,7 +4573,16 @@ function paintReviewMarquee(host, single) {
 function renderHomeReviews() {
   const host = document.getElementById("reviewMarquee");
   if (!host) return;
-  ensureReviewsData().then(() => paintReviewMarquee(host));
+  ensureReviewsData().then(() => {
+    paintReviewMarquee(host);
+    const n = allReviews().length;
+    if (!n) return;
+    const sec = host.closest("section");
+    const blurb = sec?.querySelector(".row-between .muted");
+    const link = sec?.querySelector('a[href="/reviews"]');
+    if (blurb) blurb.textContent = `${n} honest notes from desks across India — not a highlight reel.`;
+    if (link) link.textContent = `Read all ${n} →`;
+  });
 }
 
 function renderReviewsPage() {
@@ -5883,20 +5903,21 @@ function consumePendingWebinar() {
 }
 
 function webinarCtaHTML(w, registered) {
+  const room = typeof webinarRoomState === "function" ? webinarRoomState(w) : (w.status || "scheduled");
   if (typeof isWebinarHost === "function" && isWebinarHost(w)) {
-    if (w.status === "ended") {
+    if (room === "ended") {
       return w.recordUrl
         ? `<a class="btn btn-primary wb-cta" href="${escapeHtml(w.recordUrl)}" target="_blank" rel="noopener">Watch recording</a>`
         : `<span class="btn btn-ghost wb-cta is-off">This webinar has ended</span>`;
     }
-    if (w.status === "live") {
+    if (room === "live") {
       return `<a class="btn btn-primary wb-cta" href="${webinarHostRoomHref(w.id)}">Enter as host ›</a>
         <button type="button" class="btn btn-ghost wb-cta" data-wb-host-end="${w.id}">End webinar</button>`;
     }
     return `<button type="button" class="btn btn-primary wb-cta" data-wb-host-start="${w.id}">Start webinar ›</button>
       <a class="btn btn-ghost wb-cta" href="${webinarHostRoomHref(w.id)}">Open room</a>`;
   }
-  if (w.status === "ended") {
+  if (room === "ended") {
     if (w.recordUrl) {
       return `<a class="btn btn-primary wb-cta" href="${escapeHtml(w.recordUrl)}" target="_blank" rel="noopener">Watch recording</a>`;
     }
@@ -5960,10 +5981,10 @@ function renderWebinarPage() {
       ${registered ? "" : webinarCtaHTML(w, false)}
       <p class="wb-or">or</p>
       <a class="btn btn-ghost wb-soft" href="/courses">Browse classrooms after this session</a>
-      <div class="wb-starts">
+      ${w.status === "ended" ? "" : `<div class="wb-starts">
         <small>Webinar Starts In</small>
         ${countdownHTML(start, "Webinar starts in")}
-      </div>
+      </div>`}
     </aside>`;
 
   const hero = registered ? `
@@ -5980,22 +6001,22 @@ function renderWebinarPage() {
       </div>
       <div class="wb-hero-shot wb-in">
         ${webinarBannerHTML(w, idx)}
-        <div class="wb-hero-count">
-          <small>Starts in</small>
-          ${countdownHTML(start, "Starts in")}
+        <div class="wb-hero-count${w.status === "ended" ? " is-ended" : ""}">
+          <small>${w.status === "ended" ? "This session has ended" : "Starts in"}</small>
+          ${w.status === "ended" ? "" : countdownHTML(start, "Starts in")}
         </div>
       </div>
     </section>` : `
     <section class="wb-hero">
       <div class="wb-hero-shot wb-in">
         ${webinarBannerHTML(w, idx)}
-        <div class="wb-hero-count">
-          <small>Starts in</small>
-          ${countdownHTML(start, "Starts in")}
+        <div class="wb-hero-count${w.status === "ended" ? " is-ended" : ""}">
+          <small>${w.status === "ended" ? "This session has ended" : "Starts in"}</small>
+          ${w.status === "ended" ? "" : countdownHTML(start, "Starts in")}
         </div>
       </div>
       <div class="wb-hero-copy wb-in">
-        <span class="wb-pill">${w.status === "live" ? "Live now" : "Live webinar"}</span>
+        <span class="wb-pill">${w.status === "ended" ? "Ended" : w.status === "live" ? "Live now" : "Live webinar"}</span>
         <h1>${escapeHtml(w.title)}</h1>
         <div class="wb-meta-row">
           <span>${iconSvg("cal")} ${escapeHtml(webinarDateLabel(w))}</span>
@@ -6092,8 +6113,9 @@ function renderWebinarPage() {
   });
   root.querySelectorAll("[data-mp-lesson]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (w.status === "ended" && w.recordUrl) {
-        location.href = w.recordUrl;
+      if (w.status === "ended") {
+        if (w.recordUrl) location.href = w.recordUrl;
+        else toast("This webinar has ended");
         return;
       }
       location.href = "/live-room?id=" + encodeURIComponent(w.id);
@@ -6300,21 +6322,22 @@ function renderLiveRoom() {
   const registered = (user && regs.some((r) => r.email === user.email)) || mentorOk;
   document.title = `${live.title} | Live | ${BRAND}`;
   const noun = liveKindOf(live) === "class" ? "class" : "webinar";
-  const showIntro = !isHost && registered && live.status === "scheduled";
-  const canJoinHms = live.status !== "ended" && (isHost || (registered && live.status === "live"));
+  const room = typeof webinarRoomState === "function" ? webinarRoomState(live) : (live.status || "scheduled");
+  const showIntro = !isHost && registered && room === "scheduled";
+  const canJoinHms = room !== "ended" && (isHost || (registered && room === "live"));
 
   const barActions = isHost
-    ? `${live.status === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Go live</button>` : ""}
-       ${live.status === "live" ? `<button class="btn btn-primary" id="endLiveBtn">End ${noun}</button>` : ""}`
+    ? `${room === "scheduled" ? `<button class="btn btn-primary" id="startLiveBtn">Go live</button>` : ""}
+       ${room === "live" ? `<button class="btn btn-primary" id="endLiveBtn">End ${noun}</button>` : ""}`
     : "";
   const waitActions = !isHost && !canJoinHms
     ? `${!user ? `<button class="btn btn-primary" data-open="loginModal">Login to join</button>` : ""}
-       ${user && !registered && live.status !== "ended" ? `<button class="btn btn-primary" data-register="${live.id}">Register & stay</button>` : ""}`
+       ${user && !registered && room !== "ended" ? `<button class="btn btn-primary" data-register="${live.id}">Register & stay</button>` : ""}`
     : "";
 
   root.innerHTML = liveMeetShellHTML({
-    status: live.status || "scheduled",
-    statusLabel: (live.status || "scheduled").toUpperCase(),
+    status: room || "scheduled",
+    statusLabel: (room || "scheduled").toUpperCase(),
     title: live.title,
     sub: `${live.when} • ${live.by}`,
     boardId: live.id,
@@ -6326,7 +6349,7 @@ function renderLiveRoom() {
       ? `<div class="live-cam">Connecting classroom…</div>`
       : showIntro
         ? introPlayerHTML(live.introUrl)
-        : `<div class="live-cam">${live.status === "ended" ? "This class has ended" : "Register, then wait here. The teacher will start the class in this room."}</div>`,
+        : `<div class="live-cam">${room === "ended" ? "This class has ended" : "Register, then wait here. The teacher will start the class in this room."}</div>`,
     barActions,
     actions: waitActions
   });
