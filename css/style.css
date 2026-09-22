@@ -5134,7 +5134,8 @@ a.cd-room:hover {
   color: #e2e8f0;
   font-size: 15px;
   line-height: 1.5;
-  z-index: 5;
+  /* Must sit above the play button and control bar, or an unplayable lesson still looks clickable. */
+  z-index: 12;
 }
 .drm-error[hidden] { display: none !important; }
 

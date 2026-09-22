@@ -523,12 +523,23 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
     lastDebugInfo = { ...lastDebugInfo, ...info };
     paintDrmDebug(lastDebugInfo);
   }
-  if (DRM_DEBUG) {
-    probeWidevine().then((lvl) => {
-      widevineLevel = lvl;
-      paintDrmDebug(lastDebugInfo);
-    });
+  // Runs on every load, not just in debug. Asking for EME early also gives Chrome its
+  // first chance to pull down the Widevine component before a lesson is opened.
+  let widevineProbe = null;
+  function widevineSupport() {
+    if (!widevineProbe) {
+      widevineProbe = probeWidevine().then((lvl) => {
+        widevineLevel = lvl;
+        paintDrmDebug(lastDebugInfo);
+        return lvl;
+      });
+    }
+    return widevineProbe;
   }
+  function hasWidevine(level) {
+    return level !== "EME missing" && level !== "Widevine unavailable";
+  }
+  widevineSupport();
 
   function clearVdo() {
     stage.classList.remove("is-vdo");
@@ -661,6 +672,11 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
     video.pause();
     video.removeAttribute("src");
     video.load();
+    // Without a Widevine CDM the player silently drops to a non-DRM stream, which has no
+    // capture protection at all. Refuse to play instead of handing out an unprotected copy.
+    if (!hasWidevine(await widevineSupport())) {
+      throw new Error("This browser cannot play protected lessons because Widevine DRM is missing. Open this lesson in Microsoft Edge, or in Chrome go to chrome://components and update \"Widevine Content Decryption Module\", then reload.");
+    }
     stage.classList.add("is-vdo");
     sizeVdoShell();
     mountVdoPortal();
@@ -752,7 +768,7 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
         loadEl.classList.remove("show");
         reportDrmMode({ mode: "DRM failed: " + (err.message || "unknown"), mounted: false });
         showDrmError(err.message || "This DRM lesson could not start.");
-        toast(err.message || "DRM lesson unavailable");
+        toast("Protected lesson could not start");
         return;
       }
       if (LESSONS[i].src) video.src = LESSONS[i].src;
