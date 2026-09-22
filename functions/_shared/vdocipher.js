@@ -24,6 +24,12 @@ function watermarkText(name, email) {
   return (who.join(" · ") || "Bizgarh classroom").slice(0, 80);
 }
 
+function otpUserId(email, name) {
+  const raw = String(email || name || "student").trim().toLowerCase();
+  const safe = raw.replace(/[^a-z0-9_-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  return (safe || "student").slice(0, 36);
+}
+
 export async function createUpload(title) {
   const secret = vdoSecret();
   if (!secret) {
@@ -82,7 +88,7 @@ export async function issueOtp({ videoId, name, email }) {
     },
     body: JSON.stringify({
       ttl: 600,
-      userId: String(email || name || "student").slice(0, 80),
+      userId: otpUserId(email, name),
       annotate
     })
   });
