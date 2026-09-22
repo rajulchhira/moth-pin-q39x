@@ -262,6 +262,7 @@ function renderLearnPage() {
     ctx.fillText(sid, canvas.width * 0.55, canvas.height * 0.18);
   }
   function sizeCanvas() {
+    sizeVdoShell();
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.min(1.25, window.devicePixelRatio || 1);
     const w = Math.max(1, Math.floor(rect.width * dpr));
@@ -416,8 +417,14 @@ function renderLearnPage() {
     return e.target.closest("input, textarea, select, [contenteditable]");
   }
 
+  function sizeVdoShell() {
+    if (!stage.classList.contains("is-vdo")) return;
+    const w = stage.getBoundingClientRect().width || stage.clientWidth;
+    if (w > 40) stage.style.height = Math.round((w * 9) / 16) + "px";
+  }
   function clearVdo() {
     stage.classList.remove("is-vdo");
+    stage.style.height = "";
     if (drmChip) drmChip.textContent = "Protected";
     if (vdoFrame) {
       vdoFrame.removeAttribute("src");
@@ -538,6 +545,7 @@ function renderLearnPage() {
     video.removeAttribute("src");
     video.load();
     stage.classList.add("is-vdo");
+    sizeVdoShell();
     if (drmChip) drmChip.textContent = "Widevine";
     const data = await fetchVdoOtp(videoId);
     await ensureVdoPlayerApi();
@@ -550,6 +558,7 @@ function renderLearnPage() {
       vdoFrame.hidden = false;
       vdoFrame.src = src;
     });
+    sizeVdoShell();
     try {
       const player = window.VdoPlayer && window.VdoPlayer.getInstance(vdoFrame);
       if (player) hookVdoEnded(player);
