@@ -390,6 +390,7 @@ function openAdminDesk() {
   location.href = adminHref();
 }
 const LIVE_KEY = "tradeshalaLives";
+const DELETED_LIVES_KEY = "tradeshalaDeletedLives";
 const COURSE_EDITS_KEY = "tradeshalaCourseEdits";
 const COURSE_VIDEOS_KEY = "tradeshalaCourseVideos";
 const COURSE_SYLLABUS_KEY = "tradeshalaCourseSyllabus";
@@ -1873,6 +1874,14 @@ function rawLives() {
   ensureCatalogWebinars();
   return readList(LIVE_KEY);
 }
+function deletedLiveIds() { return readList(DELETED_LIVES_KEY); }
+function markLiveDeleted(id) {
+  const ids = deletedLiveIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    writeList(DELETED_LIVES_KEY, ids);
+  }
+}
 function allWebinars() {
   return rawLives().map((w) => {
     const phase = webinarPhase(w);
@@ -1891,7 +1900,8 @@ function webinarRoomState(w) {
   return "scheduled";
 }
 function webinarCatalogAll() {
-  return allWebinars().filter((w) => w.kind !== "class");
+  const gone = deletedLiveIds();
+  return allWebinars().filter((w) => w.kind !== "class" && !w.deleted && !gone.includes(w.id));
 }
 function webinarById(id) {
   return allWebinars().find((w) => w.id === id) || null;
@@ -1902,13 +1912,14 @@ function listedWebinars() {
 }
 function ensureCatalogWebinars() {
   const list = readList(LIVE_KEY);
+  const gone = typeof deletedLiveIds === "function" ? deletedLiveIds() : [];
   const extra = [
     { id: "w4", title: "Opening Range Playbook", by: "Kabir Joshi", at: "2026-09-30T20:00:00", duration: "90 min", kind: "webinar", notes: "Index open, first hour, and defined invalidation." },
     { id: "w0", title: "Gap & Go Replay Desk", by: "Aarav Mehta", at: "2026-09-08T11:00:00", duration: "60 min", kind: "webinar", notes: "Ended replay of the gap desk. Review opens after you register.", status: "ended" }
   ];
   let changed = false;
   extra.forEach((w) => {
-    if (list.some((x) => x.id === w.id)) return;
+    if (gone.includes(w.id) || list.some((x) => x.id === w.id)) return;
     list.push({
       ...w,
       hostEmail: w.by.split(" ")[0].toLowerCase() + "@bizgarh.in",
@@ -2469,7 +2480,7 @@ function mentorCatalogAll() {
   })).concat(extraMentorPrograms().map((p) => ({
     ...p,
     unpublished: Boolean(p.unpublished || p.status === "unlisted")
-  })));
+  }))).filter((p) => !p.deleted);
 }
 function mentorProgramById(id) {
   return mentorCatalogAll().find((p) => p.id === id) || null;

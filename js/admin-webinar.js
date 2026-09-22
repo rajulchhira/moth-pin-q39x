@@ -272,6 +272,7 @@ const WebinarAdmin = {
             <div class="desk-side">
               <span class="cb-pill ${roomPhase(w) === "live" ? "is-live" : roomPhase(w) === "ended" || w.unpublished ? "is-draft" : "is-live"}">${roomPhase(w) === "live" ? "Live now" : roomPhase(w) === "ended" ? "Ended" : adEsc(this.statusLabel(w))}</span>
               ${this.catalogHostHTML(w)}
+              ${canEditWebinar(w) && AdminCore.can("live", "delete") ? `<button type="button" class="btn btn-ghost ad-del" data-wb-del="${adEsc(w.id)}">Delete</button>` : ""}
             </div>
           </article>`;
         }).join("") || `<div class="cb-empty-box"><p>No webinar matches that search.</p></div>`}
@@ -519,6 +520,9 @@ const WebinarAdmin = {
       ${can ? (w.unpublished
         ? `<button type="button" class="btn btn-primary cb-go-btn" data-wb-golive="${adEsc(w.id)}" ${ready ? "" : "disabled"}>${ready ? "Make it live" : "Finish the list first"}</button>`
         : `<button type="button" class="btn btn-ghost" data-wb-draft="${adEsc(w.id)}">Take it back to draft</button>`) : ""}
+      ${canEditWebinar(w) && AdminCore.can("live", "delete")
+        ? `<button type="button" class="btn btn-ghost ad-del" data-wb-del="${adEsc(w.id)}">Delete webinar</button>`
+        : ""}
       ${this.seeHTML(w)}
       ${this.footHTML("live")}
     </div>`;
@@ -657,6 +661,37 @@ const WebinarAdmin = {
 
   setVisibility(w, unlisted) {
     if (typeof updateLive === "function") updateLive(w.id, { unpublished: unlisted });
+  },
+
+  deleteDesk(id) {
+    AdminCore.assert("live", "delete");
+    const w = this.byId(id) || (typeof webinarById === "function" ? webinarById(id) : null);
+    if (!w || !canEditWebinar(w)) {
+      toast("Not allowed");
+      return false;
+    }
+    if (!confirm(`Delete "${w.title}"?\n\nIt will leave the public site. Enrollments already sold stay in records.`)) return false;
+    const list = typeof rawLives === "function" ? rawLives() : readList(typeof LIVE_KEY === "string" ? LIVE_KEY : "tradeshalaLives");
+    saveWebinars(list.filter((x) => x.id !== id));
+    if (typeof markLiveDeleted === "function") markLiveDeleted(id);
+    try {
+      const rooms = typeof webinarRoomsMap === "function" ? webinarRoomsMap() : {};
+      if (rooms && rooms[id]) {
+        delete rooms[id];
+        localStorage.setItem(WEBINAR_ROOMS_KEY, JSON.stringify(rooms));
+      }
+    } catch {}
+    try {
+      const map = typeof nextPathMap === "function" ? nextPathMap() : {};
+      if (map["webinar:" + id]) {
+        delete map["webinar:" + id];
+        if (typeof setNextPathMap === "function") setNextPathMap(map);
+      }
+    } catch {}
+    AdminCore.audit("webinar_delete", id, w.title || "", "");
+    toast("Webinar deleted");
+    go("webinars");
+    return true;
   },
 
   saveSetup(form) {
@@ -927,6 +962,13 @@ const WebinarAdmin = {
       }
       const open = e.target.closest("[data-wb-open]");
       if (open) { this.openBuilder(open.dataset.wbOpen); return; }
+      const delDesk = e.target.closest("[data-wb-del]");
+      if (delDesk) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.deleteDesk(delDesk.dataset.wbDel);
+        return;
+      }
       const tab = e.target.closest("[data-wb-tab]");
       if (tab && Ad.webinarId) { this.openBuilder(Ad.webinarId, tab.dataset.wbTab); return; }
       if (e.target.closest("[data-wb-back]")) { go("webinars"); return; }

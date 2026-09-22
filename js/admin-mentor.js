@@ -260,6 +260,7 @@ const MentorAdmin = {
             <div class="desk-side">
               <span class="cb-pill ${p.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(p))}</span>
               ${canHost ? `<button type="button" class="btn btn-primary cb-card-host" data-mb-host-program="${adEsc(p.id)}" data-mb-host-session="${liveNow ? lessons.indexOf(liveNow) : liveIdx}">${liveNow ? "Enter as host" : "Host meeting"}</button>` : ""}
+              ${canEditMentor(p) && AdminCore.can("courses", "delete") ? `<button type="button" class="btn btn-ghost ad-del" data-mb-del="${adEsc(p.id)}">Delete</button>` : ""}
             </div>
           </article>`;
         }).join("") || `<div class="cb-empty-box"><p>No mentorship matches that search.</p></div>`}
@@ -546,6 +547,9 @@ const MentorAdmin = {
       ${can ? (p.unpublished
         ? `<button type="button" class="btn btn-primary cb-go-btn" data-mb-golive="${adEsc(p.id)}" ${ready ? "" : "disabled"}>${ready ? "Make it live" : "Finish the list first"}</button>`
         : `<button type="button" class="btn btn-ghost" data-mb-draft="${adEsc(p.id)}">Take it back to draft</button>`) : ""}
+      ${canEditMentor(p) && AdminCore.can("courses", "delete")
+        ? `<button type="button" class="btn btn-ghost ad-del" data-mb-del="${adEsc(p.id)}">Delete mentorship</button>`
+        : ""}
       ${this.seeHTML(p)}
       ${this.footHTML("live")}
     </div>`;
@@ -695,6 +699,58 @@ const MentorAdmin = {
     }
     if (!unlisted) writeList(HIDDEN_MENTORS_KEY, ids.filter((id) => id !== p.id));
     applyMentorPatch(p.id, { unpublished: unlisted, status: unlisted ? "unlisted" : "published" });
+  },
+
+  deleteDesk(id) {
+    AdminCore.assert("courses", "delete");
+    const p = this.byId(id) || (typeof mentorProgramById === "function" ? mentorProgramById(id) : null);
+    if (!p || !canEditMentor(p)) {
+      toast("Not allowed");
+      return false;
+    }
+    if (!confirm(`Delete "${p.title}"?\n\nIt will leave the public site. Enrollments already sold stay in records.`)) return false;
+    const isExtra = extraMentorPrograms().some((x) => x.id === id);
+    if (isExtra) {
+      writeList(EXTRA_MENTORS_KEY, extraMentorPrograms().filter((x) => x.id !== id));
+    } else {
+      const ids = hiddenMentorIds();
+      if (!ids.includes(id)) {
+        ids.push(id);
+        writeList(HIDDEN_MENTORS_KEY, ids);
+      }
+      applyMentorPatch(id, { unpublished: true, status: "unlisted", deleted: true });
+    }
+    try {
+      if (typeof setMentorLessons === "function") {
+        const map = mentorLessonsMap();
+        delete map[id];
+        localStorage.setItem(MENTOR_LESSONS_KEY, JSON.stringify(map));
+      }
+    } catch {}
+    try {
+      const rooms = typeof mentorRoomsMap === "function" ? mentorRoomsMap() : {};
+      if (rooms && rooms[id]) {
+        delete rooms[id];
+        localStorage.setItem(MENTOR_ROOMS_KEY, JSON.stringify(rooms));
+      }
+    } catch {}
+    try {
+      const map = typeof nextPathMap === "function" ? nextPathMap() : {};
+      if (map["mentor:" + id]) {
+        delete map["mentor:" + id];
+        if (typeof setNextPathMap === "function") setNextPathMap(map);
+      }
+    } catch {}
+    try {
+      const lives = typeof rawLives === "function" ? rawLives() : [];
+      if (lives.some((x) => x.id === id || x.mentorId === id)) {
+        saveWebinars(lives.filter((x) => x.id !== id && x.mentorId !== id));
+      }
+    } catch {}
+    AdminCore.audit("mentor_delete", id, p.title || "", "");
+    toast("Mentorship deleted");
+    go("mentors");
+    return true;
   },
 
   openSessionModal(mode, index) {
@@ -942,6 +998,13 @@ const MentorAdmin = {
       }
       const open = e.target.closest("[data-mb-open]");
       if (open) { this.openBuilder(open.dataset.mbOpen); return; }
+      const delDesk = e.target.closest("[data-mb-del]");
+      if (delDesk) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.deleteDesk(delDesk.dataset.mbDel);
+        return;
+      }
       const tab = e.target.closest("[data-mb-tab]");
       if (tab && Ad.mentorId) { this.openBuilder(Ad.mentorId, tab.dataset.mbTab); return; }
       if (e.target.closest("[data-mb-back]")) { go("mentors"); return; }
