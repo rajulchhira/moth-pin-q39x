@@ -1730,7 +1730,8 @@ function bindCourseOverlays() {
         file,
         notes: (f.notes?.value || "").trim(),
         pdf,
-        pdfName: pdfFile?.name || ""
+        pdfName: pdfFile?.name || "",
+        drm: !!f.drm?.checked
       }, (p) => setAdminUploadProgress(f, p));
       f.reset();
       f.courseId.value = id;

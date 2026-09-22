@@ -684,7 +684,7 @@ async function addClassroomLesson(courseId, fields, onProgress) {
   const vdoId = parseVdoCipherId(fields.vdoId || fields.src);
   const src = String(fields.src || "").trim();
   const file = fields.file;
-  const wantDrm = fields.drm !== false;
+  const wantDrm = fields.drm === true;
   if (!file && !src && !vdoId) throw new Error("Choose a video file to upload");
   const lessonId = "v-" + Date.now();
   const lesson = {

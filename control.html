@@ -119,7 +119,7 @@
     <div class="modal" style="width:min(640px,100%)">
       <button class="close-x" type="button" id="closeVideos">×</button>
       <h3 id="videosTitle">Course videos</h3>
-      <p class="muted" style="margin:6px 0 12px">Pick an MP4 from this computer. It goes straight to VdoCipher DRM from here. Encoding takes a few minutes, then students play it encrypted.</p>
+      <p class="muted" style="margin:6px 0 12px">Pick an MP4 from this computer. It saves on this browser for playback. Turn on DRM only if your VdoCipher key has Uploader permission.</p>
       <div id="videosList"></div>
       <form id="addVideoForm" class="admin-form admin-form-edit" style="margin-top:16px">
         <input type="hidden" name="courseId">
@@ -135,6 +135,7 @@
           <span>Lesson video (from this computer)</span>
           <input name="file" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
         </label>
+        <label class="cb-check"><input type="checkbox" name="drm"> Protect with VdoCipher DRM (needs Uploader key)</label>
         <div class="admin-upload-bar" data-upload-bar hidden><i data-upload-fill></i></div>
         <details class="admin-video-extra">
           <summary>Already on VdoCipher? Paste ID</summary>
@@ -252,14 +253,14 @@
         loading = true;
         busy(true);
         var files = [
-          "/js/app.js?v=desk19",
+          "/js/app.js?v=desk20",
           "/js/lms.js",
           "/js/admin-core.js?v=desk8",
-          "/js/admin.js?v=drm4",
-          "/js/admin-course.js?v=desk2",
+          "/js/admin.js?v=drm5",
+          "/js/admin-course.js?v=desk3",
           "/js/admin-mentor.js?v=desk3",
           "/js/admin-webinar.js?v=desk3",
-          "/js/admin-app.js?v=desk10"
+          "/js/admin-app.js?v=desk11"
         ];
         var i = 0;
         function finish() {

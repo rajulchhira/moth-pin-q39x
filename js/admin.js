@@ -1020,7 +1020,8 @@ document.addEventListener("DOMContentLoaded", () => {
         dur: f.dur.value.trim(),
         src,
         vdoId,
-        file
+        file,
+        drm: !!f.drm?.checked
       }, (p) => setAdminUploadProgress(f, p));
       f.reset();
       f.courseId.value = id;

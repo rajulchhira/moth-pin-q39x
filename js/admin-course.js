@@ -476,7 +476,7 @@ const CourseAdmin = {
           <label class="is-video">Or paste a video link
             <input name="src" placeholder="Video URL">
           </label>
-          <label class="is-video cb-check"><input type="checkbox" name="drm" checked> Protect this video (DRM)</label>
+          <label class="is-video cb-check"><input type="checkbox" name="drm"> Protect this video (DRM) — needs VdoCipher Uploader key</label>
           <label class="is-pdf">Upload a PDF
             <input name="pdfFile" type="file" accept="application/pdf">
           </label>
@@ -1046,7 +1046,7 @@ const CourseAdmin = {
         const file = form.file.files[0];
         const src = form.src.value.trim();
         if (!file && !src) { toast("Pick a video or paste a link"); return; }
-        const lesson = await addClassroomLesson(courseId, { title, dur, src, file, kind: "video", published: true, drm: form.drm?.checked !== false });
+        const lesson = await addClassroomLesson(courseId, { title, dur, src, file, kind: "video", published: true, drm: !!form.drm?.checked });
         this.attachLesson(courseId, sec, lesson, "video");
       } else if (kind === "pdf") {
         const file = form.pdfFile?.files?.[0];
