@@ -999,6 +999,8 @@ article.desk-row { cursor: default; }
 }
 .staff-pillars b { display: block; color: #fff; font-size: 13px; }
 .staff-card-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.btn.ad-del { color: #b91c1c; border-color: #fecaca; }
+.btn.ad-del:hover { background: #fef2f2; color: #991b1b; }
 .staff-drawer { max-width: 560px; }
 .staff-face-form h4 { margin: 18px 0 8px; }
 .ad-drawer-card.staff-drawer { width: min(560px, 100%); }

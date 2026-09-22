@@ -170,6 +170,38 @@ AdminCore.saveStaff = (row) => {
   writeList(STAFF_KEY, list);
 };
 
+AdminCore.deleteStaff = (email) => {
+  AdminCore.assert("staff", "delete");
+  const mail = String(email || "").trim().toLowerCase();
+  const row = AdminCore.normalizeStaff(AdminCore.staffRow(mail));
+  if (!row) return false;
+  if (row.role === "owner" || row.role === "superadmin" || (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(mail))) {
+    throw new Error("Owner and super admin cannot be deleted");
+  }
+  const self = AdminCore.session()?.email;
+  if (self && String(self).toLowerCase() === mail) {
+    throw new Error("You cannot delete your own login");
+  }
+  writeList(STAFF_KEY, staffList().filter((s) => String(s.email || "").toLowerCase() !== mail));
+  if (typeof affiliates === "function" && typeof AFFILIATE_KEY === "string") {
+    writeList(AFFILIATE_KEY, affiliates().filter((a) => String(a.email || "").toLowerCase() !== mail));
+  }
+  if (typeof instructorEdits === "function" && typeof setInstructorEdits === "function") {
+    const map = instructorEdits();
+    const slug = typeof instructorSlug === "function" ? instructorSlug(row.name) : "";
+    Object.keys(map).forEach((k) => {
+      const e = map[k];
+      if (!e) return;
+      if (String(e.email || "").toLowerCase() === mail) delete map[k];
+      else if (slug && typeof instructorSlug === "function" && instructorSlug(e.name) === slug) delete map[k];
+    });
+    setInstructorEdits(map);
+  }
+  if (typeof AdminCore.forceLogout === "function") AdminCore.forceLogout(mail);
+  AdminCore.audit("staff_delete", mail, row.name || "", "");
+  return true;
+};
+
 AdminCore.normalizeStaff = (s) => {
   if (!s) return s;
   const creatorEnabled = s.creatorEnabled != null ? s.creatorEnabled : s.role === "creator";

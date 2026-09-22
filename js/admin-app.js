@@ -697,6 +697,7 @@ const VIEWS = {
           <div class="staff-card-actions">
             ${!locked && pageHref ? `<a class="btn btn-ghost" href="${adEsc(pageHref)}" target="_blank" rel="noopener">View page</a>` : ""}
             ${locked ? "" : `<button class="btn btn-ghost" data-staff="${adEsc(n.email)}">Edit page</button>`}
+            ${!locked && AdminCore.can("staff", "delete") ? `<button class="btn btn-ghost ad-del" type="button" data-del-staff="${adEsc(n.email)}">Delete</button>` : ""}
           </div>
         </div>
       </article>`;
@@ -1069,6 +1070,9 @@ function staffDrawer(email) {
       <div class="ad-perm-grid">${mods.map((m) => `<div class="ad-perm-row"><b>${m}</b><div class="ad-checks">${ADMIN_MODULES[m].map((a)=>`<label><input type="checkbox" name="p_${m}_${a}" ${(s.permissions[m]||[]).includes(a)?"checked":""}> ${a}</label>`).join("")}</div></div>`).join("")}</div>
       <button class="btn btn-primary">Save</button>
     </form>
+    ${s.role !== "owner" && s.role !== "superadmin" && AdminCore.can("staff", "delete")
+      ? `<button class="btn btn-ghost ad-del" type="button" data-del-staff="${adEsc(s.email)}">Delete this admin</button>`
+      : ""}
     <p class="muted">Referral: <strong>${adEsc(s.referralCode||"—")}</strong></p>
     <h4>Login history</h4>
     ${logs.map((x)=>`<p class="muted">${new Date(x.at).toLocaleString("en-IN")} · ${x.ok?"ok":"failed"} · ${adEsc(x.device)}</p>`).join("") || "<p class='muted'>None</p>"}
@@ -1194,6 +1198,23 @@ function bindApp() {
     }
     const page = e.target.closest("[data-page]");
     if (page) { Ad.page = Number(page.dataset.page); paint(); return; }
+    const delStaff = e.target.closest("[data-del-staff]");
+    if (delStaff) {
+      e.preventDefault();
+      const mail = delStaff.dataset.delStaff;
+      const row = AdminCore.normalizeStaff(AdminCore.staffRow(mail));
+      if (!row) return;
+      if (!confirm(`Delete admin "${row.name}" (${row.email})? They will lose /control access.`)) return;
+      try {
+        AdminCore.deleteStaff(mail);
+        toast("Admin deleted");
+        document.getElementById("adDrawer")?.remove();
+        paint();
+      } catch (err) {
+        toast(err.message || "Could not delete admin");
+      }
+      return;
+    }
     const staff = e.target.closest("[data-staff]");
     if (staff) { document.getElementById("adminView").insertAdjacentHTML("beforeend", staffDrawer(staff.dataset.staff)); return; }
     const lead = e.target.closest("[data-lead]");

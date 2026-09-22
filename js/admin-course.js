@@ -20,11 +20,11 @@ const CourseAdmin = {
     const list = COURSES.map((c) => ({
       ...c,
       ...(edits[c.id] || {}),
-      unpublished: hidden.includes(c.id)
+      unpublished: hidden.includes(c.id) || Boolean((edits[c.id] || {}).unpublished)
     })).concat(extraCourses().map((c) => ({
       ...c,
       unpublished: Boolean(c.unpublished || c.status === "unlisted")
-    })));
+    }))).filter((c) => !c.deleted);
     return AdminCore.isOwner()
       ? list
       : list.filter((c) => ownerEmailOf(c) === AdminCore.session().email || c.instructor === AdminCore.session().name);
@@ -191,21 +191,27 @@ const CourseAdmin = {
         ${rows.map((c, i) => {
           const host = typeof deskHostOf === "function" ? deskHostOf(c.ownerEmail, c.instructor) : { name: c.instructor, photo: "" };
           const price = Number(c.price || 0);
-          return `<button type="button" class="desk-row" style="--i:${i}" data-cb-open="${adEsc(c.id)}">
-            ${this.thumb(c)}
-            <div class="desk-copy">
-              <strong>${adEsc(c.title)}</strong>
-              ${typeof deskMetaHTML === "function" ? deskMetaHTML([
-                this.formatLabel(c),
-                this.lessonCount(c) + " lessons",
-                c.hours ? adEsc(c.hours) + " hrs" : "",
-                price ? "₹" + price.toLocaleString("en-IN") : "Free"
-              ]) : ""}
-              <div class="desk-hostline">${typeof deskFaceHTML === "function" ? deskFaceHTML(host.name, host.photo) : ""}<span>${adEsc(host.name || c.instructor || "Instructor")}</span></div>
-              <em>${adEsc(this.nextHint(c))}</em>
+          const canDel = canEditCourse(c) && AdminCore.can("courses", "delete");
+          return `<article class="desk-row" style="--i:${i}">
+            <button type="button" class="desk-row-main" data-cb-open="${adEsc(c.id)}">
+              ${this.thumb(c)}
+              <div class="desk-copy">
+                <strong>${adEsc(c.title)}</strong>
+                ${typeof deskMetaHTML === "function" ? deskMetaHTML([
+                  this.formatLabel(c),
+                  this.lessonCount(c) + " lessons",
+                  c.hours ? adEsc(c.hours) + " hrs" : "",
+                  price ? "₹" + price.toLocaleString("en-IN") : "Free"
+                ]) : ""}
+                <div class="desk-hostline">${typeof deskFaceHTML === "function" ? deskFaceHTML(host.name, host.photo) : ""}<span>${adEsc(host.name || c.instructor || "Instructor")}</span></div>
+                <em>${adEsc(this.nextHint(c))}</em>
+              </div>
+            </button>
+            <div class="desk-side">
+              <span class="cb-pill ${c.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(c))}</span>
+              ${canDel ? `<button type="button" class="btn btn-ghost ad-del" data-cb-del="${adEsc(c.id)}">Delete</button>` : ""}
             </div>
-            <span class="cb-pill ${c.unpublished ? "is-draft" : "is-live"}">${adEsc(this.statusLabel(c))}</span>
-          </button>`;
+          </article>`;
         }).join("") || `<div class="cb-empty-box"><p>No course matches that search.</p></div>`}
       </div>
       <div class="cb-modal hidden" id="cbCreateModal">
@@ -510,6 +516,9 @@ const CourseAdmin = {
       ${can ? (c.unpublished
         ? `<button type="button" class="btn btn-primary cb-go-btn" data-cb-golive="${adEsc(c.id)}" ${ready ? "" : "disabled"}>${ready ? "Make it live" : "Finish the list first"}</button>`
         : `<button type="button" class="btn btn-ghost" data-cb-draft="${adEsc(c.id)}">Take it back to draft</button>`) : ""}
+      ${canEditCourse(c) && AdminCore.can("courses", "delete")
+        ? `<button type="button" class="btn btn-ghost ad-del" data-cb-del="${adEsc(c.id)}">Delete course</button>`
+        : ""}
       ${this.seeHTML(c)}
       ${this.footHTML("live")}
     </div>`;
@@ -666,6 +675,51 @@ const CourseAdmin = {
     applyCoursePatch(c.id, { unpublished: unlisted, status: unlisted ? "unlisted" : "published" });
   },
 
+  deleteCourse(id) {
+    AdminCore.assert("courses", "delete");
+    const c = this.byId(id) || (typeof allCourses === "function" ? allCourses().find((x) => x.id === id) : null) || COURSES.find((x) => x.id === id);
+    if (!c || !canEditCourse(c)) {
+      toast("Not allowed");
+      return false;
+    }
+    if (!confirm(`Delete "${c.title}"?\n\nIt will leave the public site. Enrollments already sold stay in records.`)) return false;
+    const isExtra = extraCourses().some((x) => x.id === id);
+    if (isExtra) {
+      writeList(EXTRA_COURSES_KEY, extraCourses().filter((x) => x.id !== id));
+    } else {
+      const ids = hiddenCourseIds();
+      if (!ids.includes(id)) {
+        ids.push(id);
+        writeList(HIDDEN_COURSES_KEY, ids);
+      }
+      applyCoursePatch(id, { unpublished: true, status: "unlisted", deleted: true });
+    }
+    try {
+      const owners = courseOwners();
+      delete owners[id];
+      setCourseOwners(owners);
+    } catch {}
+    try {
+      const edits = courseEdits();
+      if (isExtra) {
+        delete edits[id];
+        setCourseEdits(edits);
+      }
+    } catch {}
+    try {
+      if (typeof setCourseLessons === "function") setCourseLessons(id, [], false);
+    } catch {}
+    try {
+      const map = courseSyllabusMap();
+      delete map[id];
+      localStorage.setItem(COURSE_SYLLABUS_KEY, JSON.stringify(map));
+    } catch {}
+    AdminCore.audit("course_delete", id, c.title || "", "");
+    toast("Course deleted");
+    go("courses");
+    return true;
+  },
+
   saveSyllabus(courseId, next) {
     setCourseSyllabus(courseId, next);
   },
@@ -738,6 +792,13 @@ const CourseAdmin = {
       }
       const open = e.target.closest("[data-cb-open]");
       if (open) { this.openBuilder(open.dataset.cbOpen); return; }
+      const delCourse = e.target.closest("[data-cb-del]");
+      if (delCourse) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.deleteCourse(delCourse.dataset.cbDel);
+        return;
+      }
       const tab = e.target.closest("[data-cb-tab]");
       if (tab && Ad.courseId) { this.openBuilder(Ad.courseId, tab.dataset.cbTab); return; }
       if (e.target.closest("[data-cb-back]")) { go("courses"); return; }
