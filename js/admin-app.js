@@ -1488,12 +1488,13 @@ function bindApp() {
       const s = AdminCore.session();
       const id = "c-" + Date.now();
       const instructor = AdminCore.isOwner() ? f.instructor.value.trim() : s.name;
-      const extra = extraCourses();
       const btn = f.querySelector("button[type=submit]");
       if (btn) { btn.disabled = true; btn.textContent = "Publishing…"; }
       resolveCourseBanner(f, "").then((banner) => {
+        // Re-read after the await: reading earlier would resurrect anything deleted meanwhile.
+        const extra = extraCourses();
         extra.push({ id, title: f.title.value.trim(), instructor, learners: "0", rating: "4.8", price: Number(f.price.value), old: Number(f.price.value), cat: f.cat.value, cover: id, hours: f.hours.value, lessons: Number(f.lessons.value), description: f.description.value.trim(), ownerEmail: s.email, banner });
-        writeList(EXTRA_COURSES_KEY, extra);
+        if (!writeList(EXTRA_COURSES_KEY, extra)) return;
         const map = courseOwners(); map[id] = s.email; setCourseOwners(map);
         AdminCore.audit("course_create", id, "", f.title.value);
         toast("Course published");

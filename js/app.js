@@ -409,7 +409,7 @@ const DEFAULT_LESSONS = [
 function courseVideosMap() {
   try { return JSON.parse(localStorage.getItem(COURSE_VIDEOS_KEY) || "{}"); } catch { return {}; }
 }
-function setCourseVideosMap(map) { localStorage.setItem(COURSE_VIDEOS_KEY, JSON.stringify(map)); }
+function setCourseVideosMap(map) { return saveJson(COURSE_VIDEOS_KEY, map); }
 function lessonsAll(courseId) {
   const custom = courseVideosMap()[courseId];
   const list = Array.isArray(custom) ? custom : DEFAULT_LESSONS.map((l) => ({ ...l }));
@@ -485,7 +485,7 @@ function syncLessonsFromSyllabus(courseId, syllabus) {
 function setCourseSyllabus(courseId, syllabus) {
   const map = courseSyllabusMap();
   map[courseId] = syllabus;
-  localStorage.setItem(COURSE_SYLLABUS_KEY, JSON.stringify(map));
+  saveJson(COURSE_SYLLABUS_KEY, map);
   syncLessonsFromSyllabus(courseId, syllabus);
 }
 function ensureCourseSyllabus(courseId) {
@@ -822,7 +822,7 @@ function instructorEdits() {
   try { return JSON.parse(localStorage.getItem(INSTRUCTOR_EDITS_KEY) || "{}"); } catch { return {}; }
 }
 function setInstructorEdits(map) {
-  localStorage.setItem(INSTRUCTOR_EDITS_KEY, JSON.stringify(map));
+  saveJson(INSTRUCTOR_EDITS_KEY, map);
 }
 function instructorEditFor(name, email) {
   const map = instructorEdits();
@@ -1220,7 +1220,37 @@ function enrolled() { try { return JSON.parse(localStorage.getItem(ENROLL_KEY) |
 function setEnrolled(ids) { localStorage.setItem(ENROLL_KEY, JSON.stringify(ids)); }
 function isEnrolled(id) { return enrolled().includes(id); }
 function readList(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; } }
-function writeList(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function isQuotaError(err) {
+  return Boolean(err) && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22);
+}
+// Banners are kept as data URLs, so the 5 MB localStorage cap is reachable. Without this
+// the write throws, the admin screen still shows the change, and it is gone on next load.
+function saveJson(key, val) {
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+    return true;
+  } catch (err) {
+    console.error("[bizgarh] could not save " + key, err);
+    if (typeof toast === "function") {
+      toast(isQuotaError(err)
+        ? "Browser storage is full — this change was NOT saved. Delete an old course banner, then retry."
+        : "This change could not be saved in the browser.");
+    }
+    return false;
+  }
+}
+function writeList(key, val) { return saveJson(key, val); }
+// Run bizgarhStorage() in the console to see what is filling the 5 MB budget.
+function bizgarhStorage() {
+  let total = 0;
+  const rows = Object.keys(localStorage).map((k) => {
+    const bytes = (k.length + String(localStorage.getItem(k) || "").length) * 2;
+    total += bytes;
+    return { key: k, kb: Math.round(bytes / 1024) };
+  }).sort((a, b) => b.kb - a.kb);
+  return { usedKB: Math.round(total / 1024), capApproxKB: 5120, biggest: rows.slice(0, 12) };
+}
+window.bizgarhStorage = bizgarhStorage;
 
 const NOTE_KEY = "tradeshalaNotes";
 function notesAll() { return readList(NOTE_KEY); }
@@ -1851,7 +1881,7 @@ function hiddenCourseIds() { return readList(HIDDEN_COURSES_KEY); }
 function courseEdits() {
   try { return JSON.parse(localStorage.getItem(COURSE_EDITS_KEY) || "{}"); } catch { return {}; }
 }
-function setCourseEdits(map) { localStorage.setItem(COURSE_EDITS_KEY, JSON.stringify(map)); }
+function setCourseEdits(map) { return saveJson(COURSE_EDITS_KEY, map); }
 function applyCoursePatch(id, fields) {
   const extra = extraCourses();
   const i = extra.findIndex((c) => c.id === id);
@@ -1876,19 +1906,25 @@ function readImageAsBanner(file) {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const max = 1400;
-      let w = img.naturalWidth || img.width;
-      let h = img.naturalHeight || img.height;
-      if (w > max) {
-        h = Math.round((h * max) / w);
-        w = max;
+      // Data URLs live in localStorage (5 MB for the whole site), so keep each banner
+      // under ~120 KB by stepping the size and quality down until it fits.
+      const BUDGET = 120 * 1024;
+      const draw = (w, h, q) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        return canvas.toDataURL("image/jpeg", q);
+      };
+      const ratio = (img.naturalHeight || img.height) / (img.naturalWidth || img.width || 1);
+      let out = "";
+      for (const [max, q] of [[1280, 0.78], [1024, 0.72], [860, 0.68], [720, 0.62], [560, 0.55]]) {
+        const w = Math.min(max, img.naturalWidth || img.width || max);
+        out = draw(w, Math.round(w * ratio), q);
+        if (out.length <= BUDGET) break;
       }
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
+      resolve(out);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -2527,7 +2563,7 @@ const MENTOR_PROGRAMS = [
 function mentorEdits() {
   try { return JSON.parse(localStorage.getItem(MENTOR_EDITS_KEY) || "{}"); } catch { return {}; }
 }
-function setMentorEdits(map) { localStorage.setItem(MENTOR_EDITS_KEY, JSON.stringify(map)); }
+function setMentorEdits(map) { return saveJson(MENTOR_EDITS_KEY, map); }
 function extraMentorPrograms() { return readList(EXTRA_MENTORS_KEY); }
 function hiddenMentorIds() { return readList(HIDDEN_MENTORS_KEY); }
 function applyMentorPatch(id, fields) {
