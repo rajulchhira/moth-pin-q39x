@@ -812,7 +812,7 @@ function renderLearnPage() {
     updateBars();
     paintChapters();
     if (!video.videoWidth && video.duration > 0) {
-      toast("This file has no playable video in Chrome · re-upload as H.264 MP4");
+      toast("This file has no playable video in Chrome. Re-upload as H.264 MP4.");
     }
   });
   video.addEventListener("waiting", () => {
