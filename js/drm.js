@@ -89,7 +89,7 @@ function renderLearnPage() {
             <span class="yt-fs-title" id="ytFsTitle">${escapeHtml(LESSONS[0].t)}</span>
           </div>
           <video id="drmVideo" playsinline preload="auto" disablePictureInPicture controlsList="nodownload noremoteplayback nofullscreen"></video>
-          <iframe id="vdoFrame" class="vdo-frame" hidden title="Protected lesson" allow="encrypted-media; autoplay; fullscreen" allowfullscreen></iframe>
+          <iframe id="vdoFrame" class="vdo-frame" hidden title="Protected lesson" allow="encrypted-media *; autoplay *; fullscreen *" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
           <canvas class="drm-canvas" id="drmCanvas"></canvas>
           <div class="drm-error" id="drmError" hidden></div>
           <div class="player-load" id="playerLoad">${window.BizgarhLoader ? window.BizgarhLoader.html("bg-loader--md") : '<span class="bg-loader bg-loader--md" aria-hidden="true"></span>'}</div>
@@ -417,14 +417,60 @@ function renderLearnPage() {
     return e.target.closest("input, textarea, select, [contenteditable]");
   }
 
+  function ensureVdoPortal() {
+    let host = document.getElementById("vdoPortal");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "vdoPortal";
+      host.className = "vdo-portal";
+      host.hidden = true;
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+  function placeVdoPortal() {
+    const host = document.getElementById("vdoPortal");
+    if (!host || host.hidden || !stage.classList.contains("is-vdo")) return;
+    if (document.fullscreenElement === host || document.fullscreenElement === stage) {
+      host.style.left = "0";
+      host.style.top = "0";
+      host.style.width = "100vw";
+      host.style.height = "100vh";
+      return;
+    }
+    const r = stage.getBoundingClientRect();
+    host.style.left = Math.round(r.left) + "px";
+    host.style.top = Math.round(r.top) + "px";
+    host.style.width = Math.round(r.width) + "px";
+    host.style.height = Math.round(r.height) + "px";
+  }
   function sizeVdoShell() {
     if (!stage.classList.contains("is-vdo")) return;
     const w = stage.getBoundingClientRect().width || stage.clientWidth;
     if (w > 40) stage.style.height = Math.round((w * 9) / 16) + "px";
+    placeVdoPortal();
+  }
+  function mountVdoPortal() {
+    if (!vdoFrame) return;
+    const host = ensureVdoPortal();
+    if (vdoFrame.parentElement !== host) host.appendChild(vdoFrame);
+    vdoFrame.hidden = false;
+    host.hidden = false;
+    document.documentElement.classList.add("drm-vdo");
+    placeVdoPortal();
+  }
+  function unmountVdoPortal() {
+    const host = document.getElementById("vdoPortal");
+    if (vdoFrame && stage && vdoFrame.parentElement !== stage) {
+      stage.appendChild(vdoFrame);
+    }
+    if (host) host.hidden = true;
+    document.documentElement.classList.remove("drm-vdo");
   }
   function clearVdo() {
     stage.classList.remove("is-vdo");
     stage.style.height = "";
+    unmountVdoPortal();
     if (drmChip) drmChip.textContent = "Protected";
     if (vdoFrame) {
       vdoFrame.removeAttribute("src");
@@ -445,7 +491,10 @@ function renderLearnPage() {
   function hideEndCard() {
     endCard.hidden = true;
     endCard.classList.remove("is-upsell");
+    if (endCard.parentElement !== stage) stage.appendChild(endCard);
     if (vdoFrame) vdoFrame.style.pointerEvents = "";
+    const host = document.getElementById("vdoPortal");
+    if (host && stage.classList.contains("is-vdo")) host.style.visibility = "";
   }
   function stopVdoWatch() {
     if (vdoWatch) {
@@ -457,6 +506,11 @@ function renderLearnPage() {
     const hasNextLesson = currentLesson < LESSONS.length - 1;
     endCard.hidden = false;
     if (vdoFrame) vdoFrame.style.pointerEvents = "none";
+    const host = document.getElementById("vdoPortal");
+    if (host && stage.classList.contains("is-vdo")) {
+      host.style.visibility = "hidden";
+      stage.appendChild(endCard);
+    }
     if (awarded || !hasNextLesson) {
       const next = typeof nextCourseOffer === "function" ? nextCourseOffer(c.id) : null;
       endCard.classList.add("is-upsell");
@@ -546,6 +600,7 @@ function renderLearnPage() {
     video.load();
     stage.classList.add("is-vdo");
     sizeVdoShell();
+    mountVdoPortal();
     if (drmChip) drmChip.textContent = "Widevine";
     const data = await fetchVdoOtp(videoId);
     await ensureVdoPlayerApi();
@@ -555,7 +610,7 @@ function renderLearnPage() {
     await new Promise((resolve, reject) => {
       const t = setTimeout(() => reject(new Error("DRM player timed out")), 20000);
       vdoFrame.addEventListener("load", () => { clearTimeout(t); resolve(); }, { once: true });
-      vdoFrame.hidden = false;
+      mountVdoPortal();
       vdoFrame.src = src;
     });
     sizeVdoShell();
@@ -741,13 +796,17 @@ function renderLearnPage() {
   }
   document.getElementById("fsBtn").addEventListener("click", (e) => {
     e.stopPropagation();
-    if (!document.fullscreenElement) stage.requestFullscreen?.();
+    const host = document.getElementById("vdoPortal");
+    const target = (stage.classList.contains("is-vdo") && host && !host.hidden) ? host : stage;
+    if (!document.fullscreenElement) target.requestFullscreen?.();
     else document.exitFullscreen?.();
   });
   document.addEventListener("fullscreenchange", () => {
     setFs(!!document.fullscreenElement);
     sizeCanvas();
+    placeVdoPortal();
   }, drmSig);
+  window.addEventListener("scroll", placeVdoPortal, { ...drmSig, passive: true });
   bigPlay.addEventListener("click", (e) => {
     e.stopPropagation();
     togglePlay();
