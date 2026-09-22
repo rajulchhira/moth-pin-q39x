@@ -185,7 +185,7 @@ function renderLearnPage() {
   const drmChip = document.getElementById("drmChip");
   const drmError = document.getElementById("drmError");
   const canvas = document.getElementById("drmCanvas");
-  const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  const ctx = canvas.getContext("2d", { alpha: true });
   const playBtn = document.getElementById("playBtn");
   const vol = document.getElementById("vol");
   const timeLabel = document.getElementById("timeLabel");
@@ -811,6 +811,9 @@ function renderLearnPage() {
     applyQuality();
     updateBars();
     paintChapters();
+    if (!video.videoWidth && video.duration > 0) {
+      toast("This file has no playable video in Chrome · re-upload as H.264 MP4");
+    }
   });
   video.addEventListener("waiting", () => {
     clearTimeout(waitTimer);

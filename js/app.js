@@ -504,9 +504,12 @@ function videoDb() {
 }
 async function putVideoBlob(key, blob) {
   const db = await videoDb();
+  const typed = blob instanceof Blob
+    ? (blob.type ? blob : new Blob([blob], { type: "video/mp4" }))
+    : blob;
   await new Promise((resolve, reject) => {
     const tx = db.transaction("files", "readwrite");
-    tx.objectStore("files").put(blob, key);
+    tx.objectStore("files").put(typed, key);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });

@@ -3121,12 +3121,16 @@ body.nav-dim::before {
   aspect-ratio: 16/9;
 }
 .player-shell video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none !important;
   display: block;
   background: #000;
-  object-fit: cover;
+  object-fit: contain;
   pointer-events: none;
+  z-index: 1;
 }
 .player-shell video::-webkit-media-controls-download-button { display: none; }
 .player-top {
@@ -3223,7 +3227,7 @@ body.drm-lock, body.drm-lock *,
   height: 100%;
   pointer-events: none;
   z-index: 3;
-  transform: translateZ(0);
+  background: transparent;
 }
 
 .player-shell {
@@ -3235,12 +3239,16 @@ body.drm-lock, body.drm-lock *,
   aspect-ratio: 16/9;
 }
 .player-shell video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none !important;
   display: block;
   background: #000;
-  object-fit: cover;
+  object-fit: contain;
   pointer-events: none;
+  z-index: 1;
 }
 .player-shell video::-webkit-media-controls-download-button { display: none; }
 .player-top {
@@ -3339,7 +3347,7 @@ body.drm-lock, body.drm-lock *,
   height: 100%;
   pointer-events: none;
   z-index: 3;
-  transform: translateZ(0);
+  background: transparent;
 }
 
 @media (max-width: 980px) {
@@ -5061,13 +5069,16 @@ a.cd-room:hover {
 .player-shell.show-ui,
 .player-shell:hover { cursor: default; }
 .player-shell video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none !important;
   display: block;
   background: #000;
   object-fit: contain;
   pointer-events: none;
-  transform: translateZ(0);
+  z-index: 1;
 }
 .player-shell video::-webkit-media-controls { display: none !important; }
 .yt-top {
@@ -5773,7 +5784,7 @@ a.cd-room:hover {
   height: 100%;
   pointer-events: none;
   z-index: 3;
-  transform: translateZ(0);
+  background: transparent;
 }
 @media (max-width: 980px) {
   .player-ui { padding: 36px 6px 6px; }
