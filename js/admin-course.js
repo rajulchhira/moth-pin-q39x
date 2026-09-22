@@ -476,7 +476,7 @@ const CourseAdmin = {
           <label class="is-video">Or paste a video link
             <input name="src" placeholder="Video URL">
           </label>
-          <label class="is-video cb-check"><input type="checkbox" name="drm"> Protect this video (DRM) — needs VdoCipher Uploader key</label>
+          <label class="is-video cb-check"><input type="checkbox" name="drm" checked> Protect this video (DRM / OBS black screen)</label>
           <label class="is-pdf">Upload a PDF
             <input name="pdfFile" type="file" accept="application/pdf">
           </label>
