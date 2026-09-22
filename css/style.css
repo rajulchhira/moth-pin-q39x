@@ -5176,6 +5176,22 @@ a.cd-room:hover {
   clip-path: none !important;
   aspect-ratio: auto !important;
 }
+.vdo-drm-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 6;
+  pointer-events: none;
+  background: #0f0f0f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 3px 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,.18);
+  font-family: Roboto, Arial, sans-serif;
+}
 html.drm-vdo,
 html.drm-vdo body {
   filter: none !important;

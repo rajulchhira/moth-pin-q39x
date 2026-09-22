@@ -89,7 +89,7 @@ function renderLearnPage() {
             <span class="yt-fs-title" id="ytFsTitle">${escapeHtml(LESSONS[0].t)}</span>
           </div>
           <video id="drmVideo" playsinline preload="auto" disablePictureInPicture controlsList="nodownload noremoteplayback nofullscreen"></video>
-          <iframe id="vdoFrame" class="vdo-frame" hidden title="Protected lesson" allow="encrypted-media *; autoplay *; fullscreen *" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          <iframe id="vdoFrame" class="vdo-frame" hidden title="Protected lesson" allow="encrypted-media; autoplay; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
           <canvas class="drm-canvas" id="drmCanvas"></canvas>
           <div class="drm-error" id="drmError" hidden></div>
           <div class="player-load" id="playerLoad">${window.BizgarhLoader ? window.BizgarhLoader.html("bg-loader--md") : '<span class="bg-loader bg-loader--md" aria-hidden="true"></span>'}</div>
@@ -439,23 +439,36 @@ function renderLearnPage() {
       return;
     }
     const r = stage.getBoundingClientRect();
+    const w = Math.max(1, Math.round(r.width));
+    const h = Math.max(1, Math.round(r.height || (w * 9) / 16));
     host.style.left = Math.round(r.left) + "px";
     host.style.top = Math.round(r.top) + "px";
-    host.style.width = Math.round(r.width) + "px";
-    host.style.height = Math.round(r.height) + "px";
+    host.style.width = w + "px";
+    host.style.height = h + "px";
   }
   function sizeVdoShell() {
     if (!stage.classList.contains("is-vdo")) return;
     const w = stage.getBoundingClientRect().width || stage.clientWidth;
     if (w > 40) stage.style.height = Math.round((w * 9) / 16) + "px";
     placeVdoPortal();
+    requestAnimationFrame(placeVdoPortal);
   }
   function mountVdoPortal() {
     if (!vdoFrame) return;
     const host = ensureVdoPortal();
     if (vdoFrame.parentElement !== host) host.appendChild(vdoFrame);
+    let badge = host.querySelector(".vdo-drm-badge");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "vdo-drm-badge";
+      host.appendChild(badge);
+    }
+    badge.textContent = "Widevine";
     vdoFrame.hidden = false;
+    vdoFrame.removeAttribute("hidden");
     host.hidden = false;
+    host.removeAttribute("hidden");
+    host.style.visibility = "";
     document.documentElement.classList.add("drm-vdo");
     placeVdoPortal();
   }
