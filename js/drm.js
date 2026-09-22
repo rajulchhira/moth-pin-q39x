@@ -75,6 +75,10 @@ function renderLearnPage() {
   const sid = shieldId();
   const mark = `${user.name} · ${user.email} · ${sid}`;
   const LESSONS = lessonsFor(c.id);
+  if (!LESSONS.length) {
+    root.innerHTML = `<div class="cr-lock"><h3>No lessons yet</h3><p>This classroom has no published lessons to play.</p></div>`;
+    return;
+  }
 
   root.innerHTML = `
     <div class="learn-wrap${onCoursePage ? " is-player-only" : ""}">
@@ -1009,6 +1013,8 @@ function renderLearnPage() {
 }
 
 window.renderLearnPage = renderLearnPage;
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("learnRoot") && !document.getElementById("courseDetail")) renderLearnPage();
-});
+function mountLearnIfNeeded() {
+  if (document.getElementById("learnRoot") && !document.getElementById("drmStage")) renderLearnPage();
+}
+document.addEventListener("DOMContentLoaded", mountLearnIfNeeded);
+mountLearnIfNeeded();

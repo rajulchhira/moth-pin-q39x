@@ -7348,4 +7348,4 @@ async function startPublicBoot() {
   window.BizgarhLoader?.done?.();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startPublicBoot);
-else startPublicBoot();
+else setTimeout(startPublicBoot, 0);
