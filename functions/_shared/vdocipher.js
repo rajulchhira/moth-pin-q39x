@@ -71,14 +71,36 @@ export async function issueOtp({ videoId, name, email }) {
     err.status = 400;
     throw err;
   }
-  const annotate = JSON.stringify([{
-    type: "rtext",
-    text: watermarkText(name, email),
-    alpha: "0.55",
-    color: "0xFFFFFF",
-    size: "13",
-    interval: "4500"
-  }]);
+  const mark = watermarkText(name, email);
+  const annotate = JSON.stringify([
+    {
+      type: "rtext",
+      text: mark,
+      alpha: "0.72",
+      color: "0xFFFFFF",
+      size: "16",
+      interval: "3500",
+      skip: "1800"
+    },
+    {
+      type: "rtext",
+      text: String(email || name || "Bizgarh").trim().slice(0, 60),
+      alpha: "0.55",
+      color: "0xFBBF24",
+      size: "14",
+      interval: "5200",
+      skip: "2600"
+    },
+    {
+      type: "text",
+      text: mark,
+      alpha: "0.35",
+      color: "0xFFFFFF",
+      size: "12",
+      x: "12",
+      y: "18"
+    }
+  ]);
   const res = await fetch("https://dev.vdocipher.com/api/videos/" + encodeURIComponent(id) + "/otp", {
     method: "POST",
     headers: {
