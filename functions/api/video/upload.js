@@ -41,7 +41,12 @@ async function handler(event) {
     const out = await createUpload(body.title);
     return json(event, { ok: true, ...out });
   } catch (err) {
-    return json(event, { ok: false, error: err.message || "Could not start DRM upload", ready: vdoReady() }, err.status || 500);
+    return json(event, {
+      ok: false,
+      error: err.message || "Could not start DRM upload",
+      code: err.code || "",
+      ready: vdoReady()
+    }, err.status || 500);
   }
 }
 

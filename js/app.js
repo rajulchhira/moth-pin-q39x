@@ -599,7 +599,9 @@ async function fetchVdoUpload(title) {
   const data = await res.json().catch(() => ({}));
   if (!data.ok || !data.videoId || !data.clientPayload) {
     const err = new Error(data.error || "Could not start VdoCipher upload");
-    err.code = (data.ready === false || res.status === 404 || res.status === 503) ? "NO_DRM" : "UPLOAD";
+    const noDrm = data.ready === false || res.status === 404 || res.status === 503;
+    const needUploader = res.status === 403 || data.code === "VDO_UPLOADER" || /Uploader permission/i.test(String(data.error || ""));
+    err.code = needUploader ? "VDO_UPLOADER" : (noDrm ? "NO_DRM" : "UPLOAD");
     throw err;
   }
   return data;
@@ -710,7 +712,10 @@ async function addClassroomLesson(courseId, fields, onProgress) {
         lesson.src = "";
         lesson.drm = true;
       } catch (err) {
-        if (err && err.code === "NO_DRM" && typeof putVideoBlob === "function") {
+        const canLocal = typeof putVideoBlob === "function"
+          && err
+          && (err.code === "NO_DRM" || err.code === "VDO_UPLOADER" || err.code === "UPLOAD");
+        if (canLocal) {
           const key = "course-" + courseId + "-" + Date.now();
           if (onProgress) onProgress(0.1);
           await putVideoBlob(key, file);
@@ -718,7 +723,9 @@ async function addClassroomLesson(courseId, fields, onProgress) {
           lesson.fileKey = key;
           lesson.src = "";
           lesson.drm = false;
-          toast("DRM server unavailable · saved as open play on this browser");
+          toast(err.code === "VDO_UPLOADER"
+            ? "VdoCipher Uploader permission missing · lesson saved as open play for now"
+            : "DRM upload failed · saved as open play on this browser");
         } else {
           throw err;
         }

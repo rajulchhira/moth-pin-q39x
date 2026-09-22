@@ -42,10 +42,11 @@ export async function createUpload(title) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.videoId || !data.clientPayload || !data.clientPayload.uploadLink) {
     const msg = res.status === 403
-      ? "VdoCipher key needs Uploader permission"
+      ? "VdoCipher API key needs Uploader permission. Open VdoCipher → Config → API Keys, enable Uploader (or Full Access), put that secret in Cloudflare as VDOCIPHER_API_SECRET, then redeploy."
       : (data.message || data.error || "Could not start DRM upload");
     const err = new Error(msg);
     err.status = res.status >= 400 ? res.status : 502;
+    err.code = res.status === 403 ? "VDO_UPLOADER" : "UPLOAD";
     throw err;
   }
   return { videoId: String(data.videoId), clientPayload: data.clientPayload };
