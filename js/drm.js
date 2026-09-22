@@ -424,6 +424,7 @@ function renderLearnPage() {
       host.id = "vdoPortal";
       host.className = "vdo-portal";
       host.hidden = true;
+      host.innerHTML = `<span class="vdo-corner tl"></span><span class="vdo-corner tr"></span><span class="vdo-corner bl"></span><span class="vdo-corner br"></span>`;
       document.body.appendChild(host);
     }
     return host;
@@ -431,7 +432,9 @@ function renderLearnPage() {
   function placeVdoPortal() {
     const host = document.getElementById("vdoPortal");
     if (!host || host.hidden || !stage.classList.contains("is-vdo")) return;
-    if (document.fullscreenElement === host || document.fullscreenElement === stage) {
+    const fs = document.fullscreenElement === host || document.fullscreenElement === stage;
+    host.classList.toggle("is-fs", fs);
+    if (fs) {
       host.style.left = "0";
       host.style.top = "0";
       host.style.width = "100vw";
@@ -480,6 +483,53 @@ function renderLearnPage() {
     if (host) host.hidden = true;
     document.documentElement.classList.remove("drm-vdo");
   }
+  const DRM_DEBUG = new URLSearchParams(location.search).get("drmdebug") === "1";
+  let widevineLevel = "checking…";
+  let lastDebugInfo = { mode: "none", title: "", vdoId: "", drm: true, mounted: false };
+  async function probeWidevine() {
+    if (!navigator.requestMediaKeySystemAccess) return "EME missing";
+    const levels = ["HW_SECURE_ALL", "HW_SECURE_DECODE", "HW_SECURE_CRYPTO", "SW_SECURE_DECODE", "SW_SECURE_CRYPTO"];
+    for (const robustness of levels) {
+      try {
+        await navigator.requestMediaKeySystemAccess("com.widevine.alpha", [{
+          initDataTypes: ["cenc"],
+          videoCapabilities: [{ contentType: 'video/mp4;codecs="avc1.42E01E"', robustness }]
+        }]);
+        return robustness;
+      } catch { /* try a weaker level */ }
+    }
+    return "Widevine unavailable";
+  }
+  function paintDrmDebug(info) {
+    if (!DRM_DEBUG) return;
+    let box = document.getElementById("drmDebug");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "drmDebug";
+      box.className = "drm-debug";
+      document.body.appendChild(box);
+    }
+    const hw = /^HW_/.test(widevineLevel);
+    box.innerHTML = `<b>DRM check</b>
+lesson: ${escapeHtml(info.title || "")}
+source: <span class="${info.mode === "vdocipher" ? "good" : "bad"}">${escapeHtml(info.mode)}</span>
+vdoId: ${escapeHtml(info.vdoId || "—")}
+drm flag: ${info.drm === false ? '<span class="bad">off</span>' : "on"}
+iframe mounted: ${info.mounted ? '<span class="good">yes</span>' : '<span class="bad">no</span>'}
+widevine: <span class="${hw ? "good" : "bad"}">${escapeHtml(widevineLevel)}</span>
+${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blackout is best-effort only."}`;
+  }
+  function reportDrmMode(info) {
+    lastDebugInfo = { ...lastDebugInfo, ...info };
+    paintDrmDebug(lastDebugInfo);
+  }
+  if (DRM_DEBUG) {
+    probeWidevine().then((lvl) => {
+      widevineLevel = lvl;
+      paintDrmDebug(lastDebugInfo);
+    });
+  }
+
   function clearVdo() {
     stage.classList.remove("is-vdo");
     stage.style.height = "";
@@ -614,6 +664,7 @@ function renderLearnPage() {
     stage.classList.add("is-vdo");
     sizeVdoShell();
     mountVdoPortal();
+    reportDrmMode({ mode: "vdocipher", vdoId: videoId, mounted: true });
     if (drmChip) drmChip.textContent = "Widevine";
     const data = await fetchVdoOtp(videoId);
     await ensureVdoPlayerApi();
@@ -672,6 +723,13 @@ function renderLearnPage() {
       : "";
     if (drmChip) drmChip.textContent = wantDrm ? (vdoId ? "Widevine" : "Protected") : "Open";
     stage?.classList.toggle("is-open-play", !wantDrm);
+    reportDrmMode({
+      title: LESSONS[i].t,
+      drm: LESSONS[i].drm,
+      vdoId,
+      mounted: false,
+      mode: vdoId ? "vdocipher" : (LESSONS[i].fileKey ? "local file (no DRM)" : "direct link (no DRM)")
+    });
     try {
       if (wantDrm && vdoId) {
         await loadVdoLesson(vdoId);
@@ -692,6 +750,7 @@ function renderLearnPage() {
       clearVdo();
       if (vdoId) {
         loadEl.classList.remove("show");
+        reportDrmMode({ mode: "DRM failed: " + (err.message || "unknown"), mounted: false });
         showDrmError(err.message || "This DRM lesson could not start.");
         toast(err.message || "DRM lesson unavailable");
         return;

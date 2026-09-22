@@ -5192,6 +5192,37 @@ a.cd-room:hover {
   border: 1px solid rgba(255,255,255,.18);
   font-family: Roboto, Arial, sans-serif;
 }
+/* Fake the rounded look with corner cut-outs: clipping the iframe itself would
+   drop Chrome off the protected GPU path and make the video capturable again. */
+.vdo-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  z-index: 7;
+  pointer-events: none;
+}
+.vdo-corner.tl { top: 0; left: 0; background: radial-gradient(circle 14px at 100% 100%, transparent 0 13.4px, var(--vdo-surround, #fff) 13.6px); }
+.vdo-corner.tr { top: 0; right: 0; background: radial-gradient(circle 14px at 0 100%, transparent 0 13.4px, var(--vdo-surround, #fff) 13.6px); }
+.vdo-corner.bl { bottom: 0; left: 0; background: radial-gradient(circle 14px at 100% 0, transparent 0 13.4px, var(--vdo-surround, #fff) 13.6px); }
+.vdo-corner.br { bottom: 0; right: 0; background: radial-gradient(circle 14px at 0 0, transparent 0 13.4px, var(--vdo-surround, #fff) 13.6px); }
+.vdo-portal.is-fs .vdo-corner { display: none; }
+.drm-debug {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2147483001;
+  max-width: 320px;
+  background: rgba(8, 10, 20, .94);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, .35);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font: 12px/1.6 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+}
+.drm-debug b { color: #fbbf24; }
+.drm-debug .bad { color: #fb7185; }
+.drm-debug .good { color: #4ade80; }
 html.drm-vdo,
 html.drm-vdo body {
   filter: none !important;
