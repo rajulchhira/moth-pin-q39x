@@ -159,9 +159,9 @@ html.bg-waiting { overflow: hidden; }
   height: 16px;
   z-index: 1;
 }
-/* Wide Live bridge only while Live is open — otherwise it sits under Courses
-   and steals hover when moving into the Courses mega panel. */
-.nav-item.mega:has(.mega-live):is(:hover, :focus-within, .open)::after {
+/* Wide Live bridge only while Live is the active mega. Never leave this up
+   under Courses — a stuck :focus-within/.open was reopening Live on the way down. */
+.nav-item.mega:has(.mega-live):is(:focus-within, .open):not(.is-closing)::after {
   width: min(900px, 92vw);
   left: 50%;
   right: auto;
@@ -170,6 +170,35 @@ html.bg-waiting { overflow: hidden; }
 }
 .nav-item.mega:is(:hover, :focus-within, .open) {
   z-index: 70;
+}
+.nav-item.mega.is-closing {
+  z-index: 1;
+}
+/* Closing / inactive megas must not keep receiving pointer events over siblings. */
+.nav-item.mega.is-closing .dropdown {
+  pointer-events: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* Desktop: JS .open owns megas. CSS :hover alone must not keep Live's wide
+     panel hittable after focus or while Courses is the intended target. */
+  .nav-item.mega:hover .dropdown {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px);
+  }
+  .nav-item.mega:hover .mega-live {
+    transform: translate(-28%, 6px);
+  }
+  .nav-item.mega.open:not(.is-closing) .dropdown,
+  .nav-item.mega:focus-within:not(.is-closing) .dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+  .nav-item.mega.open:not(.is-closing) .mega-live,
+  .nav-item.mega:focus-within:not(.is-closing) .mega-live {
+    transform: translate(-28%, 0);
+  }
 }
 .nav-link {
   padding: 6px 11px;
