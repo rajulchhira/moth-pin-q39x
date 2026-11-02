@@ -159,12 +159,17 @@ html.bg-waiting { overflow: hidden; }
   height: 16px;
   z-index: 1;
 }
-.nav-item.mega:has(.mega-live)::after {
+/* Wide Live bridge only while Live is open — otherwise it sits under Courses
+   and steals hover when moving into the Courses mega panel. */
+.nav-item.mega:has(.mega-live):is(:hover, :focus-within, .open)::after {
   width: min(900px, 92vw);
   left: 50%;
   right: auto;
   height: 18px;
   transform: translateX(-28%);
+}
+.nav-item.mega:is(:hover, :focus-within, .open) {
+  z-index: 70;
 }
 .nav-link {
   padding: 6px 11px;
