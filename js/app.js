@@ -3822,11 +3822,18 @@ function bindChrome() {
     }
   });
   const finePointer = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const blurIfInside = (el) => {
+    const active = document.activeElement;
+    if (active && el.contains(active) && typeof active.blur === "function") active.blur();
+  };
   const closeDeskMenus = (except) => {
     document.querySelectorAll(".nav-item.mega, .acct-wrap, .note-wrap").forEach((el) => {
       if (el === except) return;
-      el.classList.remove("open");
+      clearTimeout(el._deskT);
+      el.classList.remove("open", "is-closing");
       el.querySelector(".acct-btn, .note-btn")?.setAttribute("aria-expanded", "false");
+      // Live mega stays painted via :focus-within after a click/focus and covers Courses.
+      blurIfInside(el);
     });
     if (!except?.classList.contains("mega")) document.body.classList.remove("nav-dim");
   };
@@ -3836,14 +3843,19 @@ function bindChrome() {
     const openNow = () => {
       clearTimeout(el._deskT);
       closeDeskMenus(el);
+      el.classList.remove("is-closing");
       el.classList.add("open");
       el.querySelector(".acct-btn, .note-btn")?.setAttribute("aria-expanded", "true");
       onOpen?.(el);
     };
     const closeSoon = () => {
       clearTimeout(el._deskT);
+      // Drop hit-testing immediately so the wide Live panel cannot steal Courses
+      // during the close delay or while :focus-within would otherwise linger.
+      el.classList.add("is-closing");
+      blurIfInside(el);
       el._deskT = setTimeout(() => {
-        el.classList.remove("open");
+        el.classList.remove("open", "is-closing");
         el.querySelector(".acct-btn, .note-btn")?.setAttribute("aria-expanded", "false");
         if (el.classList.contains("mega")) document.body.classList.remove("nav-dim");
       }, 280);
@@ -3867,7 +3879,11 @@ function bindChrome() {
       setMobileNav(false);
       if (document.body.classList.contains("modal-open")) dismissAuthModals();
       else closeModals();
-      document.querySelectorAll(".acct-wrap, .note-wrap, .nav-item.mega").forEach((el) => el.classList.remove("open"));
+      document.querySelectorAll(".acct-wrap, .note-wrap, .nav-item.mega").forEach((el) => {
+        el.classList.remove("open", "is-closing");
+        const active = document.activeElement;
+        if (active && el.contains(active) && typeof active.blur === "function") active.blur();
+      });
       document.body.classList.remove("nav-dim");
     }
     });
