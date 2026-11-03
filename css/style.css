@@ -1737,11 +1737,11 @@ body.nav-dim::before {
   justify-content: flex-start;
   align-self: center;
   flex-wrap: nowrap;
-  gap: 12px 22px;
+  gap: 13px 34px;
   list-style: none;
   margin-block: 4px 0;
   margin-inline: auto;
-  padding: 12px 22px;
+  padding: 12px 32px;
   width: max-content;
   max-width: 100%;
   box-sizing: border-box;
@@ -1754,31 +1754,31 @@ body.nav-dim::before {
 #workingTraders ul.tr-metrics > li {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex: 0 0 auto;
   width: max-content;
   max-width: none;
 }
 #workingTraders ul.tr-metrics .tr-ico {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
 }
 #workingTraders ul.tr-metrics .tr-ico svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   stroke-width: 1.6;
 }
 #workingTraders ul.tr-metrics span {
   display: grid;
   color: #94a3b8;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
 }
 #workingTraders ul.tr-metrics b {
   color: #0f172a;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -2037,8 +2037,8 @@ body.nav-dim::before {
   .tr-head h2 { font-size: 32px; }
   .traders-sec .tr-wrap > ul.tr-metrics,
   #workingTraders ul.tr-metrics {
-    padding: 12px 16px;
-    gap: 12px;
+    padding: 13px 19px;
+    gap: 13px;
     width: max-content;
     max-width: 100%;
     margin-inline: auto;
