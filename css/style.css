@@ -1686,7 +1686,12 @@ body.nav-dim::before {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 24px;
+}
+.tr-head-l {
+  flex: 1 1 320px;
+  min-width: 0;
 }
 .tr-kicker {
   display: inline-flex;
@@ -1730,8 +1735,11 @@ body.nav-dim::before {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 92px;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-height: 105px;
   padding-top: 8px;
+  min-width: 0;
 }
 .tr-flow {
   position: absolute;
@@ -1760,32 +1768,42 @@ body.nav-dim::before {
 .tr-metrics {
   display: flex;
   align-items: center;
-  gap: 22px;
+  justify-content: space-between;
+  gap: 18px 26px;
   list-style: none;
   margin: 0;
-  padding: 14px 20px;
+  padding: 22px 30px;
+  width: min(1081px, 100%);
+  min-height: 105px;
+  box-sizing: border-box;
   background: #fff;
   border: 1px solid rgba(15, 23, 42, .05);
   border-radius: 999px;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, .05);
+  box-shadow: 0 14px 36px rgba(79, 70, 229, .08);
 }
 .tr-metrics li {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex: 1 1 0;
+  min-width: 0;
 }
-.tr-metrics svg {
-  width: 16px;
-  height: 16px;
-  stroke: #a78bfa;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.tr-metrics .tr-ico {
+  flex: 0 0 auto;
 }
-.tr-metrics li:nth-child(2) svg { stroke: #818cf8; }
-.tr-metrics li:nth-child(3) svg { stroke: #f59e0b; fill: rgba(245,158,11,.12); }
-.tr-metrics span { display: grid; color: #94a3b8; font-size: 11px; font-weight: 600; line-height: 1.2; }
-.tr-metrics b { color: #0f172a; font-size: 16px; font-weight: 800; letter-spacing: -0.03em; }
+.tr-metrics span {
+  display: grid;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.tr-metrics b {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
 .tr-all-row { display: flex; justify-content: flex-end; margin: 8px 0 14px; }
 .tr-all {
   color: #64748b;
@@ -2047,7 +2065,14 @@ body.nav-dim::before {
 }
 @media (max-width: 980px) {
   .tr-head { flex-direction: column; }
-  .tr-metrics { flex-wrap: wrap; border-radius: 22px; }
+  .tr-head-r { justify-content: flex-start; width: 100%; }
+  .tr-metrics {
+    flex-wrap: wrap;
+    border-radius: 28px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .tr-metrics li { flex: 1 1 calc(50% - 13px); }
   .tr-card { flex-basis: calc((100% - 16px) / 2); }
   .tr-trust { border-radius: 22px; }
 }
@@ -2055,6 +2080,12 @@ body.nav-dim::before {
   .traders-sec { padding: 48px 0 36px; }
   .traders-sec .tr-wrap { width: min(1240px, calc(100% - 28px)); }
   .tr-head h2 { font-size: 32px; }
+  .tr-metrics {
+    padding: 18px 20px;
+    min-height: 0;
+    gap: 16px;
+  }
+  .tr-metrics li { flex: 1 1 100%; }
   .tr-card { flex-basis: 86%; }
   .tr-arrow { top: 78px; width: 36px; height: 36px; }
   .tr-trust { justify-content: flex-start; padding: 16px 18px; }
