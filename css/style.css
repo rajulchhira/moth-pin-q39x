@@ -489,11 +489,11 @@ body.nav-dim::before {
 .hero {
   position: relative;
   overflow: hidden;
-  min-height: 520px;
+  min-height: 528px;
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 67px 20px 54px;
+  padding: 67px 20px 62px;
 }
 .hero-stage { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .hero-grid {
