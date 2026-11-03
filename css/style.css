@@ -489,11 +489,11 @@ body.nav-dim::before {
 .hero {
   position: relative;
   overflow: hidden;
-  min-height: 720px;
+  min-height: 576px;
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 92px 20px 72px;
+  padding: 74px 20px 58px;
 }
 .hero-stage { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .hero-grid {
@@ -715,7 +715,7 @@ body.nav-dim::before {
   color: #e11d74;
   font-size: 15px;
   font-weight: 800;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 .kicker-pulse {
   width: 8px;
@@ -824,7 +824,7 @@ body.nav-dim::before {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: 28px;
+  margin-top: 22px;
 }
 .btn-shine {
   position: relative;
@@ -846,7 +846,7 @@ body.nav-dim::before {
 .stats {
   display: flex;
   justify-content: center;
-  margin-top: 48px;
+  margin-top: 38px;
 }
 .stat { min-width: 150px; padding: 0 28px; }
 .stat + .stat { border-left: 1px solid var(--line); }
@@ -3399,7 +3399,7 @@ body.drm-lock, body.drm-lock *,
   .nav, .search-wrap, .header-actions { display: none; }
   .menu-toggle { display: block; margin-left: auto; }
   .header-inner { justify-content: space-between; width: 100%; }
-  .hero { min-height: 0; padding: 36px 16px 70px; }
+  .hero { min-height: 0; padding: 29px 16px 56px; }
   .hero-content { width: 100%; max-width: 100%; }
   .hero h1 {
     display: flex;
@@ -6073,7 +6073,7 @@ html.drm-vdo .player-shell.is-vdo {
     width: 100%;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-top: 22px;
+    margin-top: 18px;
   }
   .stat { min-width: 0; padding: 0 4px; }
   .stat + .stat { border-left: 1px solid var(--line); }
