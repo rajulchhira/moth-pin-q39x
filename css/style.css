@@ -489,11 +489,11 @@ body.nav-dim::before {
 .hero {
   position: relative;
   overflow: hidden;
-  min-height: 518px;
+  min-height: 520px;
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 67px 20px 52px;
+  padding: 67px 20px 54px;
 }
 .hero-stage { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .hero-grid {
@@ -3399,7 +3399,7 @@ body.drm-lock, body.drm-lock *,
   .nav, .search-wrap, .header-actions { display: none; }
   .menu-toggle { display: block; margin-left: auto; }
   .header-inner { justify-content: space-between; width: 100%; }
-  .hero { min-height: 0; padding: 26px 16px 50px; }
+  .hero { min-height: 0; padding: 26px 16px 52px; }
   .hero-content { width: 100%; max-width: 100%; }
   .hero h1 {
     display: flex;
