@@ -1819,6 +1819,7 @@ body.nav-dim::before {
   padding: 28px 0 22px;
   margin: 0 -4px;
 }
+/* cache-bust desk41: portrait mentor marquee */
 .tr-rail {
   display: flex;
   gap: 18px;
