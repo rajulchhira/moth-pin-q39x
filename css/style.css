@@ -1791,25 +1791,6 @@ body.nav-dim::before {
 }
 .tr-all:hover { color: #7c3aed; }
 .tr-stage { position: relative; }
-.tr-stage::before,
-.tr-stage::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 12px;
-  width: 72px;
-  z-index: 3;
-  pointer-events: none;
-  opacity: 1;
-}
-.tr-stage::before {
-  left: 0;
-  background: linear-gradient(90deg, #fbfaff 0%, rgba(251,250,255,0) 100%);
-}
-.tr-stage::after {
-  right: 0;
-  background: linear-gradient(270deg, #fbfaff 0%, rgba(251,250,255,0) 100%);
-}
 .tr-stage.is-marquee .tr-arrow,
 .tr-stage.is-marquee + .tr-pager {
   display: none;
@@ -1819,7 +1800,7 @@ body.nav-dim::before {
   padding: 28px 0 22px;
   margin: 0 -4px;
 }
-/* cache-bust desk41: portrait mentor marquee */
+/* cache-bust desk42: no mentor edge fade masks */
 .tr-rail {
   display: flex;
   gap: 18px;
