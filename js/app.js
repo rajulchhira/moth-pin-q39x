@@ -4867,21 +4867,18 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-function traderCardHTML(m, i) {
-  const face = traderFace(m);
-  const badgeIcon = face.badge === "Specialist" ? "specialist" : face.badge === "Coach" ? "coach" : face.badge === "Investor" ? "investor" : "expert";
-  const tagIcon = face.tone === "amber" ? "clock" : face.tone === "orange" || face.tone === "teal" ? "bag" : face.tone === "blue" ? "pulse" : face.badge === "Coach" ? "bolt" : "pulse";
+function traderCardHTML(m, i, opts = {}) {
+  const title = String(m.role || m.tag || "Mentor").trim();
+  const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
+  const alt = opts.clone ? "" : escapeHtml(m.name);
   return `
-      <a class="tr-card tone-${escapeHtml(face.tone)}" href="${instructorHref(m.name)}" style="--d:${0.08 + i * 0.06}s">
+      <a class="tr-card" href="${instructorHref(m.name)}"${cloneAttrs} style="--d:${0.08 + i * 0.06}s">
         <span class="tr-shot">
-          <img src="${escapeHtml(m.img)}" alt="${escapeHtml(m.name)}">
-          <span class="tr-badge">${traderIcon(badgeIcon)} ${escapeHtml(face.badge)}</span>
+          <img src="${escapeHtml(m.img)}" alt="${alt}" loading="lazy" decoding="async">
         </span>
-        <span class="tr-body">
-          <strong>${escapeHtml(m.name)} <i class="tr-check" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/><path d="M4.6 8.2 7 10.5l4.5-5"/></svg></i></strong>
-          <em>${escapeHtml(m.role)}</em>
-          <span class="tr-tag">${traderIcon(tagIcon)} ${escapeHtml(m.tag)}</span>
-          <span class="tr-years">${traderIcon(face.exp)} ${escapeHtml(face.years)} Years Experience</span>
+        <span class="tr-overlay">
+          <strong>${escapeHtml(m.name)}</strong>
+          <em>${escapeHtml(title)}</em>
         </span>
       </a>`;
 }
@@ -4891,28 +4888,29 @@ function bindTraderCarousel(sec) {
   if (!track || track.dataset.bound === "1") return;
   track.dataset.bound = "1";
   const stage = sec.querySelector(".tr-stage");
-  const step = () => {
-    const card = track.querySelector(".tr-card");
-    return Math.max(200, (card ? card.getBoundingClientRect().width : 220) + 16);
+  if (stage) {
+    stage.classList.add("is-marquee", "is-start", "is-end");
+  }
+  const rail = track.querySelector(".tr-rail");
+  if (!rail) return;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) {
+    track.classList.add("is-static");
+    return;
+  }
+  const syncDuration = () => {
+    const half = rail.scrollWidth / 2;
+    if (half <= 0) return;
+    const pxPerSec = 42;
+    const secs = Math.max(18, half / pxPerSec);
+    rail.style.setProperty("--tr-marquee-duration", secs.toFixed(2) + "s");
   };
-  sec.querySelector("[data-tr-prev]")?.addEventListener("click", () => track.scrollBy({ left: -step(), behavior: "smooth" }));
-  sec.querySelector("[data-tr-next]")?.addEventListener("click", () => track.scrollBy({ left: step(), behavior: "smooth" }));
-  const pager = sec.querySelector("#traderPager");
-  const paint = () => {
-    const max = track.scrollWidth - track.clientWidth;
-    if (stage) {
-      stage.classList.toggle("is-start", track.scrollLeft <= 4);
-      stage.classList.toggle("is-end", max <= 4 || track.scrollLeft >= max - 4);
-    }
-    if (!pager) return;
-    const p = max <= 1 ? 0 : track.scrollLeft / max;
-    const dots = [...pager.querySelectorAll("i")];
-    const idx = Math.round(p * Math.max(0, dots.length - 1));
-    dots.forEach((d, i) => d.classList.toggle("is-on", i === idx));
-  };
-  track.addEventListener("scroll", paint, { passive: true });
-  window.addEventListener("resize", paint);
-  paint();
+  syncDuration();
+  window.addEventListener("resize", syncDuration);
+  if ("ResizeObserver" in window) {
+    const ro = new ResizeObserver(syncDuration);
+    ro.observe(rail);
+  }
 }
 
 function bindTradersReveal(sec) {
@@ -4933,7 +4931,10 @@ function bindTradersReveal(sec) {
 function renderHomeExtras() {
   const mentorTrack = document.getElementById("mentorTrack");
   if (mentorTrack) {
-    mentorTrack.innerHTML = allMentors().map((m, i) => traderCardHTML(m, i)).join("");
+    const mentors = allMentors();
+    const cards = mentors.map((m, i) => traderCardHTML(m, i)).join("");
+    const clones = mentors.map((m, i) => traderCardHTML(m, i, { clone: true })).join("");
+    mentorTrack.innerHTML = `<div class="tr-rail">${cards}${clones}</div>`;
     const sec = document.getElementById("workingTraders");
     if (sec) {
       bindTraderCarousel(sec);

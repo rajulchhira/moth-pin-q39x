@@ -1797,11 +1797,10 @@ body.nav-dim::before {
   position: absolute;
   top: 0;
   bottom: 12px;
-  width: 88px;
+  width: 72px;
   z-index: 3;
   pointer-events: none;
   opacity: 1;
-  transition: opacity .35s ease;
 }
 .tr-stage::before {
   left: 0;
@@ -1811,125 +1810,94 @@ body.nav-dim::before {
   right: 0;
   background: linear-gradient(270deg, #fbfaff 0%, rgba(251,250,255,0) 100%);
 }
-.tr-stage.is-start::before { opacity: 0; }
-.tr-stage.is-end::after { opacity: 0; }
-.tr-track {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  padding: 6px 4px 18px;
-  -webkit-overflow-scrolling: touch;
+.tr-stage.is-marquee .tr-arrow,
+.tr-stage.is-marquee + .tr-pager {
+  display: none;
 }
-.tr-track::-webkit-scrollbar { display: none; }
-.tr-card {
-  flex: 0 0 calc((100% - 64px) / 5);
-  min-width: 188px;
-  scroll-snap-align: start;
-  display: flex;
-  flex-direction: column;
-  text-decoration: none;
-  color: inherit;
-  background: #fff;
-  border: 1px solid rgba(15, 23, 42, .04);
-  border-radius: 22px;
+.tr-track {
   overflow: hidden;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, .05);
-  transition: transform .42s cubic-bezier(.22, 1, .36, 1), box-shadow .42s ease;
+  padding: 28px 0 22px;
+  margin: 0 -4px;
+}
+.tr-rail {
+  display: flex;
+  gap: 18px;
+  width: max-content;
+  will-change: transform;
+  animation: trMarquee var(--tr-marquee-duration, 36s) linear infinite;
+}
+.tr-track:hover .tr-rail,
+.tr-track:focus-within .tr-rail {
+  animation-play-state: paused;
+}
+.tr-track.is-static .tr-rail {
+  animation: none;
+  flex-wrap: nowrap;
+}
+.tr-card {
+  position: relative;
+  flex: 0 0 220px;
+  width: 220px;
+  height: 320px;
+  display: block;
+  text-decoration: none;
+  color: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #1e293b;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, .12);
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1), box-shadow .35s ease;
 }
 .tr-shot {
-  position: relative;
+  position: absolute;
+  inset: 0;
   display: block;
-  height: 188px;
   overflow: hidden;
-  background: #eef2ff;
+  background: #334155;
 }
 .tr-shot img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: top;
-  transition: transform .7s cubic-bezier(.22, 1, .36, 1);
+  object-position: center top;
+  display: block;
 }
-.tr-badge {
+.tr-overlay {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.92);
-  color: #475569;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, .08);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  padding: 56px 16px 18px;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 48%, rgba(0,0,0,.78) 100%);
+  pointer-events: none;
 }
-.tr-badge svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.tone-violet .tr-badge { color: #6d28d9; }
-.tone-amber .tr-badge { color: #d97706; }
-.tone-purple .tr-badge { color: #7c3aed; }
-.tone-orange .tr-badge { color: #ea580c; }
-.tone-blue .tr-badge { color: #2563eb; }
-.tone-teal .tr-badge { color: #0d9488; }
-.tr-body { display: grid; gap: 6px; padding: 14px 14px 16px; }
-.tr-body strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 16px;
+.tr-overlay strong {
+  display: block;
+  font-size: 17px;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: #0f172a;
+  line-height: 1.2;
+  color: #fff;
 }
-.tr-check { width: 15px; height: 15px; display: grid; }
-.tr-check svg { width: 15px; height: 15px; }
-.tr-check circle { fill: #2563eb; }
-.tr-check path { fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.tr-body em { font-style: normal; font-size: 13px; font-weight: 500; color: #94a3b8; }
-.tr-tag,
-.tr-years {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.tr-tag { color: #64748b; }
-.tr-tag svg,
-.tr-years svg {
-  width: 13px;
-  height: 13px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.tone-violet .tr-tag { color: #7c3aed; }
-.tone-amber .tr-tag { color: #d97706; }
-.tone-purple .tr-tag { color: #7c3aed; }
-.tone-orange .tr-tag { color: #0d9488; }
-.tone-blue .tr-tag { color: #2563eb; }
-.tone-teal .tr-tag { color: #0d9488; }
-.tr-years {
-  margin-top: 6px;
-  width: fit-content;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #f8fafc;
-  color: #64748b;
+.tr-overlay em {
+  display: block;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(255,255,255,.88);
 }
 .tr-arrow {
   position: absolute;
-  top: 86px;
+  top: 50%;
   z-index: 4;
   width: 40px;
   height: 40px;
+  margin-top: -20px;
   border: 0;
   border-radius: 50%;
   background: #fff;
@@ -1972,28 +1940,24 @@ body.nav-dim::before {
 .tr-ico.blue { background: #dbeafe; color: #2563eb; }
 .tr-head,
 .tr-all-row,
-.tr-card,
-.tr-pager,
+.tr-stage,
 .tr-metrics {
   opacity: 0;
   transform: translateY(18px);
 }
 .traders-sec.is-in .tr-head,
 .traders-sec.is-in .tr-all-row,
-.traders-sec.is-in .tr-card,
-.traders-sec.is-in .tr-pager,
+.traders-sec.is-in .tr-stage,
 .traders-sec.is-in .tr-metrics {
   animation: trIn .7s cubic-bezier(.22, 1, .36, 1) both;
 }
 .traders-sec.is-in .tr-head { animation-delay: .04s; }
 .traders-sec.is-in .tr-all-row { animation-delay: .1s; }
-.traders-sec.is-in .tr-card { animation-delay: var(--d, .16s); }
-.traders-sec.is-in .tr-pager { animation-delay: .5s; }
-.traders-sec.is-in .tr-metrics { animation-delay: .56s; }
+.traders-sec.is-in .tr-stage { animation-delay: .16s; }
+.traders-sec.is-in .tr-metrics { animation-delay: .36s; }
 .traders-sec.is-ready .tr-head,
 .traders-sec.is-ready .tr-all-row,
-.traders-sec.is-ready .tr-card,
-.traders-sec.is-ready .tr-pager,
+.traders-sec.is-ready .tr-stage,
 .traders-sec.is-ready .tr-metrics {
   animation: none;
   opacity: 1;
@@ -2001,12 +1965,12 @@ body.nav-dim::before {
 }
 .traders-sec.is-ready .tr-card:hover,
 .traders-sec.is-ready .tr-card:focus-visible {
-  transform: translateY(-8px);
-  box-shadow: 0 22px 44px rgba(79, 70, 229, .12);
+  transform: translateY(-5%);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, .18);
   outline: none;
+  z-index: 2;
 }
-.traders-sec.is-ready .tr-card:hover .tr-shot img,
-.traders-sec.is-ready .tr-card:focus-visible .tr-shot img { transform: scale(1.06); }
+.tr-stage.is-marquee { margin-bottom: 24px; }
 @keyframes trIn {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: none; }
@@ -2015,8 +1979,9 @@ body.nav-dim::before {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(12px, -10px, 0); }
 }
-@media (max-width: 1100px) {
-  .tr-card { flex-basis: calc((100% - 32px) / 3); }
+@keyframes trMarquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
 }
 @media (max-width: 980px) {
   .traders-sec .tr-wrap > ul.tr-metrics,
@@ -2029,7 +1994,11 @@ body.nav-dim::before {
     margin-inline: auto;
   }
   #workingTraders ul.tr-metrics > li { flex: 0 0 auto; }
-  .tr-card { flex-basis: calc((100% - 16px) / 2); }
+  .tr-card {
+    flex-basis: 200px;
+    width: 200px;
+    height: 300px;
+  }
 }
 @media (max-width: 640px) {
   .traders-sec { padding: 48px 0 36px; }
@@ -2044,11 +2013,22 @@ body.nav-dim::before {
     margin-inline: auto;
   }
   #workingTraders ul.tr-metrics > li { flex: 0 0 auto; }
-  .tr-card { flex-basis: 86%; }
-  .tr-arrow { top: 78px; width: 36px; height: 36px; }
+  .tr-rail { gap: 14px; }
+  .tr-card {
+    flex-basis: 168px;
+    width: 168px;
+    height: 252px;
+    border-radius: 16px;
+  }
+  .tr-overlay { padding: 44px 12px 14px; }
+  .tr-overlay strong { font-size: 15px; }
+  .tr-overlay em { font-size: 12px; }
+  .tr-arrow { width: 36px; height: 36px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .traders-sec .tr-glow,
+  .tr-rail,
+  .tr-stage,
   .tr-card,
   .tr-card:hover,
   .tr-shot img,
@@ -2056,6 +2036,69 @@ body.nav-dim::before {
   .tr-all-row,
   .tr-pager,
   .tr-metrics { animation: none !important; transform: none !important; opacity: 1 !important; }
+}
+
+/* Shared mentor/instructor chip styles (instructors list) */
+.tr-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .08);
+}
+.tr-badge svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.tone-violet .tr-badge { color: #6d28d9; }
+.tone-amber .tr-badge { color: #d97706; }
+.tone-purple .tr-badge { color: #7c3aed; }
+.tone-orange .tr-badge { color: #ea580c; }
+.tone-blue .tr-badge { color: #2563eb; }
+.tone-teal .tr-badge { color: #0d9488; }
+.tr-check { width: 15px; height: 15px; display: grid; }
+.tr-check svg { width: 15px; height: 15px; }
+.tr-check circle { fill: #2563eb; }
+.tr-check path { fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tr-tag,
+.tr-years {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tr-tag { color: #64748b; }
+.tr-tag svg,
+.tr-years svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tone-violet .tr-tag { color: #7c3aed; }
+.tone-amber .tr-tag { color: #d97706; }
+.tone-purple .tr-tag { color: #7c3aed; }
+.tone-orange .tr-tag { color: #0d9488; }
+.tone-blue .tr-tag { color: #2563eb; }
+.tone-teal .tr-tag { color: #0d9488; }
+.tr-years {
+  margin-top: 6px;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
 }
 
 .mentor-card {
