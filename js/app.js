@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=19";
+    s.src = "/js/reviews-data.js?v=20";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4870,7 +4870,7 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-/* cache-bust desk42: Mahesh slightly more modern young male + reviews-data v=19 */
+/* cache-bust desk43: Mahesh clear DP modern casual avatar + reviews-data v=20 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
