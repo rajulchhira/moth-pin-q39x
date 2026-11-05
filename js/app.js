@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=15";
+    s.src = "/js/reviews-data.js?v=16";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4870,7 +4870,7 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-/* cache-bust desk38: Mahesh Jadhav review + half-stars + reviews-data v=15 */
+/* cache-bust desk39: Mahesh urban male avatar + reviews-data v=16 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
