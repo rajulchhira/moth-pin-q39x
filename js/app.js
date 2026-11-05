@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=14";
+    s.src = "/js/reviews-data.js?v=15";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4682,7 +4682,10 @@ function allReviews() {
 }
 
 function reviewCardHTML(r) {
-  const stars = "★".repeat(r.stars) + "☆".repeat(5 - r.stars);
+  const starVal = Math.max(0, Math.min(5, Number(r.stars) || 0));
+  const starFull = Math.floor(starVal + 1e-9);
+  const starHalf = starVal - starFull >= 0.5 - 1e-9 && starFull < 5;
+  const stars = "★".repeat(starFull) + (starHalf ? "½" : "") + "☆".repeat(Math.max(0, 5 - starFull - (starHalf ? 1 : 0)));
   const fb = `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name)}&background=eef2ff&color=4f46e5&size=128`;
   return `<article class="review-card">
     <div class="review-top"><span class="review-stars">${stars}</span><small>${escapeHtml(r.when || "")}</small></div>
@@ -4867,7 +4870,7 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-/* cache-bust desk37: Smita clearly Indian stock avatar + reviews-data v=14 */
+/* cache-bust desk38: Mahesh Jadhav review + half-stars + reviews-data v=15 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
