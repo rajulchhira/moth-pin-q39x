@@ -4655,7 +4655,7 @@ function deskReviewSeeds() {
     { id: "seed-w1", kind: "webinar", targetId: "w1", name: "Isha Verma", city: "Delhi", photo: "/img/reviews/isha-verma-2.jpg", stars: 5, text: "Mujhe live classes kaafi useful lagi. Concepts clear hue aur doubts solve karne se bhi achha support mila", course: "Gap & Go for Nifty Options", courseId: "", when: "1 week ago", lang: "hi", source: "seed" },
     { id: "seed-w0", kind: "webinar", targetId: "w0", name: "Rohit Nair", city: "Kochi", photo: "/img/reviews/rohit-nair.jpg", stars: 4, text: "Being a part of Aradhya Singh's mentorship course has been a great experience. She explains everything in a simple and easy-to-understand way.", course: "Gap & Go Replay Desk", courseId: "", when: "3 weeks ago", lang: "en", source: "seed" },
     { id: "seed-m1", kind: "mentor", targetId: "mp-breakout", name: "Sana Qureshi", city: "Hyderabad", photo: "/img/reviews/sana-qureshi.jpg", stars: 5, text: "Mera overall experience kaafi achha raha hai. Classes mein concepts ko simple aur practical way mein explain kiya jata hai. Doubts clear karne ka bhi achha support milta hai.", course: "Intraday Desk Mentorship", courseId: "", when: "4 days ago", lang: "hi", source: "seed" },
-    { id: "seed-m2", kind: "mentor", targetId: "mp-closed", name: "Kabir Shah", city: "Ahmedabad", photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=128&h=128&q=80&crop=faces", stars: 5, text: "Closed cohort, still using the same journal. That is the point.", course: "Intraday Journal Cohort", courseId: "", when: "1 month ago", lang: "en", source: "seed" }
+    { id: "seed-m2", kind: "mentor", targetId: "mp-closed", name: "Kabir Shah", city: "Ahmedabad", photo: "/img/reviews/kabir-shah-4.jpg", stars: 4, text: "The live classes are really helpful. Concepts are explained clearly, and the overall learning experience has been excellent.", course: "Intraday Journal Cohort", courseId: "", when: "1 month ago", lang: "en", source: "seed" }
   ];
 }
 let reviewsDataP = null;
@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=29";
+    s.src = "/js/reviews-data.js?v=33";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4877,7 +4877,7 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-/* cache-bust desk53: Sana Qureshi review + local avatar + reviews-data v=29 */
+/* cache-bust desk57: Kabir Shah DP kabir-shah-4 (beard/glasses/full hair) + reviews-data v=33 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
