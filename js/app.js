@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=40";
+    s.src = "/js/reviews-data.js?v=41";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4877,7 +4877,7 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-/* cache-bust desk64: Rutvik Sharma DP rutvik-sharma.jpg + reviews-data v=40 */
+/* cache-bust desk65: Tarun Bhave DP tarun-bhave-2.jpg + reviews-data v=41 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
