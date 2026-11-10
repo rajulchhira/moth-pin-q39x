@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=47";
+    s.src = "/js/reviews-data.js?v=48";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4877,7 +4877,7 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-/* cache-bust desk71: Seema Iyer phone-photo DP4 + reviews-data v=47 */
+/* cache-bust desk72: Seema Iyer face-focused DP5 + reviews-data v=48 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
