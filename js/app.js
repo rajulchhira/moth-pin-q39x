@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=65";
+    s.src = "/js/reviews-data.js?v=66";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4878,6 +4878,7 @@ function traderIcon(kind) {
 }
 
 /* cache-bust desk87: Rashmi Baruah rangoli-2 phone photo + reviews-data v=63 */
+/* cache-bust desk90: Navya Pandey + Abhishek Sen reviews + reviews-data v=66 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
