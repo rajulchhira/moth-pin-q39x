@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=63";
+    s.src = "/js/reviews-data.js?v=64";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
