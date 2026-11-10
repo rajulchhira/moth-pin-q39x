@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=50";
+    s.src = "/js/reviews-data.js?v=51";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4877,7 +4877,7 @@ function traderIcon(kind) {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">${icons[kind] || icons.expert}</svg>`;
 }
 
-/* cache-bust desk74: Sahil Salvi DP3 + reviews-data v=50 */
+/* cache-bust desk75: Rahul Reddy review text + reviews-data v=51 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
