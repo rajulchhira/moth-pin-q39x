@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=72";
+    s.src = "/js/reviews-data.js?v=73";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4885,6 +4885,7 @@ function traderIcon(kind) {
 /* cache-bust desk95: Sunita Vyas review English text + DP sunita-vyas-2 + reviews-data v=70 */
 /* cache-bust desk96: Sunita Vyas DP sunita-vyas-3 candid balcony + reviews-data v=71 */
 /* cache-bust desk97: Sunita Vyas DP sunita-vyas-4 restaurant half-body + reviews-data v=72 */
+/* cache-bust desk98: Sunita Vyas fresh DP sunita-vyas-5 restaurant half-body + reviews-data v=73 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
