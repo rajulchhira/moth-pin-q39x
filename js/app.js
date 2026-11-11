@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=70";
+    s.src = "/js/reviews-data.js?v=71";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4883,6 +4883,7 @@ function traderIcon(kind) {
 /* cache-bust desk93: live edge purge after poisoned desk91/v67 + reviews-data v=68 */
 /* cache-bust desk94: Kavitha Ghosh review English text + reviews-data v=69 */
 /* cache-bust desk95: Sunita Vyas review English text + DP sunita-vyas-2 + reviews-data v=70 */
+/* cache-bust desk96: Sunita Vyas DP sunita-vyas-3 candid balcony + reviews-data v=71 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
