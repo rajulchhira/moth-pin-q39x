@@ -17,9 +17,17 @@ void main() {
     expect(find.textContaining('Welcome back'), findsOneWidget);
     expect(find.textContaining('Learn from the journey'), findsOneWidget);
     expect(find.text('Popular Categories'), findsOneWidget);
+    expect(find.text('Stock Market Investing'), findsOneWidget);
+    expect(find.text('Option Trading'), findsOneWidget);
+    expect(find.text('Stock Market Basics'), findsOneWidget);
+    expect(find.text('Technical Analysis'), findsOneWidget);
     expect(find.text('Crypto'), findsOneWidget);
-    // Categories grid is tall; scroll Home to build courses/experts slivers.
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    expect(find.text('Trading Strategies'), findsOneWidget);
+    expect(find.text('Mentorship'), findsNothing);
+    expect(find.text('NISM'), findsNothing);
+    expect(find.text('Algo Trading'), findsNothing);
+    // Scroll Home to build courses/experts slivers.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -700));
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Stock market courses for everyone'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));

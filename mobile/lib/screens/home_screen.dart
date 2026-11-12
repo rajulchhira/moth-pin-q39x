@@ -161,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  // Six course-menu categories → 3×2 grid.
                   const cols = 3;
                   const gap = 12.0;
                   final tileW =

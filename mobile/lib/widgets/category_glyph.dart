@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/colors.dart';
-
-/// Original category glyphs inspired by edtech grids — not 1:1 copies of any
-/// third-party icon set.
+/// Original category glyphs — vivid / high-contrast, not 1:1 inspo copies.
 class CategoryGlyph extends StatelessWidget {
   const CategoryGlyph({super.key, required this.kind, this.size = 56});
 
@@ -24,171 +21,169 @@ class _GlyphPainter extends CustomPainter {
 
   final String kind;
 
+  static const _green = Color(0xFF16A34A);
+  static const _red = Color(0xFFE11D48);
+  static const _indigo = Color(0xFF4F46E5);
+  static const _violet = Color(0xFF7C3AED);
+  static const _pink = Color(0xFFDB2777);
+  static const _gold = Color(0xFFF59E0B);
+  static const _orange = Color(0xFFEA580C);
+  static const _teal = Color(0xFF0D9488);
+  static const _sky = Color(0xFF0284C7);
+
   @override
   void paint(Canvas canvas, Size size) {
-    final ink = Paint()
-      ..color = BgColors.inkDeep.withOpacity(0.88)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.055
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final fill = Paint()
-      ..color = BgColors.indigo.withOpacity(0.14)
-      ..style = PaintingStyle.fill;
-    final accent = Paint()
-      ..color = BgColors.indigo
-      ..style = PaintingStyle.fill;
-
     switch (kind) {
       case 'bars':
-        _bars(canvas, size, ink, fill);
+        _bars(canvas, size);
       case 'candle':
-        _candles(canvas, size, ink, accent);
+        _candles(canvas, size);
       case 'cepe':
-        _cePe(canvas, size, ink, accent);
+        _cePe(canvas, size);
       case 'strategy':
-        _target(canvas, size, ink, accent);
-      case 'mentorship':
-        _chess(canvas, size, ink, fill);
+        _target(canvas, size);
       case 'crypto':
-        _crypto(canvas, size, ink, accent);
-      case 'algo':
-        _algo(canvas, size, ink, accent);
+        _crypto(canvas, size);
       case 'investing':
-        _arrowUp(canvas, size, ink, accent);
-      case 'nism':
-        _nism(canvas, size, ink, fill);
+        _arrowUp(canvas, size);
       default:
-        _bars(canvas, size, ink, fill);
+        _bars(canvas, size);
     }
   }
 
-  void _bars(Canvas canvas, Size size, Paint ink, Paint fill) {
-    final r = RRect.fromRectAndRadius(
-      Rect.fromLTWH(size.width * 0.18, size.height * 0.22, size.width * 0.64, size.height * 0.56),
-      Radius.circular(size.width * 0.08),
+  Paint _fill(Color c) => Paint()
+    ..color = c
+    ..style = PaintingStyle.fill;
+
+  Paint _stroke(Color c, double w) => Paint()
+    ..color = c
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = w
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+
+  void _bars(Canvas canvas, Size size) {
+    // Soft blue plate
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.14, size.height * 0.16, size.width * 0.72, size.height * 0.68),
+        Radius.circular(size.width * 0.12),
+      ),
+      _fill(const Color(0xFFDBEAFE)),
     );
-    canvas.drawRRect(r, fill);
-    final baseY = size.height * 0.72;
-    final xs = [0.28, 0.44, 0.60, 0.76];
-    final hs = [0.28, 0.42, 0.34, 0.48];
+    final baseY = size.height * 0.74;
+    final colors = [_sky, _indigo, _violet, _pink];
+    final xs = [0.28, 0.42, 0.56, 0.70];
+    final hs = [0.22, 0.34, 0.28, 0.42];
     for (var i = 0; i < xs.length; i++) {
       final x = size.width * xs[i];
+      final top = baseY - size.height * hs[i];
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(x - size.width * 0.045, top, x + size.width * 0.045, baseY),
+          Radius.circular(size.width * 0.03),
+        ),
+        _fill(colors[i]),
+      );
+    }
+  }
+
+  void _candles(Canvas canvas, Size size) {
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.14, size.height * 0.16, size.width * 0.72, size.height * 0.68),
+        Radius.circular(size.width * 0.12),
+      ),
+      _fill(const Color(0xFFDCFCE7)),
+    );
+
+    void candle(double cx, double top, double bodyTop, double bodyBot, double bot, Color body) {
       canvas.drawLine(
-        Offset(x, baseY),
-        Offset(x, baseY - size.height * hs[i]),
-        ink..strokeWidth = size.width * 0.07,
+        Offset(cx, top),
+        Offset(cx, bot),
+        _stroke(const Color(0xFF14532D), size.width * 0.04),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(cx - size.width * 0.075, bodyTop, cx + size.width * 0.075, bodyBot),
+          Radius.circular(size.width * 0.025),
+        ),
+        _fill(body),
       );
     }
+
+    candle(size.width * 0.30, size.height * 0.24, size.height * 0.34, size.height * 0.58, size.height * 0.70, _red);
+    candle(size.width * 0.50, size.height * 0.20, size.height * 0.28, size.height * 0.62, size.height * 0.74, _green);
+    candle(size.width * 0.70, size.height * 0.30, size.height * 0.38, size.height * 0.54, size.height * 0.66, _gold);
   }
 
-  void _candles(Canvas canvas, Size size, Paint ink, Paint accent) {
-    void candle(double cx, double top, double bodyTop, double bodyBot, double bot, {bool up = true}) {
-      canvas.drawLine(Offset(cx, top), Offset(cx, bot), ink..strokeWidth = size.width * 0.035);
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTRB(cx - size.width * 0.07, bodyTop, cx + size.width * 0.07, bodyBot),
-        Radius.circular(size.width * 0.02),
+  void _cePe(Canvas canvas, Size size) {
+    // Twin chips
+    final ce = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width * 0.12, size.height * 0.28, size.width * 0.36, size.height * 0.40),
+      Radius.circular(size.width * 0.1),
+    );
+    final pe = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width * 0.52, size.height * 0.28, size.width * 0.36, size.height * 0.40),
+      Radius.circular(size.width * 0.1),
+    );
+    canvas.drawRRect(ce, _fill(_green));
+    canvas.drawRRect(pe, _fill(_red));
+
+    void label(String text, RRect box) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontFamily: 'Nunito',
+            fontWeight: FontWeight.w900,
+            fontSize: size.width * 0.18,
+            color: Colors.white,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(
+        canvas,
+        Offset(
+          box.center.dx - tp.width / 2,
+          box.center.dy - tp.height / 2,
+        ),
       );
-      canvas.drawRRect(rect, up ? accent : (Paint()..color = BgColors.magenta));
     }
 
-    candle(size.width * 0.30, size.height * 0.22, size.height * 0.32, size.height * 0.58, size.height * 0.70, up: false);
-    candle(size.width * 0.50, size.height * 0.18, size.height * 0.28, size.height * 0.62, size.height * 0.74);
-    candle(size.width * 0.70, size.height * 0.30, size.height * 0.38, size.height * 0.55, size.height * 0.66);
+    label('CE', ce);
+    label('PE', pe);
   }
 
-  void _cePe(Canvas canvas, Size size, Paint ink, Paint accent) {
-    final tp = TextPainter(
-      text: TextSpan(
-        children: [
-          TextSpan(
-            text: 'CE',
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontWeight: FontWeight.w800,
-              fontSize: size.width * 0.22,
-              color: BgColors.indigo,
-            ),
-          ),
-          TextSpan(
-            text: '/',
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontWeight: FontWeight.w700,
-              fontSize: size.width * 0.2,
-              color: BgColors.muted,
-            ),
-          ),
-          TextSpan(
-            text: 'PE',
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontWeight: FontWeight.w800,
-              fontSize: size.width * 0.22,
-              color: BgColors.magenta,
-            ),
-          ),
-        ],
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(
-      canvas,
-      Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2),
-    );
-    canvas.drawCircle(Offset(size.width * 0.18, size.height * 0.22), size.width * 0.035, accent);
-    canvas.drawCircle(Offset(size.width * 0.82, size.height * 0.78), size.width * 0.035, Paint()..color = BgColors.magenta);
-  }
-
-  void _target(Canvas canvas, Size size, Paint ink, Paint accent) {
+  void _target(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2);
-    canvas.drawCircle(c, size.width * 0.28, ink);
-    canvas.drawCircle(c, size.width * 0.17, ink);
-    canvas.drawCircle(c, size.width * 0.06, accent);
-    canvas.drawLine(Offset(c.dx, c.dy - size.height * 0.38), Offset(c.dx, c.dy - size.height * 0.28), ink);
-    canvas.drawLine(Offset(c.dx, c.dy + size.height * 0.28), Offset(c.dx, c.dy + size.height * 0.38), ink);
-    canvas.drawLine(Offset(c.dx - size.width * 0.38, c.dy), Offset(c.dx - size.width * 0.28, c.dy), ink);
-    canvas.drawLine(Offset(c.dx + size.width * 0.28, c.dy), Offset(c.dx + size.width * 0.38, c.dy), ink);
+    canvas.drawCircle(c, size.width * 0.34, _fill(const Color(0xFFFCE7F3)));
+    canvas.drawCircle(c, size.width * 0.34, _stroke(_pink, size.width * 0.05));
+    canvas.drawCircle(c, size.width * 0.22, _stroke(_violet, size.width * 0.05));
+    canvas.drawCircle(c, size.width * 0.10, _fill(_indigo));
+    canvas.drawCircle(c, size.width * 0.04, _fill(Colors.white));
+    // Crosshair ticks
+    final tick = _stroke(_violet, size.width * 0.045);
+    canvas.drawLine(Offset(c.dx, c.dy - size.height * 0.40), Offset(c.dx, c.dy - size.height * 0.30), tick);
+    canvas.drawLine(Offset(c.dx, c.dy + size.height * 0.30), Offset(c.dx, c.dy + size.height * 0.40), tick);
+    canvas.drawLine(Offset(c.dx - size.width * 0.40, c.dy), Offset(c.dx - size.width * 0.30, c.dy), tick);
+    canvas.drawLine(Offset(c.dx + size.width * 0.30, c.dy), Offset(c.dx + size.width * 0.40, c.dy), tick);
   }
 
-  void _chess(Canvas canvas, Size size, Paint ink, Paint fill) {
-    final path = Path()
-      ..moveTo(size.width * 0.50, size.height * 0.18)
-      ..quadraticBezierTo(size.width * 0.62, size.height * 0.28, size.width * 0.58, size.height * 0.40)
-      ..lineTo(size.width * 0.62, size.height * 0.52)
-      ..lineTo(size.width * 0.38, size.height * 0.52)
-      ..lineTo(size.width * 0.42, size.height * 0.40)
-      ..quadraticBezierTo(size.width * 0.38, size.height * 0.28, size.width * 0.50, size.height * 0.18)
-      ..close();
-    canvas.drawPath(path, fill);
-    canvas.drawPath(path, ink);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(size.width * 0.50, size.height * 0.66), width: size.width * 0.36, height: size.height * 0.10),
-        Radius.circular(size.width * 0.03),
-      ),
-      ink,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(size.width * 0.50, size.height * 0.78), width: size.width * 0.48, height: size.height * 0.08),
-        Radius.circular(size.width * 0.03),
-      ),
-      ink,
-    );
-  }
-
-  void _crypto(Canvas canvas, Size size, Paint ink, Paint accent) {
+  void _crypto(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2);
-    canvas.drawCircle(c, size.width * 0.30, ink);
+    canvas.drawCircle(c, size.width * 0.34, _fill(const Color(0xFFFEF3C7)));
+    canvas.drawCircle(c, size.width * 0.34, _stroke(_orange, size.width * 0.05));
+    canvas.drawCircle(c, size.width * 0.26, _fill(_gold));
     final tp = TextPainter(
       text: TextSpan(
         text: '₿',
         style: TextStyle(
           fontFamily: 'Nunito',
           fontWeight: FontWeight.w900,
-          fontSize: size.width * 0.36,
-          color: BgColors.indigo,
+          fontSize: size.width * 0.34,
+          color: Colors.white,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -196,66 +191,28 @@ class _GlyphPainter extends CustomPainter {
     tp.paint(canvas, Offset(c.dx - tp.width / 2, c.dy - tp.height / 2));
   }
 
-  void _algo(Canvas canvas, Size size, Paint ink, Paint accent) {
-    final path = Path()
-      ..moveTo(size.width * 0.22, size.height * 0.35)
-      ..lineTo(size.width * 0.38, size.height * 0.50)
-      ..lineTo(size.width * 0.22, size.height * 0.65);
-    canvas.drawPath(path, ink..strokeWidth = size.width * 0.06);
-    final path2 = Path()
-      ..moveTo(size.width * 0.78, size.height * 0.35)
-      ..lineTo(size.width * 0.62, size.height * 0.50)
-      ..lineTo(size.width * 0.78, size.height * 0.65);
-    canvas.drawPath(path2, ink);
-    canvas.drawLine(
-      Offset(size.width * 0.46, size.height * 0.72),
-      Offset(size.width * 0.58, size.height * 0.28),
-      ink..strokeWidth = size.width * 0.055,
+  void _arrowUp(Canvas canvas, Size size) {
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(size.width * 0.14, size.height * 0.16, size.width * 0.72, size.height * 0.68),
+        Radius.circular(size.width * 0.12),
+      ),
+      _fill(const Color(0xFFCCFBF1)),
     );
-  }
-
-  void _arrowUp(Canvas canvas, Size size, Paint ink, Paint accent) {
     final path = Path()
       ..moveTo(size.width * 0.22, size.height * 0.68)
       ..lineTo(size.width * 0.38, size.height * 0.48)
       ..lineTo(size.width * 0.50, size.height * 0.56)
-      ..lineTo(size.width * 0.78, size.height * 0.28);
-    canvas.drawPath(path, ink..strokeWidth = size.width * 0.06);
+      ..lineTo(size.width * 0.74, size.height * 0.30);
+    canvas.drawPath(path, _stroke(_teal, size.width * 0.07));
     final head = Path()
-      ..moveTo(size.width * 0.62, size.height * 0.28)
+      ..moveTo(size.width * 0.58, size.height * 0.28)
       ..lineTo(size.width * 0.78, size.height * 0.28)
-      ..lineTo(size.width * 0.78, size.height * 0.44)
+      ..lineTo(size.width * 0.78, size.height * 0.48)
       ..close();
-    canvas.drawPath(head, accent);
-  }
-
-  void _nism(Canvas canvas, Size size, Paint ink, Paint fill) {
-    final r = RRect.fromRectAndRadius(
-      Rect.fromLTWH(size.width * 0.22, size.height * 0.22, size.width * 0.56, size.height * 0.56),
-      Radius.circular(size.width * 0.08),
-    );
-    canvas.drawRRect(r, fill);
-    canvas.drawRRect(r, ink);
-    final tp = TextPainter(
-      text: const TextSpan(
-        text: 'NISM',
-        style: TextStyle(
-          fontFamily: 'Nunito',
-          fontWeight: FontWeight.w900,
-          fontSize: 11,
-          color: BgColors.indigoDark,
-          letterSpacing: 0.4,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: size.width * 0.5);
-    // Scale text to fit.
-    final scale = (size.width * 0.42) / tp.width;
-    canvas.save();
-    canvas.translate(size.width / 2, size.height / 2);
-    canvas.scale(scale);
-    tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
-    canvas.restore();
+    canvas.drawPath(head, _fill(_teal));
+    // Accent spark
+    canvas.drawCircle(Offset(size.width * 0.74, size.height * 0.30), size.width * 0.045, _fill(_gold));
   }
 
   @override

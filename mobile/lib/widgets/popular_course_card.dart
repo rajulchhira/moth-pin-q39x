@@ -16,10 +16,11 @@ class PopularCourseCard extends StatelessWidget {
 
   final Course course;
 
-  static const double cardWidth = 196;
-  static const double cardHeight = 292;
-  static const double imageHeight = 168;
-  static const double textBlockHeight = cardHeight - imageHeight; // 124
+  // Portrait rectangle (taller than wide) — not square.
+  static const double cardWidth = 168;
+  static const double cardHeight = 320;
+  static const double imageHeight = 210;
+  static const double textBlockHeight = cardHeight - imageHeight; // 110
 
   int get _savePct {
     if (course.oldPrice <= 0 || course.oldPrice <= course.price) return 0;
@@ -92,7 +93,7 @@ class PopularCourseCard extends StatelessWidget {
                       style: bgText(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
-                        fontSize: 18,
+                        fontSize: 16,
                         height: 1.05,
                         letterSpacing: 0.2,
                       ),
@@ -327,6 +328,25 @@ class PopularCategoryTile extends StatelessWidget {
 
   final PopularCategory category;
 
+  Color get _tileTint {
+    switch (category.kind) {
+      case 'investing':
+        return const Color(0xFFECFDF5);
+      case 'cepe':
+        return const Color(0xFFF5F3FF);
+      case 'bars':
+        return const Color(0xFFEFF6FF);
+      case 'candle':
+        return const Color(0xFFF0FDF4);
+      case 'crypto':
+        return const Color(0xFFFFFBEB);
+      case 'strategy':
+        return const Color(0xFFFDF2F8);
+      default:
+        return const Color(0xFFF1F5F9);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -338,11 +358,11 @@ class PopularCategoryTile extends StatelessWidget {
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: _tileTint,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 alignment: Alignment.center,
-                child: CategoryGlyph(kind: category.kind, size: 54),
+                child: CategoryGlyph(kind: category.kind, size: 58),
               ),
               if (category.badge != null)
                 Positioned(

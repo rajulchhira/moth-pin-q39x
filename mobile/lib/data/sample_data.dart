@@ -52,8 +52,18 @@ abstract final class SampleData {
     ),
   ];
 
-  /// Home “Popular Categories” 3×3 grid — Hindi & Finance Cert kept out.
+  /// Home “Popular Categories” — only the six course-menu names (no Mentorship / NISM / Algo / Hindi).
   static const popularCategories = <PopularCategory>[
+    PopularCategory(
+      id: 'investing',
+      title: 'Stock Market Investing',
+      kind: 'investing',
+    ),
+    PopularCategory(
+      id: 'options',
+      title: 'Option Trading',
+      kind: 'cepe',
+    ),
     PopularCategory(
       id: 'beginners',
       title: 'Stock Market Basics',
@@ -65,40 +75,15 @@ abstract final class SampleData {
       kind: 'candle',
     ),
     PopularCategory(
-      id: 'options',
-      title: 'Option Trading',
-      kind: 'cepe',
-    ),
-    PopularCategory(
-      id: 'strategy',
-      title: 'Trading Strategies',
-      kind: 'strategy',
-    ),
-    PopularCategory(
-      id: 'mentorship',
-      title: 'Mentorship',
-      kind: 'mentorship',
-    ),
-    PopularCategory(
       id: 'crypto',
       title: 'Crypto',
       kind: 'crypto',
       badge: 'NEW',
     ),
     PopularCategory(
-      id: 'algo',
-      title: 'Algo Trading',
-      kind: 'algo',
-    ),
-    PopularCategory(
-      id: 'investing',
-      title: 'Stock Market Investing',
-      kind: 'investing',
-    ),
-    PopularCategory(
-      id: 'nism',
-      title: 'NISM',
-      kind: 'nism',
+      id: 'strategy',
+      title: 'Trading Strategies',
+      kind: 'strategy',
     ),
   ];
 
