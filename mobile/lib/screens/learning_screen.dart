@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../theme/bg_text.dart';
 
 import '../data/sample_data.dart';
 import '../models/course.dart';
@@ -21,7 +22,7 @@ class LearningScreen extends StatelessWidget {
         children: [
           Text(
             'My Learning',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 28,
               letterSpacing: -0.6,
@@ -31,7 +32,7 @@ class LearningScreen extends StatelessWidget {
           if (!auth.isSignedIn) ...[
             Text(
               'Sign in to see courses you purchased.',
-              style: GoogleFonts.nunito(
+              style: bgText(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
                 color: BgColors.muted,
@@ -50,7 +51,7 @@ class LearningScreen extends StatelessWidget {
                 children: [
                   Text(
                     'You are signed out',
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                     ),
@@ -58,7 +59,7 @@ class LearningScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Purchased classrooms unlock here after you sign in.',
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                       color: BgColors.muted,
@@ -76,7 +77,7 @@ class LearningScreen extends StatelessWidget {
                     ),
                     child: Text(
                       'Sign in',
-                      style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+                      style: bgText(fontWeight: FontWeight.w800),
                     ),
                   ),
                 ],
@@ -92,7 +93,7 @@ class LearningScreen extends StatelessWidget {
                   children: [
                     Text(
                       '$inProgress in progress · ${items.length} enrolled',
-                      style: GoogleFonts.nunito(
+                      style: bgText(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: BgColors.muted,
@@ -104,7 +105,7 @@ class LearningScreen extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 32),
                         child: Text(
                           'No purchased courses yet.',
-                          style: GoogleFonts.nunito(
+                          style: bgText(
                             fontWeight: FontWeight.w700,
                             color: BgColors.muted,
                           ),
@@ -164,7 +165,7 @@ class _LearningCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   item.course.title,
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                     height: 1.25,
@@ -182,7 +183,7 @@ class _LearningCard extends StatelessWidget {
                 ),
                 child: Text(
                   item.status,
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
                     color: done ? const Color(0xFF166534) : BgColors.indigo,
@@ -194,7 +195,7 @@ class _LearningCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             item.course.instructor,
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w600,
               fontSize: 13,
               color: BgColors.muted,
@@ -217,7 +218,7 @@ class _LearningCard extends StatelessWidget {
             children: [
               Text(
                 '${(item.progress * 100).round()}%',
-                style: GoogleFonts.nunito(
+                style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                   color: BgColors.ink,
@@ -229,7 +230,7 @@ class _LearningCard extends StatelessWidget {
                   item.nextLesson,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                     color: BgColors.muted,

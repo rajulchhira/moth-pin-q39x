@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../theme/bg_text.dart';
 
 import '../data/sample_data.dart';
 import '../state/auth_state.dart';
@@ -44,8 +45,9 @@ class _HomeScreenState extends State<HomeScreen>
       end: Offset.zero,
     ).animate(fade);
 
+    final firstName = SampleData.user.name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
     final welcome = auth.isSignedIn
-        ? 'Welcome back, ${SampleData.user.name.split(' ').first}'
+        ? 'Welcome back, ${firstName.isEmpty ? 'trader' : firstName.first}'
         : 'Welcome!';
 
     return SafeArea(
@@ -60,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen>
                 welcome,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.nunito(
+                style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 22,
                   letterSpacing: -0.4,
@@ -83,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen>
                 padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
                 child: Text(
                   'Upcoming live',
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
                     letterSpacing: -0.3,
@@ -116,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen>
                             item.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.nunito(
+                            style: bgText(
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                             ),
@@ -126,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen>
                             '${item.when} · ${item.mentor}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.nunito(
+                            style: bgText(
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
                               color: BgColors.muted,
@@ -145,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
               child: Text(
                 'Courses',
-                style: GoogleFonts.nunito(
+                style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
                   letterSpacing: -0.3,
@@ -194,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen>
                             item.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.nunito(
+                            style: bgText(
                               fontWeight: FontWeight.w800,
                               fontSize: 12,
                               height: 1.15,
@@ -213,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
               child: Text(
                 'Most popular courses',
-                style: GoogleFonts.nunito(
+                style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
                   letterSpacing: -0.3,
@@ -242,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
               child: Text(
                 'Learn from Stock Market Experts',
-                style: GoogleFonts.nunito(
+                style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
                   letterSpacing: -0.3,
@@ -364,7 +366,7 @@ class _HeroBannerState extends State<_HeroBanner>
             const SizedBox(height: 14),
             Text(
               'Learn from the journey of Nifty',
-              style: GoogleFonts.nunito(
+              style: bgText(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 24,
@@ -377,7 +379,7 @@ class _HeroBannerState extends State<_HeroBanner>
               'Process and risk — not a tip feed. Courses, live desks, and mentorship for Indian traders.',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.nunito(
+              style: bgText(
                 color: Colors.white.withOpacity(0.86),
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -417,7 +419,7 @@ class _HeroCta extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.nunito(
+        style: bgText(
           fontWeight: FontWeight.w800,
           fontSize: 12,
           color: filled ? BgColors.indigoDark : Colors.white,

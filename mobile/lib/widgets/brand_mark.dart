@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../theme/bg_text.dart';
 
 import '../theme/colors.dart';
 
@@ -37,7 +38,7 @@ class BrandMark extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 'B',
-                style: GoogleFonts.nunito(
+                style: bgText(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: size * 0.45,
@@ -50,7 +51,7 @@ class BrandMark extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             'Bizgarh',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: size * 0.52,
               letterSpacing: -0.8,

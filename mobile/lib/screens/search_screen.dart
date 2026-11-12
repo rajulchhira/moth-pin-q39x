@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../theme/bg_text.dart';
 
 import '../data/sample_data.dart';
 import '../theme/colors.dart';
@@ -36,7 +37,7 @@ class _SearchScreenState extends State<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             child: Text(
               'Search',
-              style: GoogleFonts.nunito(
+              style: bgText(
                 fontWeight: FontWeight.w800,
                 fontSize: 28,
                 letterSpacing: -0.6,
@@ -88,7 +89,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     child: Text(
                       SampleData.categoryLabel(id),
-                      style: GoogleFonts.nunito(
+                      style: bgText(
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
                         color: selected ? Colors.white : BgColors.ink,
@@ -103,7 +104,7 @@ class _SearchScreenState extends State<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(
               '${results.length} result${results.length == 1 ? '' : 's'}',
-              style: GoogleFonts.nunito(
+              style: bgText(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
                 color: BgColors.muted,
@@ -115,7 +116,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? Center(
                     child: Text(
                       'No courses match that filter.',
-                      style: GoogleFonts.nunito(
+                      style: bgText(
                         fontWeight: FontWeight.w700,
                         color: BgColors.muted,
                       ),

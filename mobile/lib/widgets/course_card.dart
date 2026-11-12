@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../theme/bg_text.dart';
 
 import '../models/course.dart';
 import '../theme/colors.dart';
@@ -44,7 +45,7 @@ class CourseCover extends StatelessWidget {
             course.coverLabel,
             maxLines: height <= 110 ? 2 : 3,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.nunito(
+            style: bgText(
               color: Colors.white,
               fontWeight: FontWeight.w800,
               fontSize: titleSize,
@@ -58,7 +59,7 @@ class CourseCover extends StatelessWidget {
               '${course.hours} hrs · ${course.lessons} lessons',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.nunito(
+              style: bgText(
                 color: Colors.white.withOpacity(0.82),
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -95,7 +96,7 @@ class CourseCard extends StatelessWidget {
               course.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.nunito(
+              style: bgText(
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
                 height: 1.2,
@@ -107,7 +108,7 @@ class CourseCard extends StatelessWidget {
               course.instructor,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.nunito(
+              style: bgText(
                 color: BgColors.muted,
                 fontWeight: FontWeight.w600,
                 fontSize: 11,
@@ -120,7 +121,7 @@ class CourseCard extends StatelessWidget {
                 const SizedBox(width: 2),
                 Text(
                   course.rating.toStringAsFixed(1),
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                   ),
@@ -128,7 +129,7 @@ class CourseCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   '₹${course.price}',
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                     color: BgColors.indigo,
@@ -169,7 +170,7 @@ class CourseCard extends StatelessWidget {
                   course.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     height: 1.25,
@@ -178,7 +179,7 @@ class CourseCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   course.instructor,
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     color: BgColors.muted,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -194,7 +195,7 @@ class CourseCard extends StatelessWidget {
                         '${course.rating.toStringAsFixed(1)} · ${course.learners}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.nunito(
+                        style: bgText(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                           color: BgColors.muted,
@@ -204,7 +205,7 @@ class CourseCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       '₹${course.price}',
-                      style: GoogleFonts.nunito(
+                      style: bgText(
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
                         color: BgColors.indigo,
@@ -245,7 +246,7 @@ class MentorTile extends StatelessWidget {
             backgroundColor: accent.withOpacity(0.15),
             child: Text(
               mentor.initials,
-              style: GoogleFonts.nunito(
+              style: bgText(
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
                 color: accent,
@@ -257,7 +258,7 @@ class MentorTile extends StatelessWidget {
             mentor.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 14,
             ),
@@ -268,7 +269,7 @@ class MentorTile extends StatelessWidget {
               mentor.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.nunito(
+              style: bgText(
                 color: BgColors.muted,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -280,7 +281,7 @@ class MentorTile extends StatelessWidget {
             '${mentor.learners} learners',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w700,
               fontSize: 12,
               color: BgColors.indigo,
