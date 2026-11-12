@@ -150,61 +150,61 @@ class _HomeScreenState extends State<HomeScreen>
               },
             ),
           ),
-          if (live.isNotEmpty) ...[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Upcoming live classes',
-                            style: bgText(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 20,
-                              letterSpacing: -0.3,
-                            ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Upcoming live classes',
+                          style: bgText(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: BgColors.magenta,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            'LIVE',
-                            style: bgText(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Learn stock market the right way through webinars and mentorship.',
-                      style: bgText(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: BgColors.muted,
-                        height: 1.35,
                       ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: BgColors.magenta,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'LIVE',
+                          style: bgText(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Learn stock market the right way through webinars and mentorship.',
+                    style: bgText(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: BgColors.muted,
+                      height: 1.35,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+          ),
+          if (live.isNotEmpty)
             SliverToBoxAdapter(
               child: SizedBox(
                 height: LiveWebinarCard.cardHeight,
@@ -219,7 +219,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
-          ],
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),

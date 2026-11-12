@@ -32,6 +32,8 @@ void main() {
     expect(find.text('Most popular courses'), findsOneWidget);
     expect(find.text('Upcoming live classes'), findsOneWidget);
     expect(find.text('LIVE'), findsOneWidget);
+    // No current live sessions — header only, blank card row (mirrors site).
+    expect(find.text('Gap & Go for Nifty Options'), findsNothing);
     expect(find.text('Learn from Stock Market Experts'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);

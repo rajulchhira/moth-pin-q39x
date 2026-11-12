@@ -144,30 +144,11 @@ abstract final class SampleData {
     }
   }
 
-  /// Upcoming live webinars — mirrored from site `WEBINARS` on the homepage.
-  static const upcomingLive = <LiveClass>[
-    LiveClass(
-      title: 'Gap & Go for Nifty Options',
-      when: '18 Sep 2026 • 11:00 am',
-      mentor: 'Aarav Mehta',
-      tag: 'Intraday',
-      coverColors: [0xFF0B1220, 0xFF1E3A5F, 0xFF4F46E5],
-    ),
-    LiveClass(
-      title: 'Defined-Risk Credit Spreads',
-      when: '20 Sep 2026 • 08:00 pm',
-      mentor: 'Neha Kapoor',
-      tag: 'Options',
-      coverColors: [0xFF1C1917, 0xFF9A3412, 0xFFE11D74],
-    ),
-    LiveClass(
-      title: 'Reading Weekly Structure',
-      when: '22 Sep 2026 • 07:30 pm',
-      mentor: 'Vikram Singh',
-      tag: 'Swing',
-      coverColors: [0xFF042F2E, 0xFF0F766E, 0xFF134E4A],
-    ),
-  ];
+  /// Upcoming live webinars for Home — keep in sync with the site live catalog
+  /// (`js/app.js` `listedWebinars()` / homepage `#webinarTrack`).
+  /// Empty while nothing is currently scheduled (site track is blank too);
+  /// when lives are added on the site, mirror them here so both show cards.
+  static const upcomingLive = <LiveClass>[];
 
   static const faqItems = <FaqItem>[
     FaqItem(
