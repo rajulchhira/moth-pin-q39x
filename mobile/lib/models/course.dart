@@ -75,3 +75,36 @@ class SampleUser {
   final String joined;
   final String initials;
 }
+
+class CourseMenuItem {
+  const CourseMenuItem({
+    required this.id,
+    required this.title,
+    required this.desc,
+    required this.accent,
+  });
+
+  final String id;
+  final String title;
+  final String desc;
+  final int accent;
+}
+
+class LiveClass {
+  const LiveClass({
+    required this.title,
+    required this.when,
+    required this.mentor,
+  });
+
+  final String title;
+  final String when;
+  final String mentor;
+}
+
+class FaqItem {
+  const FaqItem({required this.question, required this.answer});
+
+  final String question;
+  final String answer;
+}

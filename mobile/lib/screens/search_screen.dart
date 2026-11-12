@@ -50,7 +50,7 @@ class _SearchScreenState extends State<SearchScreen> {
               onChanged: (v) => setState(() => _query = v),
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Courses, mentors, Hindi…',
+                hintText: 'Courses, mentors, options…',
                 prefixIcon: const Icon(Icons.search_rounded, color: BgColors.muted),
                 suffixIcon: _query.isEmpty
                     ? null

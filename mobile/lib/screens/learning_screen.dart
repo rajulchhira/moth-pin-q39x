@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../data/sample_data.dart';
 import '../models/course.dart';
+import '../state/auth_state.dart';
 import '../theme/colors.dart';
 import '../widgets/course_card.dart';
 
@@ -11,8 +12,7 @@ class LearningScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = SampleData.enrolled;
-    final inProgress = items.where((e) => e.progress < 1).length;
+    final auth = AuthScope.of(context);
 
     return SafeArea(
       bottom: false,
@@ -28,19 +28,100 @@ class LearningScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            '$inProgress in progress · ${items.length} enrolled',
-            style: GoogleFonts.nunito(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color: BgColors.muted,
+          if (!auth.isSignedIn) ...[
+            Text(
+              'Sign in to see courses you purchased.',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: BgColors.muted,
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _LearningCard(item: item),
-              )),
+            const SizedBox(height: 28),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: BgColors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: BgColors.line),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You are signed out',
+                    style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Purchased classrooms unlock here after you sign in.',
+                    style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: BgColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => AuthScope.read(context).signIn(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: BgColors.indigo,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      'Sign in',
+                      style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Builder(
+              builder: (context) {
+                final items = SampleData.enrolled;
+                final inProgress = items.where((e) => e.progress < 1).length;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$inProgress in progress · ${items.length} enrolled',
+                      style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: BgColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (items.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 32),
+                        child: Text(
+                          'No purchased courses yet.',
+                          style: GoogleFonts.nunito(
+                            fontWeight: FontWeight.w700,
+                            color: BgColors.muted,
+                          ),
+                        ),
+                      )
+                    else
+                      ...items.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _LearningCard(item: item),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -91,7 +172,8 @@ class _LearningCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: done
                       ? const Color(0xFFDCFCE7)
