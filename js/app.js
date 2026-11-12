@@ -4664,7 +4664,7 @@ function ensureReviewsData() {
   if (reviewsDataP) return reviewsDataP;
   reviewsDataP = new Promise((resolve) => {
     const s = document.createElement("script");
-    s.src = "/js/reviews-data.js?v=76";
+    s.src = "/js/reviews-data.js?v=77";
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => resolve();
@@ -4696,7 +4696,7 @@ function reviewCardHTML(r) {
   const fb = `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name)}&background=eef2ff&color=4f46e5&size=128`;
   return `<article class="review-card">
     <div class="review-top"><span class="review-stars">${stars}</span><small>${escapeHtml(r.when || "")}</small></div>
-    <p>${escapeHtml(r.text)}</p>
+    <p>${escapeHtml(r.text).replace(/\n/g, "<br>")}</p>
     <div class="reviewer">
       <img src="${r.photo}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${fb}'">
       <div><strong>${escapeHtml(r.name)}</strong><span class="muted">${escapeHtml(r.city)} · ${escapeHtml(r.course)}</span></div>
@@ -4889,6 +4889,7 @@ function traderIcon(kind) {
 /* cache-bust desk99: Sunita Vyas DP sunita-vyas-6 pink dhaba half-body + reviews-data v=74 */
 /* cache-bust desk100: Sunita Vyas DP sunita-vyas-7 modern restaurant half-body + reviews-data v=75 */
 /* cache-bust desk101: Sunita Vyas DP sunita-vyas-8 Indian-face restaurant + reviews-data v=76 */
+/* cache-bust desk102: Manoj Dutta EN 4-things list + DP manoj-dutta-2 + reviews-data v=77 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
