@@ -29,7 +29,7 @@ void main() {
     // Scroll Home to build courses/experts slivers.
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -700));
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('Stock market courses for everyone'), findsOneWidget);
+    expect(find.text('Most popular courses'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Learn from Stock Market Experts'), findsOneWidget);

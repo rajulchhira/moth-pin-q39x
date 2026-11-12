@@ -6,32 +6,24 @@ import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import 'category_glyph.dart';
 
-/// Course card styled like the website “Stock market courses for everyone”
-/// strip: instructor portrait thumb, overlay title, rating, learners, price.
-///
-/// Every card uses the same fixed [cardWidth] × [cardHeight] so the marquee
-/// row stays uniform regardless of title length.
+/// “Most popular courses” marquee card — horizontal ~3:2 cover, equal sizes.
+/// Layout: gradient/image cover with uppercase topic label; below: bold title,
+/// grey instructor, then star rating + price.
 class PopularCourseCard extends StatelessWidget {
   const PopularCourseCard({super.key, required this.course});
 
   final Course course;
 
-  // Portrait rectangle (taller than wide) — not square.
-  static const double cardWidth = 168;
-  static const double cardHeight = 320;
-  static const double imageHeight = 210;
-  static const double textBlockHeight = cardHeight - imageHeight; // 110
-
-  int get _savePct {
-    if (course.oldPrice <= 0 || course.oldPrice <= course.price) return 0;
-    return (((course.oldPrice - course.price) / course.oldPrice) * 100).round();
-  }
+  // Horizontal rectangle: wider than tall (~3:2 cover).
+  static const double cardWidth = 200;
+  static const double imageHeight = 132; // ≈ 3:2 of 200
+  static const double textBlockHeight = 78;
+  static const double cardHeight = imageHeight + textBlockHeight; // 210
 
   @override
   Widget build(BuildContext context) {
     final photo = SampleData.photoAssetForInstructor(course.instructor);
     final colors = course.coverColors.map(Color.new).toList();
-    final save = _savePct;
 
     return SizedBox(
       width: cardWidth,
@@ -43,7 +35,7 @@ class PopularCourseCard extends StatelessWidget {
             width: cardWidth,
             height: imageHeight,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -59,65 +51,29 @@ class PopularCourseCard extends StatelessWidget {
                     ),
                   ),
                   if (photo != null)
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: FractionallySizedBox(
-                        widthFactor: 0.72,
-                        heightFactor: 1.08,
-                        child: ShaderMask(
-                          blendMode: BlendMode.dstIn,
-                          shaderCallback: (bounds) => const LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [Colors.transparent, Colors.black],
-                            stops: [0.0, 0.22],
-                          ).createShader(bounds),
-                          child: Image.asset(
-                            photo,
-                            fit: BoxFit.cover,
-                            alignment: const Alignment(0, -0.55),
-                            errorBuilder: (_, __, ___) =>
-                                const SizedBox.shrink(),
-                          ),
-                        ),
+                    Opacity(
+                      opacity: 0.42,
+                      child: Image.asset(
+                        photo,
+                        fit: BoxFit.cover,
+                        alignment: const Alignment(0, -0.35),
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                       ),
                     ),
                   Positioned(
-                    left: 12,
+                    left: 14,
                     top: 14,
-                    right: 88,
+                    right: 14,
                     child: Text(
-                      course.coverLabel,
-                      maxLines: 3,
+                      course.coverLabel.toUpperCase(),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: bgText(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        height: 1.05,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 10,
-                    bottom: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.16),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        'Bizgarh',
-                        style: bgText(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
+                        fontSize: 15,
+                        height: 1.1,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
@@ -129,45 +85,27 @@ class PopularCourseCard extends StatelessWidget {
             width: cardWidth,
             height: textBlockHeight,
             child: Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    height: 36, // always reserve 2 title lines
+                    height: 34, // always reserve 2 title lines
                     child: Text(
                       course.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: bgText(
                         fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        height: 1.25,
+                        fontSize: 13,
+                        height: 1.2,
                         color: BgColors.inkDeep,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.star_rounded,
-                        size: 15,
-                        color: BgColors.gold,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        course.rating.toStringAsFixed(1),
-                        style: bgText(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 2),
                   Text(
-                    '${course.learners} learners · by ${course.instructor}',
+                    course.instructor,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: bgText(
@@ -177,40 +115,31 @@ class PopularCourseCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '₹${course.price}',
-                          style: bgText(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14.5,
-                            color: BgColors.inkDeep,
-                          ),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 14,
+                        color: BgColors.gold,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        course.rating.toStringAsFixed(1),
+                        style: bgText(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
                         ),
-                        if (course.oldPrice > course.price)
-                          TextSpan(
-                            text: '  ₹${course.oldPrice}',
-                            style: bgText(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: BgColors.muted,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        if (save > 0)
-                          TextSpan(
-                            text: '  SAVE $save%',
-                            style: bgText(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11.5,
-                              color: const Color(0xFFEA580C),
-                            ),
-                          ),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '₹${course.price}',
+                        style: bgText(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
+                          color: BgColors.indigo,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

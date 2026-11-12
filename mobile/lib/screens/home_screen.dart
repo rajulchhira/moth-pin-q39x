@@ -186,28 +186,14 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Stock market courses for everyone',
-                    style: bgText(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 20,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Trending classrooms with ratings, learners, and savings.',
-                    style: bgText(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: BgColors.muted,
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
+              child: Text(
+                'Most popular courses',
+                style: bgText(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
           ),
