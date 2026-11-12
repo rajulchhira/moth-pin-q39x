@@ -32,13 +32,29 @@ class AuthScope extends InheritedNotifier<AuthState> {
 
   static AuthState of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AuthScope>();
-    assert(scope != null, 'AuthScope not found');
-    return scope!.notifier!;
+    final auth = scope?.notifier;
+    if (auth == null) {
+      throw FlutterError.fromParts(<DiagnosticsNode>[
+        ErrorSummary('AuthScope not found'),
+        ErrorDescription(
+          'Wrap the app with AuthScope before reading AuthState.of(context).',
+        ),
+      ]);
+    }
+    return auth;
   }
 
   static AuthState read(BuildContext context) {
     final scope = context.getInheritedWidgetOfExactType<AuthScope>();
-    assert(scope != null, 'AuthScope not found');
-    return scope!.notifier!;
+    final auth = scope?.notifier;
+    if (auth == null) {
+      throw FlutterError.fromParts(<DiagnosticsNode>[
+        ErrorSummary('AuthScope not found'),
+        ErrorDescription(
+          'Wrap the app with AuthScope before reading AuthState.read(context).',
+        ),
+      ]);
+    }
+    return auth;
   }
 }

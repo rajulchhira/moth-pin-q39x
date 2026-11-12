@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Release builds do not auto-add this; needed if any runtime network is used. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Bizgarh"
         android:name="${applicationName}"

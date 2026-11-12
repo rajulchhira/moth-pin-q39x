@@ -349,9 +349,17 @@ abstract final class SampleData {
   static List<Course> featuredCourses() =>
       courses.where((c) => c.category == 'trending').take(4).toList();
 
-  /// Trending / most-popular strip (Home uses reverse scroll for R→L feel).
-  static List<Course> popularCourses() =>
-      courses.where((c) => c.category == 'trending').toList();
+  /// Trending / most-popular strip (highest learners first for popular feel).
+  static List<Course> popularCourses() {
+    final popular =
+        courses.where((c) => c.category == 'trending').toList(growable: false);
+    return List<Course>.from(popular)
+      ..sort((a, b) {
+        int learnersOf(Course c) =>
+            int.tryParse(c.learners.replaceAll(',', '')) ?? 0;
+        return learnersOf(b).compareTo(learnersOf(a));
+      });
+  }
 
   static List<Course> search({
     required String query,

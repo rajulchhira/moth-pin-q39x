@@ -1,7 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import 'screens/profile_screen.dart';
 import 'screens/shell.dart';
 import 'state/auth_state.dart';
 import 'theme/app_theme.dart';
@@ -9,13 +12,33 @@ import 'theme/colors.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Release APKs do not get INTERNET by default from the Flutter tooling, and
+  // google_fonts would otherwise HTTP-fetch Nunito and crash on launch. Fonts
+  // are bundled under assets/fonts/ (Nunito-*.ttf) for offline load.
+  GoogleFonts.config.allowRuntimeFetching = false;
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (kReleaseMode) {
+      // Keep process alive for non-fatal framework errors.
+      debugPrint('FlutterError: ${details.exceptionAsString()}');
+    }
+  };
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(const BizgarhApp());
+
+  runZonedGuarded(
+    () => runApp(const BizgarhApp()),
+    (error, stack) {
+      debugPrint('Uncaught zone error: $error\n$stack');
+    },
+  );
 }
 
 class BizgarhApp extends StatefulWidget {
@@ -36,21 +59,13 @@ class _BizgarhAppState extends State<BizgarhApp> {
 
   @override
   Widget build(BuildContext context) {
-    final path = Uri.base.path;
-    final initial = (path == '/shot/about' || path == '/shot/help') ? path : '/';
-
     return AuthScope(
       notifier: _auth,
       child: MaterialApp(
         title: 'Bizgarh',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
-        initialRoute: initial,
-        routes: {
-          '/': (_) => const AppShell(),
-          '/shot/about': (_) => const AboutUsScreen(),
-          '/shot/help': (_) => const HelpFaqsScreen(),
-        },
+        home: const AppShell(),
         builder: (context, child) {
           return ColoredBox(
             color: BgColors.canvas,

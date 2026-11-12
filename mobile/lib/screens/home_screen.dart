@@ -225,9 +225,8 @@ class _HomeScreenState extends State<HomeScreen>
             child: SizedBox(
               height: 188,
               child: ListView.separated(
-                // reverse:true → popular (index 0) starts at the right edge;
-                // scroll moves content right → left.
-                reverse: true,
+                // Show popular first (list already ordered); avoid reverse:true
+                // which has caused launch layout issues on some devices.
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
                 itemCount: popular.length,
