@@ -379,25 +379,25 @@ abstract final class SampleData {
 
   static List<EnrolledCourse> enrolled = [
     EnrolledCourse(
-      course: courses.firstWhere((c) => c.id == 'opt-start'),
+      course: courses.firstWhere((c) => c.id == 'opt-start', orElse: () => courses.first),
       progress: 0.62,
       nextLesson: 'Lesson 13 · Put credit spreads',
       status: 'In progress',
     ),
     EnrolledCourse(
-      course: courses.firstWhere((c) => c.id == 'breakout'),
+      course: courses.firstWhere((c) => c.id == 'breakout', orElse: () => courses.first),
       progress: 0.35,
       nextLesson: 'Lesson 7 · Gap acceptance',
       status: 'In progress',
     ),
     EnrolledCourse(
-      course: courses.firstWhere((c) => c.id == 'first-month'),
+      course: courses.firstWhere((c) => c.id == 'first-month', orElse: () => courses.first),
       progress: 1.0,
       nextLesson: 'Completed · Review your journal',
       status: 'Completed',
     ),
     EnrolledCourse(
-      course: courses.firstWhere((c) => c.id == 'hindi-ta'),
+      course: courses.firstWhere((c) => c.id == 'hindi-ta', orElse: () => courses.first),
       progress: 0.18,
       nextLesson: 'पाठ 3 · सपोर्ट और रेसिस्टेंस',
       status: 'In progress',

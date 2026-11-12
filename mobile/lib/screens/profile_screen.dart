@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../theme/bg_text.dart';
 
 import '../data/sample_data.dart';
 import '../models/course.dart';
@@ -21,7 +22,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Text(
             'Profile',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 28,
               letterSpacing: -0.6,
@@ -42,7 +43,7 @@ class ProfileScreen extends StatelessWidget {
                     backgroundColor: Colors.white.withOpacity(0.2),
                     child: Text(
                       user.initials,
-                      style: GoogleFonts.nunito(
+                      style: bgText(
                         fontWeight: FontWeight.w800,
                         fontSize: 22,
                         color: Colors.white,
@@ -56,7 +57,7 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         Text(
                           user.name,
-                          style: GoogleFonts.nunito(
+                          style: bgText(
                             fontWeight: FontWeight.w800,
                             fontSize: 20,
                             color: Colors.white,
@@ -65,7 +66,7 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           user.email,
-                          style: GoogleFonts.nunito(
+                          style: bgText(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             color: Colors.white.withOpacity(0.85),
@@ -74,7 +75,7 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 6),
                         Text(
                           '${user.city} · ${user.joined}',
-                          style: GoogleFonts.nunito(
+                          style: bgText(
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                             color: Colors.white.withOpacity(0.78),
@@ -99,7 +100,7 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Welcome to Bizgarh',
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                     ),
@@ -107,7 +108,7 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     'Sign in to see purchases, certificates, and My Learning.',
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: BgColors.muted,
@@ -125,7 +126,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: Text(
                       'Sign in',
-                      style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+                      style: bgText(fontWeight: FontWeight.w800),
                     ),
                   ),
                 ],
@@ -134,7 +135,7 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 22),
           Text(
             'Settings',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 18,
             ),
@@ -181,7 +182,7 @@ class ProfileScreen extends StatelessWidget {
           Center(
             child: Text(
               'Bizgarh mobile · v1.0.0 sample',
-              style: GoogleFonts.nunito(
+              style: bgText(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
                 color: BgColors.muted,
@@ -238,7 +239,7 @@ class _SettingsGroup extends StatelessWidget {
               ),
               title: Text(
                 rows[i].label,
-                style: GoogleFonts.nunito(
+                style: bgText(
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
                   color: rows[i].danger ? BgColors.magenta : BgColors.ink,
@@ -269,7 +270,7 @@ class _SubpageScaffold extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           title,
-          style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+          style: bgText(fontWeight: FontWeight.w800),
         ),
         backgroundColor: BgColors.canvas,
         surfaceTintColor: Colors.transparent,
@@ -311,7 +312,7 @@ class _AccountDetailScreen extends StatelessWidget {
                 ),
                 title: Text(
                   'My certificate',
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
@@ -325,7 +326,7 @@ class _AccountDetailScreen extends StatelessWidget {
                     SnackBar(
                       content: Text(
                         'Certificates appear when a classroom is complete.',
-                        style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+                        style: bgText(fontWeight: FontWeight.w600),
                       ),
                     ),
                   );
@@ -368,7 +369,7 @@ class _PurchasesScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'No purchases yet',
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                     ),
@@ -377,7 +378,7 @@ class _PurchasesScreen extends StatelessWidget {
                   Text(
                     'Courses you buy will show up here.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w600,
                       color: BgColors.muted,
                     ),
@@ -404,7 +405,7 @@ class _PurchasesScreen extends StatelessWidget {
                         children: [
                           Text(
                             course.title,
-                            style: GoogleFonts.nunito(
+                            style: bgText(
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
                             ),
@@ -412,7 +413,7 @@ class _PurchasesScreen extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             '₹${course.price} · ${item.status}',
-                            style: GoogleFonts.nunito(
+                            style: bgText(
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                               color: BgColors.muted,
@@ -423,7 +424,7 @@ class _PurchasesScreen extends StatelessWidget {
                     ),
                     Text(
                       'Invoice',
-                      style: GoogleFonts.nunito(
+                      style: bgText(
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                         color: BgColors.indigo,
@@ -451,7 +452,7 @@ class HelpFaqsScreen extends StatelessWidget {
         children: [
           Text(
             'FAQs',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 22,
             ),
@@ -471,7 +472,7 @@ class HelpFaqsScreen extends StatelessWidget {
                 children: [
                   Text(
                     faq.question,
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
                     ),
@@ -479,7 +480,7 @@ class HelpFaqsScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     faq.answer,
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       height: 1.4,
@@ -493,7 +494,7 @@ class HelpFaqsScreen extends StatelessWidget {
           const SizedBox(height: 18),
           Text(
             'Need more help?',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 20,
             ),
@@ -505,7 +506,7 @@ class HelpFaqsScreen extends StatelessWidget {
                 SnackBar(
                   content: Text(
                     'Ticket form coming soon — email ${SampleData.supportEmail} for now.',
-                    style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+                    style: bgText(fontWeight: FontWeight.w600),
                   ),
                 ),
               );
@@ -515,7 +516,7 @@ class HelpFaqsScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Text(
                 'Raise a ticket?',
-                style: GoogleFonts.nunito(
+                style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                   color: BgColors.indigo,
@@ -528,7 +529,7 @@ class HelpFaqsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text.rich(
             TextSpan(
-              style: GoogleFonts.nunito(
+              style: bgText(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
                 color: BgColors.ink,
@@ -537,7 +538,7 @@ class HelpFaqsScreen extends StatelessWidget {
                 const TextSpan(text: 'Email us at '),
                 TextSpan(
                   text: SampleData.supportEmail,
-                  style: GoogleFonts.nunito(
+                  style: bgText(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
                     color: BgColors.indigo,
@@ -589,7 +590,7 @@ class AboutUsScreen extends StatelessWidget {
             'Bizgarh is a classroom for Indian traders: process, risk, and journals — not a tip feed.',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w600,
               fontSize: 15,
               height: 1.45,
@@ -612,7 +613,7 @@ class AboutUsScreen extends StatelessWidget {
                 children: [
                   Text(
                     card.title,
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                       color: BgColors.inkDeep,
@@ -621,7 +622,7 @@ class AboutUsScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     card.body,
-                    style: GoogleFonts.nunito(
+                    style: bgText(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                       height: 1.45,
@@ -635,7 +636,7 @@ class AboutUsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Policies',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 16,
             ),
@@ -662,7 +663,7 @@ class _PolicyLink extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       title: Text(
         label,
-        style: GoogleFonts.nunito(
+        style: bgText(
           fontWeight: FontWeight.w700,
           fontSize: 15,
           color: BgColors.indigo,
@@ -678,7 +679,7 @@ class _PolicyLink extends StatelessWidget {
           SnackBar(
             content: Text(
               'Opens bizgarh.com$path',
-              style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+              style: bgText(fontWeight: FontWeight.w600),
             ),
           ),
         );
@@ -708,7 +709,7 @@ class _InfoTile extends StatelessWidget {
         children: [
           Text(
             label,
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w600,
               fontSize: 12,
               color: BgColors.muted,
@@ -717,7 +718,7 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 15,
             ),
@@ -741,7 +742,7 @@ class _SignInPrompt extends StatelessWidget {
         children: [
           Text(
             'Sign in to continue',
-            style: GoogleFonts.nunito(
+            style: bgText(
               fontWeight: FontWeight.w800,
               fontSize: 18,
             ),
@@ -755,7 +756,7 @@ class _SignInPrompt extends StatelessWidget {
             ),
             child: Text(
               'Sign in',
-              style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+              style: bgText(fontWeight: FontWeight.w800),
             ),
           ),
         ],

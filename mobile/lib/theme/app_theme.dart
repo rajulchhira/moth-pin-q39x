@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import 'bg_text.dart';
 import 'colors.dart';
 
 abstract final class AppTheme {
@@ -9,6 +9,7 @@ abstract final class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      fontFamily: 'Nunito',
       scaffoldBackgroundColor: BgColors.canvas,
       colorScheme: ColorScheme.fromSeed(
         seedColor: BgColors.indigo,
@@ -19,7 +20,8 @@ abstract final class AppTheme {
       ),
     );
 
-    final textTheme = GoogleFonts.nunitoTextTheme(base.textTheme).apply(
+    final textTheme = base.textTheme.apply(
+      fontFamily: 'Nunito',
       bodyColor: BgColors.ink,
       displayColor: BgColors.inkDeep,
     );
@@ -32,7 +34,7 @@ abstract final class AppTheme {
         backgroundColor: BgColors.canvas,
         foregroundColor: BgColors.inkDeep,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        titleTextStyle: GoogleFonts.nunito(
+        titleTextStyle: bgText(
           fontWeight: FontWeight.w800,
           fontSize: 20,
           letterSpacing: -0.4,
@@ -44,7 +46,7 @@ abstract final class AppTheme {
         indicatorColor: BgColors.indigoSoft,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return GoogleFonts.nunito(
+          return bgText(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
             color: selected ? BgColors.indigo : BgColors.muted,
@@ -61,7 +63,7 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: BgColors.white,
-        hintStyle: GoogleFonts.nunito(color: BgColors.muted, fontWeight: FontWeight.w600),
+        hintStyle: bgText(color: BgColors.muted, fontWeight: FontWeight.w600),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
