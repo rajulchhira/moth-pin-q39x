@@ -93,18 +93,12 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 10),
           const _SettingsGroup(
             rows: [
-              _SettingsRowData(Icons.person_outline_rounded, 'Account details'),
-              _SettingsRowData(Icons.notifications_none_rounded, 'Notifications'),
-              _SettingsRowData(Icons.download_outlined, 'Downloads & offline'),
-              _SettingsRowData(Icons.language_rounded, 'Language · English / Hindi'),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const _SettingsGroup(
-            rows: [
-              _SettingsRowData(Icons.receipt_long_outlined, 'Purchases & invoices'),
+              _SettingsRowData(Icons.person_outline_rounded, 'Account detail'),
+              _SettingsRowData(Icons.bookmark_border_rounded, 'Saved item'),
+              _SettingsRowData(Icons.receipt_long_outlined, 'Purchases & Invoices'),
+              _SettingsRowData(Icons.quiz_outlined, 'Frequently asked questions'),
               _SettingsRowData(Icons.help_outline_rounded, 'Help & FAQs'),
-              _SettingsRowData(Icons.privacy_tip_outlined, 'Privacy'),
+              _SettingsRowData(Icons.info_outline_rounded, 'About Us'),
               _SettingsRowData(Icons.logout_rounded, 'Sign out', danger: true),
             ],
           ),
