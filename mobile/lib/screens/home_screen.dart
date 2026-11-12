@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../theme/bg_text.dart';
-
 import '../data/sample_data.dart';
 import '../state/auth_state.dart';
+import '../theme/bg_text.dart';
 import '../theme/colors.dart';
+import '../widgets/auto_marquee.dart';
 import '../widgets/brand_mark.dart';
-import '../widgets/course_card.dart';
+import '../widgets/popular_course_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,7 +45,8 @@ class _HomeScreenState extends State<HomeScreen>
       end: Offset.zero,
     ).animate(fade);
 
-    final firstName = SampleData.user.name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+    final firstName =
+        SampleData.user.name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
     final welcome = auth.isSignedIn
         ? 'Welcome back, ${firstName.isEmpty ? 'trader' : firstName.first}'
         : 'Welcome!';
@@ -144,9 +145,9 @@ class _HomeScreenState extends State<HomeScreen>
           ],
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
               child: Text(
-                'Courses',
+                'Popular Categories',
                 style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
@@ -156,55 +157,27 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 86,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: SampleData.courseMenu.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final item = SampleData.courseMenu[index];
-                  final accent = Color(item.accent);
-                  return Container(
-                    width: 156,
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                    decoration: BoxDecoration(
-                      color: BgColors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: BgColors.line),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            color: accent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.menu_book_rounded,
-                            size: 15,
-                            color: accent,
-                          ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const cols = 3;
+                  const gap = 12.0;
+                  final tileW =
+                      (constraints.maxWidth - gap * (cols - 1)) / cols;
+                  final tileH = tileW + 44;
+                  const cats = SampleData.popularCategories;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: 14,
+                    children: [
+                      for (final cat in cats)
+                        SizedBox(
+                          width: tileW,
+                          height: tileH,
+                          child: PopularCategoryTile(category: cat),
                         ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: bgText(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
-                              height: 1.15,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   );
                 },
               ),
@@ -212,36 +185,48 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
-              child: Text(
-                'Most popular courses',
-                style: bgText(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                  letterSpacing: -0.3,
-                ),
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Stock market courses for everyone',
+                    style: bgText(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Trending classrooms with ratings, learners, and savings.',
+                    style: bgText(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: BgColors.muted,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 188,
-              child: ListView.separated(
-                // Show popular first (list already ordered); avoid reverse:true
-                // which has caused launch layout issues on some devices.
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: popular.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (context, index) {
-                  return CourseCard(course: popular[index], compact: true);
-                },
-              ),
+            child: AutoMarquee(
+              height: 292,
+              itemCount: popular.length,
+              itemExtent: 196,
+              gap: 14,
+              // Right → left travel.
+              reverse: false,
+              pixelsPerSecond: 32,
+              itemBuilder: (context, index) {
+                return PopularCourseCard(course: popular[index]);
+              },
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
               child: Text(
                 'Learn from Stock Market Experts',
                 style: bgText(
@@ -253,17 +238,17 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 156,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: SampleData.mentors.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  return MentorTile(mentor: SampleData.mentors[index]);
-                },
-              ),
+            child: AutoMarquee(
+              height: 252,
+              itemCount: SampleData.mentors.length,
+              itemExtent: 168,
+              gap: 14,
+              // Left → right travel (opposite of courses).
+              reverse: true,
+              pixelsPerSecond: 26,
+              itemBuilder: (context, index) {
+                return ExpertPortraitCard(mentor: SampleData.mentors[index]);
+              },
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 28)),
@@ -308,7 +293,6 @@ class _HeroBannerState extends State<_HeroBanner>
         final v = t.value;
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          // Height −10% vs prior padding-driven hero (~244 → ~220 content).
           constraints: const BoxConstraints(minHeight: 196),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
@@ -356,7 +340,6 @@ class _HeroBannerState extends State<_HeroBanner>
         );
       },
       child: Padding(
-        // Prior was 22/22/22/24 — trim ~10%.
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

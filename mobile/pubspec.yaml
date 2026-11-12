@@ -22,6 +22,7 @@ flutter:
     - assets/bizgarh-icon.png
     - assets/bizgarh-lockup.png
     - assets/fonts/
+    - assets/mentors/
   fonts:
     - family: Nunito
       fonts:

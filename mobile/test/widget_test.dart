@@ -16,8 +16,15 @@ void main() {
     expect(find.text('Bizgarh'), findsWidgets);
     expect(find.textContaining('Welcome back'), findsOneWidget);
     expect(find.textContaining('Learn from the journey'), findsOneWidget);
-    expect(find.text('Courses'), findsOneWidget);
-    expect(find.text('Most popular courses'), findsOneWidget);
+    expect(find.text('Popular Categories'), findsOneWidget);
+    expect(find.text('Crypto'), findsOneWidget);
+    // Categories grid is tall; scroll Home to build courses/experts slivers.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Stock market courses for everyone'), findsOneWidget);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Learn from Stock Market Experts'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
     expect(find.text('My Learning'), findsOneWidget);

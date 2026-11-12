@@ -52,6 +52,79 @@ abstract final class SampleData {
     ),
   ];
 
+  /// Home “Popular Categories” 3×3 grid — Hindi & Finance Cert kept out.
+  static const popularCategories = <PopularCategory>[
+    PopularCategory(
+      id: 'beginners',
+      title: 'Stock Market Basics',
+      kind: 'bars',
+    ),
+    PopularCategory(
+      id: 'ta',
+      title: 'Technical Analysis',
+      kind: 'candle',
+    ),
+    PopularCategory(
+      id: 'options',
+      title: 'Option Trading',
+      kind: 'cepe',
+    ),
+    PopularCategory(
+      id: 'strategy',
+      title: 'Trading Strategies',
+      kind: 'strategy',
+    ),
+    PopularCategory(
+      id: 'mentorship',
+      title: 'Mentorship',
+      kind: 'mentorship',
+    ),
+    PopularCategory(
+      id: 'crypto',
+      title: 'Crypto',
+      kind: 'crypto',
+      badge: 'NEW',
+    ),
+    PopularCategory(
+      id: 'algo',
+      title: 'Algo Trading',
+      kind: 'algo',
+    ),
+    PopularCategory(
+      id: 'investing',
+      title: 'Stock Market Investing',
+      kind: 'investing',
+    ),
+    PopularCategory(
+      id: 'nism',
+      title: 'NISM',
+      kind: 'nism',
+    ),
+  ];
+
+  static String? photoAssetForInstructor(String name) {
+    switch (name) {
+      case 'Aarav Mehta':
+        return 'assets/mentors/aarav-mehta.jpg';
+      case 'Neha Kapoor':
+        return 'assets/mentors/neha-kapoor.jpg';
+      case 'Vikram Singh':
+        return 'assets/mentors/vikram-singh.jpg';
+      case 'Ananya Rao':
+        return 'assets/mentors/ananya-rao.jpg';
+      case 'Kabir Joshi':
+        return 'assets/mentors/kabir-joshi.jpg';
+      case 'Rohan Desai':
+        return 'assets/mentors/rohan-desai.jpg';
+      case 'Priya Nair':
+        return 'assets/mentors/priya-nair.jpg';
+      case 'Meera Iyer':
+        return 'assets/mentors/meera-iyer.jpg';
+      default:
+        return null;
+    }
+  }
+
   static const categories = <String>[
     'all',
     'trending',
@@ -120,6 +193,7 @@ abstract final class SampleData {
       learners: '50,483',
       initials: 'AM',
       accent: 0xFF4F46E5,
+      photoAsset: 'assets/mentors/aarav-mehta.jpg',
     ),
     Mentor(
       name: 'Neha Kapoor',
@@ -128,6 +202,7 @@ abstract final class SampleData {
       learners: '36,800',
       initials: 'NK',
       accent: 0xFFE11D74,
+      photoAsset: 'assets/mentors/neha-kapoor.jpg',
     ),
     Mentor(
       name: 'Vikram Singh',
@@ -136,6 +211,7 @@ abstract final class SampleData {
       learners: '28,220',
       initials: 'VS',
       accent: 0xFF0F766E,
+      photoAsset: 'assets/mentors/vikram-singh.jpg',
     ),
     Mentor(
       name: 'Ananya Rao',
@@ -144,6 +220,43 @@ abstract final class SampleData {
       learners: '33,650',
       initials: 'AR',
       accent: 0xFFF59E0B,
+      photoAsset: 'assets/mentors/ananya-rao.jpg',
+    ),
+    Mentor(
+      name: 'Kabir Joshi',
+      title: 'Index options, Bank Nifty',
+      tags: ['Index options', 'Bank Nifty'],
+      learners: '22,410',
+      initials: 'KJ',
+      accent: 0xFF1D4ED8,
+      photoAsset: 'assets/mentors/kabir-joshi.jpg',
+    ),
+    Mentor(
+      name: 'Rohan Desai',
+      title: 'Fund researcher',
+      tags: ['Mutual funds'],
+      learners: '19,880',
+      initials: 'RD',
+      accent: 0xFF0F766E,
+      photoAsset: 'assets/mentors/rohan-desai.jpg',
+    ),
+    Mentor(
+      name: 'Priya Nair',
+      title: 'Asset allocation, SIP lab',
+      tags: ['SIP', 'Allocation'],
+      learners: '17,240',
+      initials: 'PN',
+      accent: 0xFF7C3AED,
+      photoAsset: 'assets/mentors/priya-nair.jpg',
+    ),
+    Mentor(
+      name: 'Meera Iyer',
+      title: 'Options coach, defined risk',
+      tags: ['Defined risk'],
+      learners: '24,100',
+      initials: 'MI',
+      accent: 0xFFDB2777,
+      photoAsset: 'assets/mentors/meera-iyer.jpg',
     ),
   ];
 

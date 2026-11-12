@@ -50,6 +50,7 @@ class Mentor {
     required this.learners,
     required this.initials,
     required this.accent,
+    this.photoAsset,
   });
 
   final String name;
@@ -58,6 +59,22 @@ class Mentor {
   final String learners;
   final String initials;
   final int accent;
+  final String? photoAsset;
+}
+
+class PopularCategory {
+  const PopularCategory({
+    required this.id,
+    required this.title,
+    required this.kind,
+    this.badge,
+  });
+
+  final String id;
+  final String title;
+  /// Icon style key used by [CategoryGlyph].
+  final String kind;
+  final String? badge;
 }
 
 class SampleUser {
