@@ -8,10 +8,18 @@ import 'category_glyph.dart';
 
 /// Course card styled like the website “Stock market courses for everyone”
 /// strip: instructor portrait thumb, overlay title, rating, learners, price.
+///
+/// Every card uses the same fixed [cardWidth] × [cardHeight] so the marquee
+/// row stays uniform regardless of title length.
 class PopularCourseCard extends StatelessWidget {
   const PopularCourseCard({super.key, required this.course});
 
   final Course course;
+
+  static const double cardWidth = 196;
+  static const double cardHeight = 292;
+  static const double imageHeight = 168;
+  static const double textBlockHeight = cardHeight - imageHeight; // 124
 
   int get _savePct {
     if (course.oldPrice <= 0 || course.oldPrice <= course.price) return 0;
@@ -24,160 +32,191 @@ class PopularCourseCard extends StatelessWidget {
     final colors = course.coverColors.map(Color.new).toList();
     final save = _savePct;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: colors.length == 1
-                          ? [colors.first, colors.first]
-                          : colors,
+    return SizedBox(
+      width: cardWidth,
+      height: cardHeight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: cardWidth,
+            height: imageHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: colors.length == 1
+                            ? [colors.first, colors.first]
+                            : colors,
+                      ),
                     ),
                   ),
-                ),
-                if (photo != null)
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: FractionallySizedBox(
-                      widthFactor: 0.72,
-                      heightFactor: 1.08,
-                      child: ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [Colors.transparent, Colors.black],
-                          stops: [0.0, 0.22],
-                        ).createShader(bounds),
-                        child: Image.asset(
-                          photo,
-                          fit: BoxFit.cover,
-                          alignment: const Alignment(0, -0.55),
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  if (photo != null)
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.72,
+                        heightFactor: 1.08,
+                        child: ShaderMask(
+                          blendMode: BlendMode.dstIn,
+                          shaderCallback: (bounds) => const LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [Colors.transparent, Colors.black],
+                            stops: [0.0, 0.22],
+                          ).createShader(bounds),
+                          child: Image.asset(
+                            photo,
+                            fit: BoxFit.cover,
+                            alignment: const Alignment(0, -0.55),
+                            errorBuilder: (_, __, ___) =>
+                                const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    left: 12,
+                    top: 14,
+                    right: 88,
+                    child: Text(
+                      course.coverLabel,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: bgText(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        height: 1.05,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 10,
+                    bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.16),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Bizgarh',
+                        style: bgText(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
                         ),
                       ),
                     ),
                   ),
-                Positioned(
-                  left: 12,
-                  top: 14,
-                  right: 88,
-                  child: Text(
-                    course.coverLabel,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: bgText(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      height: 1.05,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 10,
-                  bottom: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.16),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            width: cardWidth,
+            height: textBlockHeight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 36, // always reserve 2 title lines
                     child: Text(
-                      'Bizgarh',
+                      course.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: bgText(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        height: 1.25,
+                        color: BgColors.inkDeep,
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          course.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: bgText(
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-            height: 1.25,
-            color: BgColors.inkDeep,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            const Icon(Icons.star_rounded, size: 15, color: BgColors.gold),
-            const SizedBox(width: 2),
-            Text(
-              course.rating.toStringAsFixed(1),
-              style: bgText(fontWeight: FontWeight.w800, fontSize: 12.5),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '${course.learners} learners · by ${course.instructor}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: bgText(
-            color: BgColors.muted,
-            fontWeight: FontWeight.w600,
-            fontSize: 11.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: '₹${course.price}',
-                style: bgText(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14.5,
-                  color: BgColors.inkDeep,
-                ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 15,
+                        color: BgColors.gold,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        course.rating.toStringAsFixed(1),
+                        style: bgText(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${course.learners} learners · by ${course.instructor}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: bgText(
+                      color: BgColors.muted,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '₹${course.price}',
+                          style: bgText(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            color: BgColors.inkDeep,
+                          ),
+                        ),
+                        if (course.oldPrice > course.price)
+                          TextSpan(
+                            text: '  ₹${course.oldPrice}',
+                            style: bgText(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: BgColors.muted,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        if (save > 0)
+                          TextSpan(
+                            text: '  SAVE $save%',
+                            style: bgText(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11.5,
+                              color: const Color(0xFFEA580C),
+                            ),
+                          ),
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              if (course.oldPrice > course.price)
-                TextSpan(
-                  text: '  ₹${course.oldPrice}',
-                  style: bgText(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: BgColors.muted,
-                    decoration: TextDecoration.lineThrough,
-                  ),
-                ),
-              if (save > 0)
-                TextSpan(
-                  text: '  SAVE $save%',
-                  style: bgText(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11.5,
-                    color: const Color(0xFFEA580C),
-                  ),
-                ),
-            ],
+            ),
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

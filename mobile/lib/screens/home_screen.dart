@@ -212,9 +212,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: AutoMarquee(
-              height: 292,
+              height: PopularCourseCard.cardHeight,
               itemCount: popular.length,
-              itemExtent: 196,
+              itemExtent: PopularCourseCard.cardWidth,
               gap: 14,
               // Right → left travel.
               reverse: false,
