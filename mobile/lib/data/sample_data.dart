@@ -10,6 +10,48 @@ abstract final class SampleData {
     initials: 'RS',
   );
 
+  static const supportEmail = 'desk@bizgarh.com';
+
+  /// Course menu (site mega / home chips) — Hindi & Finance Certification removed.
+  static const courseMenu = <CourseMenuItem>[
+    CourseMenuItem(
+      id: 'investing',
+      title: 'Stock Market Investing',
+      desc: 'Patient, long-term courses.',
+      accent: 0xFF4F46E5,
+    ),
+    CourseMenuItem(
+      id: 'options',
+      title: 'Option Trading',
+      desc: 'Defined-risk option courses.',
+      accent: 0xFF7C3AED,
+    ),
+    CourseMenuItem(
+      id: 'beginners',
+      title: 'Stock Market Basics',
+      desc: 'Beginner-friendly classrooms.',
+      accent: 0xFF0284C7,
+    ),
+    CourseMenuItem(
+      id: 'ta',
+      title: 'Technical Analysis',
+      desc: 'Candles, levels, structure.',
+      accent: 0xFF16A34A,
+    ),
+    CourseMenuItem(
+      id: 'crypto',
+      title: 'Crypto',
+      desc: 'Spot, risk, and sizing.',
+      accent: 0xFFCA8A04,
+    ),
+    CourseMenuItem(
+      id: 'strategy',
+      title: 'Trading Strategies',
+      desc: 'Checklists to systems.',
+      accent: 0xFFDB2777,
+    ),
+  ];
+
   static const categories = <String>[
     'all',
     'trending',
@@ -17,7 +59,6 @@ abstract final class SampleData {
     'options',
     'investing',
     'ta',
-    'hindi',
     'crypto',
     'strategy',
   ];
@@ -36,8 +77,6 @@ abstract final class SampleData {
         return 'Investing';
       case 'ta':
         return 'Charts';
-      case 'hindi':
-        return 'Hindi';
       case 'crypto':
         return 'Crypto';
       case 'strategy':
@@ -46,6 +85,32 @@ abstract final class SampleData {
         return id;
     }
   }
+
+  /// Empty by default so Home hides the Upcoming live block unless filled.
+  static List<LiveClass> upcomingLive = const [];
+
+  static const faqItems = <FaqItem>[
+    FaqItem(
+      question: 'Do I need an account?',
+      answer:
+          'Yes. Sign in to enroll, join a live room, continue a classroom, or see certificates.',
+    ),
+    FaqItem(
+      question: 'How do I start if I am new?',
+      answer:
+          'Open Courses, pick a beginner classroom, or sit in a live webinar first.',
+    ),
+    FaqItem(
+      question: 'When do I get a certificate?',
+      answer:
+          'After you finish every lesson in that classroom. View it from My certificate.',
+    ),
+    FaqItem(
+      question: 'How do refunds work?',
+      answer:
+          'Write desk@bizgarh.com with your login email and course title within the refund window.',
+    ),
+  ];
 
   static const mentors = <Mentor>[
     Mentor(
@@ -283,6 +348,10 @@ abstract final class SampleData {
 
   static List<Course> featuredCourses() =>
       courses.where((c) => c.category == 'trending').take(4).toList();
+
+  /// Trending / most-popular strip (Home uses reverse scroll for R→L feel).
+  static List<Course> popularCourses() =>
+      courses.where((c) => c.category == 'trending').toList();
 
   static List<Course> search({
     required String query,

@@ -1149,10 +1149,8 @@ const CATEGORIES = [
   { id: "options", title: "Option Trading", desc: "Defined-risk option courses designed for all levels of traders.", icon: "layers", tint: "#f5f3ff", color: "#7c3aed" },
   { id: "beginners", title: "Stock Market Basics", desc: "Begin your market journey with our beginner-friendly courses.", icon: "bars", color: "#0284c7", tint: "#e0f2fe" },
   { id: "ta", title: "Technical Analysis", desc: "Learn candlestick context, levels, and clean chart structure.", icon: "candle", color: "#16a34a", tint: "#dcfce7" },
-  { id: "hindi", title: "Stock Market in Hindi", desc: "Learn in Hindi to understand the concepts with more clarity.", icon: "chat", color: "#2563eb", tint: "#dbeafe" },
   { id: "crypto", title: "Crypto", desc: "Learn how to analyse, trade, and size risk in cryptocurrency.", icon: "coin", color: "#ca8a04", tint: "#fef9c3" },
-  { id: "strategy", title: "Trading Strategies", desc: "From simple checklists to advanced options trading systems.", icon: "target", color: "#db2777", tint: "#fce7f3" },
-  { id: "cert", title: "Finance Certification", desc: "Structured modules to practice exam-style market concepts.", icon: "badge", color: "#ea580c", tint: "#ffedd5" }
+  { id: "strategy", title: "Trading Strategies", desc: "From simple checklists to advanced options trading systems.", icon: "target", color: "#db2777", tint: "#fce7f3" }
 ];
 
 const WEB_BANNERS = [
@@ -3678,7 +3676,6 @@ function footerHTML() {
             <a href="/option-trading-course">Option trading course</a>
             <a href="/nifty-options">Nifty options</a>
             <a href="/technical-analysis-course">Technical analysis</a>
-            <a href="/share-market-course-in-hindi">Share market in Hindi</a>
             <a href="/live">Live webinars</a>
             <a href="/mentorship">Trading mentorship</a>
           </div>
@@ -3688,6 +3685,9 @@ function footerHTML() {
             <a href="/about">About</a>
             <a href="/reviews">Reviews</a>
             <a href="/contact">Help</a>
+            <a href="/terms">Terms of Usage</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/refund">Refund Policy</a>
             <a href="/dashboard">My Dashboard</a>
             <a href="/learning">My Learning</a>
           </div>

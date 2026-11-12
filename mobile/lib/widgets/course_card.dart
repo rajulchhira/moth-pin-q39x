@@ -21,8 +21,9 @@ class CourseCover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = course.coverColors.map(Color.new).toList();
-    final pad = height < 100 ? 10.0 : 16.0;
-    final titleSize = height < 100 ? 12.0 : 18.0;
+    final pad = height <= 110 ? 10.0 : 16.0;
+    final titleSize = height <= 110 ? 13.0 : 18.0;
+    final showMeta = !compactMeta && height >= 120;
 
     return Container(
       height: height,
@@ -41,20 +42,22 @@ class CourseCover extends StatelessWidget {
         children: [
           Text(
             course.coverLabel,
-            maxLines: height < 100 ? 2 : 3,
+            maxLines: height <= 110 ? 2 : 3,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.nunito(
               color: Colors.white,
               fontWeight: FontWeight.w800,
               fontSize: titleSize,
-              height: 1.15,
+              height: 1.1,
               letterSpacing: -0.3,
             ),
           ),
-          if (!compactMeta && height >= 100) ...[
+          if (showMeta) ...[
             const Spacer(),
             Text(
               '${course.hours} hrs · ${course.lessons} lessons',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.nunito(
                 color: Colors.white.withOpacity(0.82),
                 fontWeight: FontWeight.w600,
@@ -82,21 +85,20 @@ class CourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (compact) {
       return SizedBox(
-        width: 220,
+        width: 200,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            CourseCover(course: course, height: 110),
-            const SizedBox(height: 8),
+            CourseCover(course: course, height: 100),
+            const SizedBox(height: 6),
             Text(
               course.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.nunito(
                 fontWeight: FontWeight.w800,
-                fontSize: 14,
-                height: 1.25,
+                fontSize: 13,
+                height: 1.2,
                 color: BgColors.inkDeep,
               ),
             ),
@@ -108,13 +110,13 @@ class CourseCard extends StatelessWidget {
               style: GoogleFonts.nunito(
                 color: BgColors.muted,
                 fontWeight: FontWeight.w600,
-                fontSize: 12,
+                fontSize: 11,
               ),
             ),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.star_rounded, size: 15, color: BgColors.gold),
+                const Icon(Icons.star_rounded, size: 14, color: BgColors.gold),
                 const SizedBox(width: 2),
                 Text(
                   course.rating.toStringAsFixed(1),
@@ -128,7 +130,7 @@ class CourseCard extends StatelessWidget {
                   '₹${course.price}',
                   style: GoogleFonts.nunito(
                     fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                    fontSize: 12,
                     color: BgColors.indigo,
                   ),
                 ),
@@ -229,7 +231,7 @@ class MentorTile extends StatelessWidget {
     final accent = Color(mentor.accent);
     return Container(
       width: 180,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
       decoration: BoxDecoration(
         color: BgColors.white,
         borderRadius: BorderRadius.circular(18),
@@ -239,39 +241,45 @@ class MentorTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            radius: 22,
+            radius: 20,
             backgroundColor: accent.withOpacity(0.15),
             child: Text(
               mentor.initials,
               style: GoogleFonts.nunito(
                 fontWeight: FontWeight.w800,
+                fontSize: 13,
                 color: accent,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             mentor.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.nunito(
               fontWeight: FontWeight.w800,
-              fontSize: 15,
+              fontSize: 14,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            mentor.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.nunito(
-              color: BgColors.muted,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              height: 1.3,
+          Expanded(
+            child: Text(
+              mentor.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.nunito(
+                color: BgColors.muted,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                height: 1.25,
+              ),
             ),
           ),
-          const Spacer(),
           Text(
             '${mentor.learners} learners',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.nunito(
               fontWeight: FontWeight.w700,
               fontSize: 12,
