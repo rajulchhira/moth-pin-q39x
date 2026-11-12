@@ -252,10 +252,15 @@ class _InitialsFallback extends StatelessWidget {
   }
 }
 
+/// Equal-size category tile: horizontal rounded cover (like course cards) + label.
 class PopularCategoryTile extends StatelessWidget {
   const PopularCategoryTile({super.key, required this.category});
 
   final PopularCategory category;
+
+  /// Match Most popular course cover aspect (~3:2).
+  static const double coverAspect = 3 / 2;
+  static const double labelHeight = 34;
 
   Color get _tileTint {
     switch (category.kind) {
@@ -279,26 +284,33 @@ class PopularCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
+        AspectRatio(
+          aspectRatio: coverAspect,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: _tileTint,
-                  borderRadius: BorderRadius.circular(18),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _tileTint,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: CategoryGlyph(kind: category.kind, size: 48),
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: CategoryGlyph(kind: category.kind, size: 58),
               ),
               if (category.badge != null)
                 Positioned(
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: BgColors.magenta,
                       borderRadius: BorderRadius.circular(999),
@@ -318,19 +330,224 @@ class PopularCategoryTile extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          category.title,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: bgText(
-            fontWeight: FontWeight.w800,
-            fontSize: 12,
-            height: 1.2,
-            color: BgColors.inkDeep,
+        SizedBox(
+          height: labelHeight,
+          child: Text(
+            category.title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: bgText(
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+              height: 1.2,
+              color: BgColors.inkDeep,
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Website-style upcoming webinar card (banner + when / title / by / FREE).
+class LiveWebinarCard extends StatelessWidget {
+  const LiveWebinarCard({super.key, required this.item});
+
+  final LiveClass item;
+
+  static const double cardWidth = 260;
+  static const double bannerHeight = 148;
+  static const double cardHeight = 280;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = SampleData.photoAssetForInstructor(item.mentor);
+    final colors = item.coverColors.map(Color.new).toList();
+
+    return SizedBox(
+      width: cardWidth,
+      height: cardHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: BgColors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: BgColors.line),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: cardWidth,
+                height: bannerHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: colors.length == 1
+                              ? [colors.first, colors.first]
+                              : colors,
+                        ),
+                      ),
+                    ),
+                    if (photo != null)
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: FractionallySizedBox(
+                          widthFactor: 0.48,
+                          heightFactor: 1,
+                          child: Image.asset(
+                            photo,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (_, __, ___) =>
+                                const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      left: 14,
+                      top: 14,
+                      right: cardWidth * 0.42,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            item.tag.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: bgText(
+                              color: Colors.white.withOpacity(0.82),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            item.title,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: bgText(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.16),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.28),
+                          ),
+                        ),
+                        child: Text(
+                          'Bizgarh',
+                          style: bgText(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.when,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: bgText(
+                          color: BgColors.muted,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        height: 36,
+                        child: Text(
+                          item.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: bgText(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            height: 1.2,
+                            color: BgColors.inkDeep,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'by ${item.mentor}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: bgText(
+                          color: BgColors.muted,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Text(
+                            item.free ? 'FREE' : '₹${item.listPrice}',
+                            style: bgText(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: BgColors.indigo,
+                            ),
+                          ),
+                          if (item.free) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '₹${item.listPrice}',
+                              style: bgText(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: BgColors.muted,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -144,8 +144,30 @@ abstract final class SampleData {
     }
   }
 
-  /// Empty by default so Home hides the Upcoming live block unless filled.
-  static List<LiveClass> upcomingLive = const [];
+  /// Upcoming live webinars — mirrored from site `WEBINARS` on the homepage.
+  static const upcomingLive = <LiveClass>[
+    LiveClass(
+      title: 'Gap & Go for Nifty Options',
+      when: '18 Sep 2026 • 11:00 am',
+      mentor: 'Aarav Mehta',
+      tag: 'Intraday',
+      coverColors: [0xFF0B1220, 0xFF1E3A5F, 0xFF4F46E5],
+    ),
+    LiveClass(
+      title: 'Defined-Risk Credit Spreads',
+      when: '20 Sep 2026 • 08:00 pm',
+      mentor: 'Neha Kapoor',
+      tag: 'Options',
+      coverColors: [0xFF1C1917, 0xFF9A3412, 0xFFE11D74],
+    ),
+    LiveClass(
+      title: 'Reading Weekly Structure',
+      when: '22 Sep 2026 • 07:30 pm',
+      mentor: 'Vikram Singh',
+      tag: 'Swing',
+      coverColors: [0xFF042F2E, 0xFF0F766E, 0xFF134E4A],
+    ),
+  ];
 
   static const faqItems = <FaqItem>[
     FaqItem(

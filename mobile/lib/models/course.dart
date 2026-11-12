@@ -112,11 +112,19 @@ class LiveClass {
     required this.title,
     required this.when,
     required this.mentor,
+    this.free = true,
+    this.tag = 'Webinar',
+    this.listPrice = 999,
+    this.coverColors = const [0xFF0B1220, 0xFF1E1B4B, 0xFF4F46E5],
   });
 
   final String title;
   final String when;
   final String mentor;
+  final bool free;
+  final String tag;
+  final int listPrice;
+  final List<int> coverColors;
 }
 
 class FaqItem {

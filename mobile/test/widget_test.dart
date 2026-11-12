@@ -26,12 +26,12 @@ void main() {
     expect(find.text('Mentorship'), findsNothing);
     expect(find.text('NISM'), findsNothing);
     expect(find.text('Algo Trading'), findsNothing);
-    // Scroll Home to build courses/experts slivers.
+    // Scroll Home to build courses / live / experts slivers.
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -700));
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Most popular courses'), findsOneWidget);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Upcoming live classes'), findsOneWidget);
+    expect(find.text('LIVE'), findsOneWidget);
     expect(find.text('Learn from Stock Market Experts'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
