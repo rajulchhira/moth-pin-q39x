@@ -808,7 +808,7 @@ const COVERS = {
 };
 
 const MENTORS = [
-  { name: "Aarav Mehta", role: "Full-time trader", tag: "Intraday", img: "/img/instructors/aarav-mehta.jpg?v=1" },
+  { name: "Aarav Mehta", role: "Full-time trader", tag: "Intraday", img: "/img/instructors/aarav-mehta.jpg?v=2" },
   { name: "Neha Kapoor", role: "Options specialist", tag: "Income strategies", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Vikram Singh", role: "Price action coach", tag: "Swing trading", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=640&h=860&q=80" },
@@ -4890,7 +4890,7 @@ function traderIcon(kind) {
 /* cache-bust desk100: Sunita Vyas DP sunita-vyas-7 modern restaurant half-body + reviews-data v=75 */
 /* cache-bust desk101: Sunita Vyas DP sunita-vyas-8 Indian-face restaurant + reviews-data v=76 */
 /* cache-bust desk102: Manoj Dutta EN 4-things list + DP manoj-dutta-2 + reviews-data v=77 */
-/* cache-bust desk104: Aarav Mehta instructor DP /img/instructors/aarav-mehta.jpg?v=1 */
+/* cache-bust desk104: Aarav Mehta instructor DP /img/instructors/aarav-mehta.jpg?v=2 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
