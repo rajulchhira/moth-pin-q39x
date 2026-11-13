@@ -4890,7 +4890,8 @@ function traderIcon(kind) {
 /* cache-bust desk100: Sunita Vyas DP sunita-vyas-7 modern restaurant half-body + reviews-data v=75 */
 /* cache-bust desk101: Sunita Vyas DP sunita-vyas-8 Indian-face restaurant + reviews-data v=76 */
 /* cache-bust desk102: Manoj Dutta EN 4-things list + DP manoj-dutta-2 + reviews-data v=77 */
-/* cache-bust desk104: Aarav Mehta instructor DP /img/instructors/aarav-mehta.jpg?v=2 */
+/* cache-bust desk104: Aarav Mehta instructor DP /img/instructors/aarav-mehta.jpg?v=1 */
+/* cache-bust desk105: Aarav Mehta DP redo candidate-6 phone realism /img/instructors/aarav-mehta.jpg?v=2 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
