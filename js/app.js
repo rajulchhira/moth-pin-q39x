@@ -809,7 +809,7 @@ const COVERS = {
 
 const MENTORS = [
   { name: "Aarav Mehta", role: "Full-time trader", tag: "Intraday", img: "/img/instructors/aarav-mehta.jpg?v=7" },
-  { name: "Neha Kapoor", role: "Options specialist", tag: "Income strategies", img: "/img/instructors/neha-kapoor.jpg?v=6" },
+  { name: "Neha Kapoor", role: "Options specialist", tag: "Income strategies", img: "/img/instructors/neha-kapoor.jpg?v=7" },
   { name: "Vikram Singh", role: "Price action coach", tag: "Swing trading", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=640&h=860&q=80" },
@@ -4901,6 +4901,7 @@ function traderIcon(kind) {
 /* cache-bust desk112: edge purge after CF miss on #68 merge /img/instructors/neha-kapoor.jpg?v=5 /img/instructors/aarav-mehta.jpg?v=6 */
 /* cache-bust desk113: restore Aarav Mehta DP to pre-#68 live (7c4053f / desk107 / candidate-10) /img/instructors/aarav-mehta.jpg?v=7; Neha kept */
 /* cache-bust desk114: Neha Kapoor DP Isha-look compose (pose/cloth/bg + phone realism) /img/instructors/neha-kapoor.jpg?v=6; Aarav unchanged */
+/* cache-bust desk115: edge purge after CF poison on #71 (?v=6 held old JPEG; app.js?v=desk114 held pre-merge) /img/instructors/neha-kapoor.jpg?v=7 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
