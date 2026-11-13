@@ -144,6 +144,32 @@ abstract final class SampleData {
     }
   }
 
+  /// Full library title — matches site `/courses?cat=` labels.
+  static String libraryLabel(String id) {
+    switch (id) {
+      case 'all':
+        return 'All courses';
+      case 'trending':
+        return 'Trending';
+      case 'investing':
+        return 'Stock Market Investing';
+      case 'options':
+        return 'Option Trading';
+      case 'beginners':
+        return 'Stock Market Basics';
+      case 'ta':
+        return 'Technical Analysis';
+      case 'crypto':
+        return 'Crypto';
+      case 'strategy':
+        return 'Trading Strategies';
+      case 'hindi':
+        return 'In Hindi';
+      default:
+        return categoryLabel(id);
+    }
+  }
+
   /// Upcoming live webinars for Home — keep in sync with the site live catalog
   /// (`js/app.js` `listedWebinars()` / homepage `#webinarTrack`).
   /// Empty while nothing is currently scheduled (site track is blank too);

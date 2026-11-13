@@ -10,9 +10,10 @@ import 'category_glyph.dart';
 /// Layout: gradient/image cover with uppercase topic label; below: bold title,
 /// grey instructor, then star rating + price.
 class PopularCourseCard extends StatelessWidget {
-  const PopularCourseCard({super.key, required this.course});
+  const PopularCourseCard({super.key, required this.course, this.onTap});
 
   final Course course;
+  final VoidCallback? onTap;
 
   // Horizontal rectangle: wider than tall (~3:2 cover).
   static const double cardWidth = 200;
@@ -25,7 +26,7 @@ class PopularCourseCard extends StatelessWidget {
     final photo = SampleData.photoAssetForInstructor(course.instructor);
     final colors = course.coverColors.map(Color.new).toList();
 
-    return SizedBox(
+    final body = SizedBox(
       width: cardWidth,
       height: cardHeight,
       child: Column(
@@ -148,18 +149,25 @@ class PopularCourseCard extends StatelessWidget {
         ],
       ),
     );
+    if (onTap == null) return body;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: body,
+    );
   }
 }
 
 class ExpertPortraitCard extends StatelessWidget {
-  const ExpertPortraitCard({super.key, required this.mentor});
+  const ExpertPortraitCard({super.key, required this.mentor, this.onTap});
 
   final Mentor mentor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final accent = Color(mentor.accent);
-    return ClipRRect(
+    final body = ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: Stack(
         fit: StackFit.expand,
@@ -225,6 +233,12 @@ class ExpertPortraitCard extends StatelessWidget {
         ],
       ),
     );
+    if (onTap == null) return body;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: body,
+    );
   }
 }
 
@@ -254,9 +268,14 @@ class _InitialsFallback extends StatelessWidget {
 
 /// Equal-size category tile: horizontal rounded cover (like course cards) + label.
 class PopularCategoryTile extends StatelessWidget {
-  const PopularCategoryTile({super.key, required this.category});
+  const PopularCategoryTile({
+    super.key,
+    required this.category,
+    this.onTap,
+  });
 
   final PopularCategory category;
+  final VoidCallback? onTap;
 
   /// Match Most popular course cover aspect (~3:2).
   static const double coverAspect = 3 / 2;
@@ -283,7 +302,7 @@ class PopularCategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AspectRatio(
@@ -346,6 +365,15 @@ class PopularCategoryTile extends StatelessWidget {
           ),
         ),
       ],
+    );
+    if (onTap == null) return body;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: body,
+      ),
     );
   }
 }

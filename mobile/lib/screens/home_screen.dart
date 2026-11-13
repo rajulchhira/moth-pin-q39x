@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../data/sample_data.dart';
+import '../models/course.dart';
+import '../state/app_nav.dart';
 import '../state/auth_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/auto_marquee.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/popular_course_card.dart';
+import 'course_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +21,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _motion;
+  final _scroll = ScrollController();
+  final _popularKey = GlobalKey();
+  final _liveKey = GlobalKey();
 
   @override
   void initState() {
@@ -26,17 +32,101 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
+    // Web screenshot helper: /?scroll=popular|live
+    final demo = Uri.base.queryParameters['scroll'];
+    if (demo == 'popular' || demo == 'live') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollWhenReady(
+          demo == 'live' ? HomeAnchor.liveClasses : HomeAnchor.popularCourses,
+        );
+      });
+    }
+  }
+
+  Future<void> _scrollWhenReady(HomeAnchor anchor) async {
+    for (var i = 0; i < 40; i++) {
+      if (!mounted) return;
+      if (_scroll.hasClients) {
+        await _scrollToAnchor(anchor);
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
   }
 
   @override
   void dispose() {
     _motion.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nav = AppNavScope.of(context);
+    final pending = nav.pendingHomeScroll;
+    if (pending == null) return;
+    nav.clearPendingHomeScroll();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scrollWhenReady(pending);
+    });
+  }
+
+  Future<void> _scrollToAnchor(HomeAnchor anchor) async {
+    final key = switch (anchor) {
+      HomeAnchor.popularCourses => _popularKey,
+      HomeAnchor.liveClasses => _liveKey,
+    };
+
+    if (!_scroll.hasClients) return;
+
+    // Walk the scroll extent until the target sliver is built, then pin it.
+    for (var step = 0; step < 16; step++) {
+      if (!mounted || !_scroll.hasClients) return;
+      final max = _scroll.position.maxScrollExtent;
+      final next = (180.0 * (step + 1)).clamp(0.0, max);
+      await _scroll.animateTo(
+        next,
+        duration: const Duration(milliseconds: 60),
+        curve: Curves.linear,
+      );
+      if (!mounted) return;
+      final ctx = key.currentContext;
+      if (ctx != null && ctx.mounted) {
+        await Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 360),
+          curve: Curves.easeOutCubic,
+          alignment: 0.04,
+        );
+        return;
+      }
+      if (next >= max && max > 0) break;
+    }
+  }
+
+  void _openCourse(BuildContext context, Course course) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CourseDetailScreen(course: course),
+      ),
+    );
+  }
+
+  void _openMentor(BuildContext context, Mentor mentor) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MentorDetailScreen(mentor: mentor),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
+    final nav = AppNavScope.of(context);
     final popular = SampleData.popularCourses();
     const live = SampleData.upcomingLive;
     final fade = CurvedAnimation(parent: _motion, curve: Curves.easeOutCubic);
@@ -54,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen>
     return SafeArea(
       bottom: false,
       child: CustomScrollView(
+        controller: _scroll,
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
@@ -76,7 +167,14 @@ class _HomeScreenState extends State<HomeScreen>
               opacity: fade,
               child: SlideTransition(
                 position: slide,
-                child: const _HeroBanner(),
+                child: _HeroBanner(
+                  onExploreCourses: () {
+                    _scrollWhenReady(HomeAnchor.popularCourses);
+                  },
+                  onLiveRooms: () {
+                    _scrollWhenReady(HomeAnchor.liveClasses);
+                  },
+                ),
               ),
             ),
           ),
@@ -98,7 +196,6 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Six course-menu categories → 3×2 equal rounded-rect tiles.
                   const cols = 3;
                   const gap = 12.0;
                   final tileW =
@@ -115,7 +212,10 @@ class _HomeScreenState extends State<HomeScreen>
                         SizedBox(
                           width: tileW,
                           height: tileH,
-                          child: PopularCategoryTile(category: cat),
+                          child: PopularCategoryTile(
+                            category: cat,
+                            onTap: () => nav.openLibrary(category: cat.id),
+                          ),
                         ),
                     ],
                   );
@@ -125,6 +225,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
+              key: _popularKey,
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
               child: Text(
                 'Most popular courses',
@@ -142,16 +243,19 @@ class _HomeScreenState extends State<HomeScreen>
               itemCount: popular.length,
               itemExtent: PopularCourseCard.cardWidth,
               gap: 14,
-              // Right → left travel.
               reverse: false,
               pixelsPerSecond: 32,
               itemBuilder: (context, index) {
-                return PopularCourseCard(course: popular[index]);
+                return PopularCourseCard(
+                  course: popular[index],
+                  onTap: () => _openCourse(context, popular[index]),
+                );
               },
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
+              key: _liveKey,
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,11 +342,14 @@ class _HomeScreenState extends State<HomeScreen>
               itemCount: SampleData.mentors.length,
               itemExtent: 168,
               gap: 14,
-              // Left → right travel (opposite of courses).
               reverse: true,
               pixelsPerSecond: 26,
               itemBuilder: (context, index) {
-                return ExpertPortraitCard(mentor: SampleData.mentors[index]);
+                final mentor = SampleData.mentors[index];
+                return ExpertPortraitCard(
+                  mentor: mentor,
+                  onTap: () => _openMentor(context, mentor),
+                );
               },
             ),
           ),
@@ -254,7 +361,13 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 class _HeroBanner extends StatefulWidget {
-  const _HeroBanner();
+  const _HeroBanner({
+    required this.onExploreCourses,
+    required this.onLiveRooms,
+  });
+
+  final VoidCallback onExploreCourses;
+  final VoidCallback onLiveRooms;
 
   @override
   State<_HeroBanner> createState() => _HeroBannerState();
@@ -307,24 +420,28 @@ class _HeroBannerState extends State<_HeroBanner>
                 Positioned(
                   right: -48 + v * 18,
                   top: -36,
-                  child: Container(
-                    width: 144,
-                    height: 144,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: BgColors.magenta.withOpacity(0.22),
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 144,
+                      height: 144,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: BgColors.magenta.withOpacity(0.22),
+                      ),
                     ),
                   ),
                 ),
                 Positioned(
                   left: -20,
                   bottom: -50,
-                  child: Container(
-                    width: 126,
-                    height: 126,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.06),
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 126,
+                      height: 126,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.06),
+                      ),
                     ),
                   ),
                 ),
@@ -365,12 +482,20 @@ class _HeroBannerState extends State<_HeroBanner>
               ),
             ),
             const SizedBox(height: 14),
-            const Wrap(
+            Wrap(
               spacing: 10,
               runSpacing: 8,
               children: [
-                _HeroCta(label: 'Explore courses', filled: true),
-                _HeroCta(label: 'Live rooms', filled: false),
+                _HeroCta(
+                  label: 'Explore courses',
+                  filled: true,
+                  onTap: widget.onExploreCourses,
+                ),
+                _HeroCta(
+                  label: 'Live rooms',
+                  filled: false,
+                  onTap: widget.onLiveRooms,
+                ),
               ],
             ),
           ],
@@ -381,26 +506,57 @@ class _HeroBannerState extends State<_HeroBanner>
 }
 
 class _HeroCta extends StatelessWidget {
-  const _HeroCta({required this.label, required this.filled});
+  const _HeroCta({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
 
   final String label;
   final bool filled;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: filled ? Colors.white : Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: filled ? null : Border.all(color: Colors.white.withOpacity(0.28)),
+    final radius = BorderRadius.circular(12);
+    if (filled) {
+      return FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: BgColors.indigoDark,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          minimumSize: const Size(0, 0),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(borderRadius: radius),
+        ),
+        child: Text(
+          label,
+          style: bgText(
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+            color: BgColors.indigoDark,
+          ),
+        ),
+      );
+    }
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        minimumSize: const Size(0, 0),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        side: BorderSide(color: Colors.white.withOpacity(0.28)),
+        backgroundColor: Colors.white.withOpacity(0.12),
+        shape: RoundedRectangleBorder(borderRadius: radius),
       ),
       child: Text(
         label,
         style: bgText(
           fontWeight: FontWeight.w800,
           fontSize: 12,
-          color: filled ? BgColors.indigoDark : Colors.white,
+          color: Colors.white,
         ),
       ),
     );

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../theme/bg_text.dart';
-
 import '../data/sample_data.dart';
 import '../models/course.dart';
+import '../state/app_nav.dart';
 import '../state/auth_state.dart';
+import '../theme/bg_text.dart';
 import '../theme/colors.dart';
+import 'course_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -149,9 +150,24 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () => _open(context, const _AccountDetailScreen()),
               ),
               _SettingsRowData(
+                Icons.workspace_premium_outlined,
+                'My certificates',
+                onTap: () => _open(context, const _CertificatesScreen()),
+              ),
+              _SettingsRowData(
                 Icons.receipt_long_outlined,
                 'Purchases & Invoices',
                 onTap: () => _open(context, const _PurchasesScreen()),
+              ),
+              _SettingsRowData(
+                Icons.menu_book_outlined,
+                'My Learning',
+                onTap: () => AppNavScope.read(context).goTab(2),
+              ),
+              _SettingsRowData(
+                Icons.search_rounded,
+                'Browse courses',
+                onTap: () => AppNavScope.read(context).openLibrary(),
               ),
               _SettingsRowData(
                 Icons.help_outline_rounded,
@@ -321,20 +337,148 @@ class _AccountDetailScreen extends StatelessWidget {
                   Icons.chevron_right_rounded,
                   color: BgColors.muted,
                 ),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Certificates appear when a classroom is complete.',
-                        style: bgText(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const _CertificatesScreen(),
+                  ),
+                ),
               ),
             ),
           ] else
             _SignInPrompt(onSignIn: () => AuthScope.read(context).signIn()),
+        ],
+      ),
+    );
+  }
+}
+
+class _CertificatesScreen extends StatelessWidget {
+  const _CertificatesScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AuthScope.of(context);
+    final certs = auth.isSignedIn
+        ? SampleData.enrolled.where((e) => e.progress >= 1).toList()
+        : <EnrolledCourse>[];
+
+    return _SubpageScaffold(
+      title: 'My certificates',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        children: [
+          if (!auth.isSignedIn)
+            _SignInPrompt(onSignIn: () => AuthScope.read(context).signIn())
+          else if (certs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 32),
+              child: Column(
+                children: [
+                  Text(
+                    'Finish a classroom to earn a certificate.',
+                    textAlign: TextAlign.center,
+                    style: bgText(
+                      fontWeight: FontWeight.w700,
+                      color: BgColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      AppNavScope.read(context).goTab(2);
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: BgColors.indigo,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text(
+                      'My Learning',
+                      style: bgText(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...certs.map((item) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: BgColors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: BgColors.line),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.course.title,
+                      style: bgText(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Issued to ${SampleData.user.name}',
+                      style: bgText(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: BgColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => CourseDetailScreen(
+                                  course: item.course,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'View classroom',
+                            style: bgText(
+                              fontWeight: FontWeight.w800,
+                              color: BgColors.indigo,
+                            ),
+                          ),
+                        ),
+                        FilledButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Certificate download queued for ${item.course.title}',
+                                  style: bgText(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            );
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: BgColors.indigo,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text(
+                            'Download',
+                            style: bgText(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -383,57 +527,193 @@ class _PurchasesScreen extends StatelessWidget {
                       color: BgColors.muted,
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      AppNavScope.read(context).openLibrary();
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: BgColors.indigo,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text(
+                      'Browse courses',
+                      style: bgText(fontWeight: FontWeight.w800),
+                    ),
+                  ),
                 ],
               ),
             )
           else
             ...items.map((item) {
               final course = item.course;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: BgColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: BgColors.line),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => _InvoiceDetailScreen(item: item),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Ink(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: BgColors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: BgColors.line),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            course.title,
-                            style: bgText(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  course.title,
+                                  style: bgText(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '₹${course.price} · ${item.status}',
+                                  style: bgText(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: BgColors.muted,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 4),
                           Text(
-                            '₹${course.price} · ${item.status}',
+                            'Invoice',
                             style: bgText(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: BgColors.muted,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              color: BgColors.indigo,
                             ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: BgColors.muted,
                           ),
                         ],
                       ),
                     ),
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoiceDetailScreen extends StatelessWidget {
+  const _InvoiceDetailScreen({required this.item});
+
+  final EnrolledCourse item;
+
+  @override
+  Widget build(BuildContext context) {
+    final course = item.course;
+    return _SubpageScaffold(
+      title: 'Invoice',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: BgColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: BgColors.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bizgarh',
+                  style: bgText(fontWeight: FontWeight.w800, fontSize: 18),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  course.title,
+                  style: bgText(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Billed to ${SampleData.user.name}',
+                  style: bgText(
+                    fontWeight: FontWeight.w600,
+                    color: BgColors.muted,
+                  ),
+                ),
+                Text(
+                  SampleData.user.email,
+                  style: bgText(
+                    fontWeight: FontWeight.w600,
+                    color: BgColors.muted,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
                     Text(
-                      'Invoice',
+                      'Amount paid',
+                      style: bgText(fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '₹${course.price}',
                       style: bgText(
                         fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                        fontSize: 18,
                         color: BgColors.indigo,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  'Status · ${item.status}',
+                  style: bgText(
+                    fontWeight: FontWeight.w600,
+                    color: BgColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => CourseDetailScreen(course: course),
+                ),
               );
-            }),
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: BgColors.indigo,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+            ),
+            child: Text(
+              'Open classroom',
+              style: bgText(fontWeight: FontWeight.w800),
+            ),
+          ),
         ],
       ),
     );
@@ -670,20 +950,53 @@ class _PolicyLink extends StatelessWidget {
         ),
       ),
       trailing: const Icon(
-        Icons.open_in_new_rounded,
+        Icons.chevron_right_rounded,
         size: 18,
         color: BgColors.muted,
       ),
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Opens bizgarh.com$path',
-              style: bgText(fontWeight: FontWeight.w600),
-            ),
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => _PolicyDocScreen(title: label, path: path),
           ),
         );
       },
+    );
+  }
+}
+
+class _PolicyDocScreen extends StatelessWidget {
+  const _PolicyDocScreen({required this.title, required this.path});
+
+  final String title;
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SubpageScaffold(
+      title: title,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        children: [
+          Text(
+            'bizgarh.com$path',
+            style: bgText(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: BgColors.muted,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'This mobile sample mirrors the website policy page. Full legal text lives on the site; contact ${SampleData.supportEmail} for questions about $title.',
+            style: bgText(
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

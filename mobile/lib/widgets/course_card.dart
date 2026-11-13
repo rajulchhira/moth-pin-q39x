@@ -77,15 +77,17 @@ class CourseCard extends StatelessWidget {
     super.key,
     required this.course,
     this.compact = false,
+    this.onTap,
   });
 
   final Course course;
   final bool compact;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     if (compact) {
-      return SizedBox(
+      final body = SizedBox(
         width: 200,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,9 +142,11 @@ class CourseCard extends StatelessWidget {
           ],
         ),
       );
+      if (onTap == null) return body;
+      return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: body);
     }
 
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: BgColors.white,
@@ -218,6 +222,12 @@ class CourseCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: card,
     );
   }
 }
