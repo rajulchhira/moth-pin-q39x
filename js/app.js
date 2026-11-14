@@ -811,7 +811,7 @@ const MENTORS = [
   { name: "Aarav Mehta", role: "Full-time trader", tag: "Intraday", img: "/img/instructors/aarav-mehta.jpg?v=7" },
   { name: "Neha Kapoor", role: "Options specialist", tag: "Income strategies", img: "/img/instructors/neha-kapoor.jpg?v=9" },
   { name: "Vikram Singh", role: "Price action coach", tag: "Swing trading", img: "/img/instructors/vikram-singh.jpg?v=1" },
-  { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "/img/instructors/ananya-rao.jpg?v=1" },
+  { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "/img/instructors/ananya-rao.jpg?v=2" },
   { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=9" },
   { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=13" },
   { name: "Priya Nair", role: "Asset allocation", tag: "SIP lab", img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=640&h=860&q=80" },
@@ -4929,6 +4929,7 @@ function traderIcon(kind) {
 /* cache-bust desk141: Vikram Singh DP from user photo ref (site 640x860 + flutter 864x1152) /img/instructors/vikram-singh.jpg?v=1 */
 /* cache-bust desk142: Neha Kapoor DP from user photo ref-2 (site 640x860 + flutter 864x1152) /img/instructors/neha-kapoor.jpg?v=9 */
 /* cache-bust desk143: Ananya Rao DP from user photo ref (site 640x860 + flutter 864x1152) /img/instructors/ananya-rao.jpg?v=1 */
+/* cache-bust desk144: Ananya Rao DP zoom-out half-body (site 640x860 + flutter 864x1152) /img/instructors/ananya-rao.jpg?v=2 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
