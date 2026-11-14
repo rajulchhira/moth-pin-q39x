@@ -809,7 +809,7 @@ const COVERS = {
 
 const MENTORS = [
   { name: "Aarav Mehta", role: "Full-time trader", tag: "Intraday", img: "/img/instructors/aarav-mehta.jpg?v=7" },
-  { name: "Neha Kapoor", role: "Options specialist", tag: "Income strategies", img: "/img/instructors/neha-kapoor.jpg?v=7" },
+  { name: "Neha Kapoor", role: "Options specialist", tag: "Income strategies", img: "/img/instructors/neha-kapoor.jpg?v=8" },
   { name: "Vikram Singh", role: "Price action coach", tag: "Swing trading", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=9" },
@@ -4901,7 +4901,7 @@ function traderIcon(kind) {
 /* cache-bust desk112: edge purge after CF miss on #68 merge /img/instructors/neha-kapoor.jpg?v=5 /img/instructors/aarav-mehta.jpg?v=6 */
 /* cache-bust desk113: restore Aarav Mehta DP to pre-#68 live (7c4053f / desk107 / candidate-10) /img/instructors/aarav-mehta.jpg?v=7; Neha kept */
 /* cache-bust desk114: Neha Kapoor DP Isha-look compose (pose/cloth/bg + phone realism) /img/instructors/neha-kapoor.jpg?v=6; Aarav unchanged */
-/* cache-bust desk115: edge purge after CF poison on #71 (?v=6 held old JPEG; app.js?v=desk114 held pre-merge) /img/instructors/neha-kapoor.jpg?v=7 */
+/* cache-bust desk115: edge purge after CF poison on #71 (?v=6 held old JPEG; app.js?v=desk114 held pre-merge) /img/instructors/neha-kapoor.jpg?v=8 */
 /* cache-bust desk116: Kabir Joshi instructor DP chalkboard check shirt /img/instructors/kabir-joshi.jpg?v=1 */
 /* cache-bust desk117: Kabir Joshi DP skin tone warm medium-tan golden-olive /img/instructors/kabir-joshi.jpg?v=2 */
 /* cache-bust desk118: Kabir Joshi DP phone-realism redo natural medium Indian skin /img/instructors/kabir-joshi.jpg?v=3 */
@@ -4925,6 +4925,7 @@ function traderIcon(kind) {
 /* cache-bust desk138: Rohan Desai DP zoom-out extend gallery half-body /img/instructors/rohan-desai.jpg?v=11 */
 /* cache-bust desk138b: center face for circle (same zoom, right gallery extend) /img/instructors/rohan-desai.jpg?v=12 */
 /* cache-bust desk139: complete right hand on midriff (same zoom/center) /img/instructors/rohan-desai.jpg?v=13 */
+/* cache-bust desk140: Neha Kapoor DP from user photo ref (site 640x860 + flutter 864x1152) /img/instructors/neha-kapoor.jpg?v=8 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
