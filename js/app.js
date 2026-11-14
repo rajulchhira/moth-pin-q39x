@@ -812,7 +812,7 @@ const MENTORS = [
   { name: "Neha Kapoor", role: "Options specialist", tag: "Income strategies", img: "/img/instructors/neha-kapoor.jpg?v=7" },
   { name: "Vikram Singh", role: "Price action coach", tag: "Swing trading", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=640&h=860&q=80" },
-  { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=8" },
+  { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=9" },
   { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=4" },
   { name: "Priya Nair", role: "Asset allocation", tag: "SIP lab", img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Meera Iyer", role: "Options coach", tag: "Defined risk", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=640&h=860&q=80" }
@@ -4915,6 +4915,7 @@ function traderIcon(kind) {
 /* cache-bust desk126: Rohan Desai DP face identity shift (keep outfit/corridor) /img/instructors/rohan-desai.jpg?v=2 */
 /* cache-bust desk127: restore Rohan Desai DP to desk125 ref-match phone look /img/instructors/rohan-desai.jpg?v=3 */
 /* cache-bust desk129: Rohan Desai DP second-user-ref vibe, copyright-safe face, no dreamstime /img/instructors/rohan-desai.jpg?v=4 */
+/* cache-bust desk130: Kabir Joshi DP laptop khaki studio vibe natural face /img/instructors/kabir-joshi.jpg?v=9 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
