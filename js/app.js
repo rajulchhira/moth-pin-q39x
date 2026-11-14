@@ -813,7 +813,7 @@ const MENTORS = [
   { name: "Vikram Singh", role: "Price action coach", tag: "Swing trading", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=9" },
-  { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=7" },
+  { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=8" },
   { name: "Priya Nair", role: "Asset allocation", tag: "SIP lab", img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=640&h=860&q=80" },
   { name: "Meera Iyer", role: "Options coach", tag: "Defined risk", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=640&h=860&q=80" }
 ];
@@ -4920,6 +4920,7 @@ function traderIcon(kind) {
 /* cache-bust desk132: Rohan Desai DP gallery hallway user-ref vibe, no Gemini watermark /img/instructors/rohan-desai.jpg?v=5 */
 /* cache-bust desk133: Rohan Desai DP scrub Gemini BR star (crop-only) /img/instructors/rohan-desai.jpg?v=6 */
 /* cache-bust desk134: Rohan Desai DP center face for circle/avatar crop /img/instructors/rohan-desai.jpg?v=7 */
+/* cache-bust desk135: edge purge after CF poison on #86 (app.js?v=desk134 held desk133; Rohan JPEG ?v=7 held v6) /img/instructors/rohan-desai.jpg?v=8 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
