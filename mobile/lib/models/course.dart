@@ -50,6 +50,7 @@ class Mentor {
     required this.learners,
     required this.initials,
     required this.accent,
+    this.photoAsset,
   });
 
   final String name;
@@ -58,6 +59,22 @@ class Mentor {
   final String learners;
   final String initials;
   final int accent;
+  final String? photoAsset;
+}
+
+class PopularCategory {
+  const PopularCategory({
+    required this.id,
+    required this.title,
+    required this.kind,
+    this.badge,
+  });
+
+  final String id;
+  final String title;
+  /// Icon style key used by [CategoryGlyph].
+  final String kind;
+  final String? badge;
 }
 
 class SampleUser {
@@ -95,11 +112,19 @@ class LiveClass {
     required this.title,
     required this.when,
     required this.mentor,
+    this.free = true,
+    this.tag = 'Webinar',
+    this.listPrice = 999,
+    this.coverColors = const [0xFF0B1220, 0xFF1E1B4B, 0xFF4F46E5],
   });
 
   final String title;
   final String when;
   final String mentor;
+  final bool free;
+  final String tag;
+  final int listPrice;
+  final List<int> coverColors;
 }
 
 class FaqItem {

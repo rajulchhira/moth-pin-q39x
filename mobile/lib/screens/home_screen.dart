@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../theme/bg_text.dart';
-
 import '../data/sample_data.dart';
+import '../models/course.dart';
+import '../state/app_nav.dart';
 import '../state/auth_state.dart';
+import '../theme/bg_text.dart';
 import '../theme/colors.dart';
+import '../widgets/auto_marquee.dart';
 import '../widgets/brand_mark.dart';
-import '../widgets/course_card.dart';
+import '../widgets/popular_course_card.dart';
+import 'course_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +21,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _motion;
+  final _scroll = ScrollController();
+  final _popularKey = GlobalKey();
+  final _liveKey = GlobalKey();
 
   @override
   void initState() {
@@ -26,26 +32,111 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
+    // Web screenshot helper: /?scroll=popular|live
+    final demo = Uri.base.queryParameters['scroll'];
+    if (demo == 'popular' || demo == 'live') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollWhenReady(
+          demo == 'live' ? HomeAnchor.liveClasses : HomeAnchor.popularCourses,
+        );
+      });
+    }
+  }
+
+  Future<void> _scrollWhenReady(HomeAnchor anchor) async {
+    for (var i = 0; i < 40; i++) {
+      if (!mounted) return;
+      if (_scroll.hasClients) {
+        await _scrollToAnchor(anchor);
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
   }
 
   @override
   void dispose() {
     _motion.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nav = AppNavScope.of(context);
+    final pending = nav.pendingHomeScroll;
+    if (pending == null) return;
+    nav.clearPendingHomeScroll();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scrollWhenReady(pending);
+    });
+  }
+
+  Future<void> _scrollToAnchor(HomeAnchor anchor) async {
+    final key = switch (anchor) {
+      HomeAnchor.popularCourses => _popularKey,
+      HomeAnchor.liveClasses => _liveKey,
+    };
+
+    if (!_scroll.hasClients) return;
+
+    // Walk the scroll extent until the target sliver is built, then pin it.
+    for (var step = 0; step < 16; step++) {
+      if (!mounted || !_scroll.hasClients) return;
+      final max = _scroll.position.maxScrollExtent;
+      final next = (180.0 * (step + 1)).clamp(0.0, max);
+      await _scroll.animateTo(
+        next,
+        duration: const Duration(milliseconds: 60),
+        curve: Curves.linear,
+      );
+      if (!mounted) return;
+      final ctx = key.currentContext;
+      if (ctx != null && ctx.mounted) {
+        await Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 360),
+          curve: Curves.easeOutCubic,
+          alignment: 0.04,
+        );
+        return;
+      }
+      if (next >= max && max > 0) break;
+    }
+  }
+
+  void _openCourse(BuildContext context, Course course) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CourseDetailScreen(course: course),
+      ),
+    );
+  }
+
+  void _openMentor(BuildContext context, Mentor mentor) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MentorDetailScreen(mentor: mentor),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
+    final nav = AppNavScope.of(context);
     final popular = SampleData.popularCourses();
-    final live = SampleData.upcomingLive;
+    const live = SampleData.upcomingLive;
     final fade = CurvedAnimation(parent: _motion, curve: Curves.easeOutCubic);
     final slide = Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
     ).animate(fade);
 
-    final firstName = SampleData.user.name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+    final firstName =
+        SampleData.user.name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
     final welcome = auth.isSignedIn
         ? 'Welcome back, ${firstName.isEmpty ? 'trader' : firstName.first}'
         : 'Welcome!';
@@ -53,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen>
     return SafeArea(
       bottom: false,
       child: CustomScrollView(
+        controller: _scroll,
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
@@ -75,78 +167,22 @@ class _HomeScreenState extends State<HomeScreen>
               opacity: fade,
               child: SlideTransition(
                 position: slide,
-                child: const _HeroBanner(),
-              ),
-            ),
-          ),
-          if (live.isNotEmpty) ...[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
-                child: Text(
-                  'Upcoming live',
-                  style: bgText(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 108,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: live.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final item = live[index];
-                    return Container(
-                      width: 240,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: BgColors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: BgColors.line),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: bgText(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '${item.when} · ${item.mentor}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: bgText(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: BgColors.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
+                child: _HeroBanner(
+                  onExploreCourses: () {
+                    _scrollWhenReady(HomeAnchor.popularCourses);
+                  },
+                  onLiveRooms: () {
+                    _scrollWhenReady(HomeAnchor.liveClasses);
                   },
                 ),
               ),
             ),
-          ],
+          ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
               child: Text(
-                'Courses',
+                'Popular Categories',
                 style: bgText(
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
@@ -156,55 +192,32 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 86,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: SampleData.courseMenu.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final item = SampleData.courseMenu[index];
-                  final accent = Color(item.accent);
-                  return Container(
-                    width: 156,
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                    decoration: BoxDecoration(
-                      color: BgColors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: BgColors.line),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            color: accent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.menu_book_rounded,
-                            size: 15,
-                            color: accent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const cols = 3;
+                  const gap = 12.0;
+                  final tileW =
+                      (constraints.maxWidth - gap * (cols - 1)) / cols;
+                  final coverH = tileW / PopularCategoryTile.coverAspect;
+                  final tileH =
+                      coverH + 8 + PopularCategoryTile.labelHeight;
+                  const cats = SampleData.popularCategories;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: 14,
+                    children: [
+                      for (final cat in cats)
+                        SizedBox(
+                          width: tileW,
+                          height: tileH,
+                          child: PopularCategoryTile(
+                            category: cat,
+                            onTap: () => nav.openLibrary(category: cat.id),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: bgText(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
-                              height: 1.15,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   );
                 },
               ),
@@ -212,7 +225,8 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+              key: _popularKey,
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
               child: Text(
                 'Most popular courses',
                 style: bgText(
@@ -224,24 +238,94 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 188,
-              child: ListView.separated(
-                // Show popular first (list already ordered); avoid reverse:true
-                // which has caused launch layout issues on some devices.
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: popular.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (context, index) {
-                  return CourseCard(course: popular[index], compact: true);
-                },
-              ),
+            child: AutoMarquee(
+              height: PopularCourseCard.cardHeight,
+              itemCount: popular.length,
+              itemExtent: PopularCourseCard.cardWidth,
+              gap: 14,
+              reverse: false,
+              pixelsPerSecond: 32,
+              itemBuilder: (context, index) {
+                return PopularCourseCard(
+                  course: popular[index],
+                  onTap: () => _openCourse(context, popular[index]),
+                );
+              },
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+              key: _liveKey,
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Upcoming live classes',
+                          style: bgText(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: BgColors.magenta,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'LIVE',
+                          style: bgText(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Learn stock market the right way through webinars and mentorship.',
+                    style: bgText(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: BgColors.muted,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (live.isNotEmpty)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: LiveWebinarCard.cardHeight,
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: live.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  itemBuilder: (context, index) {
+                    return LiveWebinarCard(item: live[index]);
+                  },
+                ),
+              ),
+            ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
               child: Text(
                 'Learn from Stock Market Experts',
                 style: bgText(
@@ -253,17 +337,20 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: 156,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: SampleData.mentors.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  return MentorTile(mentor: SampleData.mentors[index]);
-                },
-              ),
+            child: AutoMarquee(
+              height: 252,
+              itemCount: SampleData.mentors.length,
+              itemExtent: 168,
+              gap: 14,
+              reverse: true,
+              pixelsPerSecond: 26,
+              itemBuilder: (context, index) {
+                final mentor = SampleData.mentors[index];
+                return ExpertPortraitCard(
+                  mentor: mentor,
+                  onTap: () => _openMentor(context, mentor),
+                );
+              },
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 28)),
@@ -274,7 +361,13 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 class _HeroBanner extends StatefulWidget {
-  const _HeroBanner();
+  const _HeroBanner({
+    required this.onExploreCourses,
+    required this.onLiveRooms,
+  });
+
+  final VoidCallback onExploreCourses;
+  final VoidCallback onLiveRooms;
 
   @override
   State<_HeroBanner> createState() => _HeroBannerState();
@@ -308,7 +401,6 @@ class _HeroBannerState extends State<_HeroBanner>
         final v = t.value;
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          // Height −10% vs prior padding-driven hero (~244 → ~220 content).
           constraints: const BoxConstraints(minHeight: 196),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
@@ -328,24 +420,28 @@ class _HeroBannerState extends State<_HeroBanner>
                 Positioned(
                   right: -48 + v * 18,
                   top: -36,
-                  child: Container(
-                    width: 144,
-                    height: 144,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: BgColors.magenta.withOpacity(0.22),
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 144,
+                      height: 144,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: BgColors.magenta.withOpacity(0.22),
+                      ),
                     ),
                   ),
                 ),
                 Positioned(
                   left: -20,
                   bottom: -50,
-                  child: Container(
-                    width: 126,
-                    height: 126,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.06),
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 126,
+                      height: 126,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.06),
+                      ),
                     ),
                   ),
                 ),
@@ -356,7 +452,6 @@ class _HeroBannerState extends State<_HeroBanner>
         );
       },
       child: Padding(
-        // Prior was 22/22/22/24 — trim ~10%.
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,12 +482,20 @@ class _HeroBannerState extends State<_HeroBanner>
               ),
             ),
             const SizedBox(height: 14),
-            const Wrap(
+            Wrap(
               spacing: 10,
               runSpacing: 8,
               children: [
-                _HeroCta(label: 'Explore courses', filled: true),
-                _HeroCta(label: 'Live rooms', filled: false),
+                _HeroCta(
+                  label: 'Explore courses',
+                  filled: true,
+                  onTap: widget.onExploreCourses,
+                ),
+                _HeroCta(
+                  label: 'Live rooms',
+                  filled: false,
+                  onTap: widget.onLiveRooms,
+                ),
               ],
             ),
           ],
@@ -403,26 +506,57 @@ class _HeroBannerState extends State<_HeroBanner>
 }
 
 class _HeroCta extends StatelessWidget {
-  const _HeroCta({required this.label, required this.filled});
+  const _HeroCta({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
 
   final String label;
   final bool filled;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: filled ? Colors.white : Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: filled ? null : Border.all(color: Colors.white.withOpacity(0.28)),
+    final radius = BorderRadius.circular(12);
+    if (filled) {
+      return FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: BgColors.indigoDark,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          minimumSize: const Size(0, 0),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(borderRadius: radius),
+        ),
+        child: Text(
+          label,
+          style: bgText(
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+            color: BgColors.indigoDark,
+          ),
+        ),
+      );
+    }
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        minimumSize: const Size(0, 0),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        side: BorderSide(color: Colors.white.withOpacity(0.28)),
+        backgroundColor: Colors.white.withOpacity(0.12),
+        shape: RoundedRectangleBorder(borderRadius: radius),
       ),
       child: Text(
         label,
         style: bgText(
           fontWeight: FontWeight.w800,
           fontSize: 12,
-          color: filled ? BgColors.indigoDark : Colors.white,
+          color: Colors.white,
         ),
       ),
     );

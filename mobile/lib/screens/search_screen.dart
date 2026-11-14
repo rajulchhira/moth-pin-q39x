@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../theme/bg_text.dart';
-
 import '../data/sample_data.dart';
+import '../state/app_nav.dart';
+import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/course_card.dart';
+import 'course_detail_screen.dart';
 
+/// Course library — mirrors site `/courses` (+ `?cat=` filters).
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -17,16 +19,59 @@ class _SearchScreenState extends State<SearchScreen> {
   final _controller = TextEditingController();
   String _query = '';
   String _category = 'all';
+  AppNav? _nav;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nav = AppNavScope.of(context);
+    if (!identical(_nav, nav)) {
+      _nav?.removeListener(_syncFromNav);
+      _nav = nav;
+      _nav!.addListener(_syncFromNav);
+    }
+    _syncFromNav();
+  }
+
+  void _syncFromNav() {
+    final nav = _nav;
+    if (nav == null) return;
+    final nextQ = nav.searchQuery;
+    final nextCat = nav.searchCategory;
+    if (nextQ == _query && nextCat == _category) return;
+    setState(() {
+      _query = nextQ;
+      _category = nextCat;
+      if (_controller.text != nextQ) {
+        _controller.value = TextEditingValue(
+          text: nextQ,
+          selection: TextSelection.collapsed(offset: nextQ.length),
+        );
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _nav?.removeListener(_syncFromNav);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _setCategory(String id) {
+    setState(() => _category = id);
+    AppNavScope.read(context).setSearchFilters(category: id);
+  }
+
+  void _setQuery(String q) {
+    setState(() => _query = q);
+    AppNavScope.read(context).setSearchFilters(query: q);
   }
 
   @override
   Widget build(BuildContext context) {
     final results = SampleData.search(query: _query, category: _category);
+    final libraryTitle = SampleData.libraryLabel(_category);
 
     return SafeArea(
       bottom: false,
@@ -45,22 +90,39 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
           Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+            child: Text(
+              _category == 'all'
+                  ? 'Course library'
+                  : '$libraryTitle library',
+              style: bgText(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: BgColors.muted,
+              ),
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
             child: TextField(
               controller: _controller,
-              onChanged: (v) => setState(() => _query = v),
+              onChanged: _setQuery,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: 'Courses, mentors, options…',
-                prefixIcon: const Icon(Icons.search_rounded, color: BgColors.muted),
+                prefixIcon:
+                    const Icon(Icons.search_rounded, color: BgColors.muted),
                 suffixIcon: _query.isEmpty
                     ? null
                     : IconButton(
                         onPressed: () {
                           _controller.clear();
-                          setState(() => _query = '');
+                          _setQuery('');
                         },
-                        icon: const Icon(Icons.close_rounded, color: BgColors.muted),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: BgColors.muted,
+                        ),
                       ),
               ),
             ),
@@ -76,10 +138,13 @@ class _SearchScreenState extends State<SearchScreen> {
                 final id = SampleData.categories[index];
                 final selected = id == _category;
                 return GestureDetector(
-                  onTap: () => setState(() => _category = id),
+                  onTap: () => _setCategory(id),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: selected ? BgColors.indigo : BgColors.white,
                       borderRadius: BorderRadius.circular(999),
@@ -114,11 +179,31 @@ class _SearchScreenState extends State<SearchScreen> {
           Expanded(
             child: results.isEmpty
                 ? Center(
-                    child: Text(
-                      'No courses match that filter.',
-                      style: bgText(
-                        fontWeight: FontWeight.w700,
-                        color: BgColors.muted,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'No courses match that filter.',
+                            textAlign: TextAlign.center,
+                            style: bgText(
+                              fontWeight: FontWeight.w700,
+                              color: BgColors.muted,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: () => _setCategory('all'),
+                            child: Text(
+                              'Show all courses',
+                              style: bgText(
+                                fontWeight: FontWeight.w800,
+                                color: BgColors.indigo,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -127,7 +212,18 @@ class _SearchScreenState extends State<SearchScreen> {
                     itemCount: results.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      return CourseCard(course: results[index]);
+                      final course = results[index];
+                      return CourseCard(
+                        course: course,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  CourseDetailScreen(course: course),
+                            ),
+                          );
+                        },
+                      );
                     },
                   ),
           ),

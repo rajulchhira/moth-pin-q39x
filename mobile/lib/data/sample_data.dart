@@ -52,6 +52,64 @@ abstract final class SampleData {
     ),
   ];
 
+  /// Home “Popular Categories” — only the six course-menu names (no Mentorship / NISM / Algo / Hindi).
+  static const popularCategories = <PopularCategory>[
+    PopularCategory(
+      id: 'investing',
+      title: 'Stock Market Investing',
+      kind: 'investing',
+    ),
+    PopularCategory(
+      id: 'options',
+      title: 'Option Trading',
+      kind: 'cepe',
+    ),
+    PopularCategory(
+      id: 'beginners',
+      title: 'Stock Market Basics',
+      kind: 'bars',
+    ),
+    PopularCategory(
+      id: 'ta',
+      title: 'Technical Analysis',
+      kind: 'candle',
+    ),
+    PopularCategory(
+      id: 'crypto',
+      title: 'Crypto',
+      kind: 'crypto',
+      badge: 'NEW',
+    ),
+    PopularCategory(
+      id: 'strategy',
+      title: 'Trading Strategies',
+      kind: 'strategy',
+    ),
+  ];
+
+  static String? photoAssetForInstructor(String name) {
+    switch (name) {
+      case 'Aarav Mehta':
+        return 'assets/mentors/aarav-mehta.jpg';
+      case 'Neha Kapoor':
+        return 'assets/mentors/neha-kapoor.jpg';
+      case 'Vikram Singh':
+        return 'assets/mentors/vikram-singh.jpg';
+      case 'Ananya Rao':
+        return 'assets/mentors/ananya-rao.jpg';
+      case 'Kabir Joshi':
+        return 'assets/mentors/kabir-joshi.jpg';
+      case 'Rohan Desai':
+        return 'assets/mentors/rohan-desai.jpg';
+      case 'Priya Nair':
+        return 'assets/mentors/priya-nair.jpg';
+      case 'Meera Iyer':
+        return 'assets/mentors/meera-iyer.jpg';
+      default:
+        return null;
+    }
+  }
+
   static const categories = <String>[
     'all',
     'trending',
@@ -86,8 +144,37 @@ abstract final class SampleData {
     }
   }
 
-  /// Empty by default so Home hides the Upcoming live block unless filled.
-  static List<LiveClass> upcomingLive = const [];
+  /// Full library title — matches site `/courses?cat=` labels.
+  static String libraryLabel(String id) {
+    switch (id) {
+      case 'all':
+        return 'All courses';
+      case 'trending':
+        return 'Trending';
+      case 'investing':
+        return 'Stock Market Investing';
+      case 'options':
+        return 'Option Trading';
+      case 'beginners':
+        return 'Stock Market Basics';
+      case 'ta':
+        return 'Technical Analysis';
+      case 'crypto':
+        return 'Crypto';
+      case 'strategy':
+        return 'Trading Strategies';
+      case 'hindi':
+        return 'In Hindi';
+      default:
+        return categoryLabel(id);
+    }
+  }
+
+  /// Upcoming live webinars for Home — keep in sync with the site live catalog
+  /// (`js/app.js` `listedWebinars()` / homepage `#webinarTrack`).
+  /// Empty while nothing is currently scheduled (site track is blank too);
+  /// when lives are added on the site, mirror them here so both show cards.
+  static const upcomingLive = <LiveClass>[];
 
   static const faqItems = <FaqItem>[
     FaqItem(
@@ -120,6 +207,7 @@ abstract final class SampleData {
       learners: '50,483',
       initials: 'AM',
       accent: 0xFF4F46E5,
+      photoAsset: 'assets/mentors/aarav-mehta.jpg',
     ),
     Mentor(
       name: 'Neha Kapoor',
@@ -128,6 +216,7 @@ abstract final class SampleData {
       learners: '36,800',
       initials: 'NK',
       accent: 0xFFE11D74,
+      photoAsset: 'assets/mentors/neha-kapoor.jpg',
     ),
     Mentor(
       name: 'Vikram Singh',
@@ -136,6 +225,7 @@ abstract final class SampleData {
       learners: '28,220',
       initials: 'VS',
       accent: 0xFF0F766E,
+      photoAsset: 'assets/mentors/vikram-singh.jpg',
     ),
     Mentor(
       name: 'Ananya Rao',
@@ -144,6 +234,43 @@ abstract final class SampleData {
       learners: '33,650',
       initials: 'AR',
       accent: 0xFFF59E0B,
+      photoAsset: 'assets/mentors/ananya-rao.jpg',
+    ),
+    Mentor(
+      name: 'Kabir Joshi',
+      title: 'Index options, Bank Nifty',
+      tags: ['Index options', 'Bank Nifty'],
+      learners: '22,410',
+      initials: 'KJ',
+      accent: 0xFF1D4ED8,
+      photoAsset: 'assets/mentors/kabir-joshi.jpg',
+    ),
+    Mentor(
+      name: 'Rohan Desai',
+      title: 'Fund researcher',
+      tags: ['Mutual funds'],
+      learners: '19,880',
+      initials: 'RD',
+      accent: 0xFF0F766E,
+      photoAsset: 'assets/mentors/rohan-desai.jpg',
+    ),
+    Mentor(
+      name: 'Priya Nair',
+      title: 'Asset allocation, SIP lab',
+      tags: ['SIP', 'Allocation'],
+      learners: '17,240',
+      initials: 'PN',
+      accent: 0xFF7C3AED,
+      photoAsset: 'assets/mentors/priya-nair.jpg',
+    ),
+    Mentor(
+      name: 'Meera Iyer',
+      title: 'Options coach, defined risk',
+      tags: ['Defined risk'],
+      learners: '24,100',
+      initials: 'MI',
+      accent: 0xFFDB2777,
+      photoAsset: 'assets/mentors/meera-iyer.jpg',
     ),
   ];
 
