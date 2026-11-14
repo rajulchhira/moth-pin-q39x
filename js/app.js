@@ -4916,6 +4916,7 @@ function traderIcon(kind) {
 /* cache-bust desk127: restore Rohan Desai DP to desk125 ref-match phone look /img/instructors/rohan-desai.jpg?v=3 */
 /* cache-bust desk129: Rohan Desai DP second-user-ref vibe, copyright-safe face, no dreamstime /img/instructors/rohan-desai.jpg?v=4 */
 /* cache-bust desk130: Kabir Joshi DP laptop khaki studio vibe natural face /img/instructors/kabir-joshi.jpg?v=9 */
+/* cache-bust desk131: edge purge after CF poison on #83 (app.js?v=desk130 held pre-merge desk129; Kabir JPEG ?v=9 OK) /img/instructors/kabir-joshi.jpg?v=9 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
