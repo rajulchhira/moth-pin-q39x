@@ -815,7 +815,7 @@ const MENTORS = [
   { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=9" },
   { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=13" },
   { name: "Priya Nair", role: "Asset allocation", tag: "SIP lab", img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=640&h=860&q=80" },
-  { name: "Meera Iyer", role: "Options coach", tag: "Defined risk", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=640&h=860&q=80" }
+  { name: "Meera Iyer", role: "Options coach", tag: "Defined risk", img: "/img/instructors/meera-iyer.jpg?v=1" }
 ];
 
 function instructorEdits() {
@@ -4930,6 +4930,7 @@ function traderIcon(kind) {
 /* cache-bust desk142: Neha Kapoor DP from user photo ref-2 (site 640x860 + flutter 864x1152) /img/instructors/neha-kapoor.jpg?v=9 */
 /* cache-bust desk143: Ananya Rao DP from user photo ref (site 640x860 + flutter 864x1152) /img/instructors/ananya-rao.jpg?v=1 */
 /* cache-bust desk144: Ananya Rao DP zoom-out half-body (site 640x860 + flutter 864x1152) /img/instructors/ananya-rao.jpg?v=2 */
+/* cache-bust desk145: Meera Iyer DP from user photo ref (site 640x860 + flutter 864x1152) /img/instructors/meera-iyer.jpg?v=1 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
