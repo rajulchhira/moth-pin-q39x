@@ -4906,6 +4906,7 @@ function traderIcon(kind) {
 /* cache-bust desk117: Kabir Joshi DP skin tone warm medium-tan golden-olive /img/instructors/kabir-joshi.jpg?v=2 */
 /* cache-bust desk118: Kabir Joshi DP phone-realism redo natural medium Indian skin /img/instructors/kabir-joshi.jpg?v=3 */
 /* cache-bust desk119: Kabir Joshi DP Facebook/phone candid pores grain natural light /img/instructors/kabir-joshi.jpg?v=4 */
+/* cache-bust desk120: edge purge after CF poison on #75 (app.js?v=desk119 held pre-merge desk118; Kabir JPEG ?v=4 OK) /img/instructors/kabir-joshi.jpg?v=4 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
