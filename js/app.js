@@ -814,7 +814,7 @@ const MENTORS = [
   { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "/img/instructors/ananya-rao.jpg?v=2" },
   { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=10" },
   { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=13" },
-  { name: "Priya Nair", role: "Asset allocation", tag: "SIP lab", img: "/img/instructors/priya-nair.jpg?v=1" },
+  { name: "Priya Nair", role: "Asset allocation", tag: "SIP lab", img: "/img/instructors/priya-nair.jpg?v=2" },
   { name: "Meera Iyer", role: "Options coach", tag: "Defined risk", img: "/img/instructors/meera-iyer.jpg?v=1" }
 ];
 
@@ -4933,6 +4933,7 @@ function traderIcon(kind) {
 /* cache-bust desk145: Meera Iyer DP from user photo ref (site 640x860 + flutter 864x1152) /img/instructors/meera-iyer.jpg?v=1 */
 /* cache-bust desk146: Kabir Joshi DP from user photo ref (scrub sparkle; site 640x860 + flutter 864x1152) /img/instructors/kabir-joshi.jpg?v=10 */
 /* cache-bust desk147: Priya Nair DP from user photo ref (site 640x860 + flutter 864x1152) /img/instructors/priya-nair.jpg?v=1 */
+/* cache-bust desk148: Priya Nair DP zoom-out half-body Neha-scale (site 640x860 + flutter 864x1152) /img/instructors/priya-nair.jpg?v=2 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
