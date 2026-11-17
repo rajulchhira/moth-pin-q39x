@@ -4941,6 +4941,7 @@ function traderIcon(kind) {
 /* cache-bust desk153: Ananya Rao DP from user photo ref-2 (site 640x860 + flutter 864x1152) /img/instructors/ananya-rao.jpg?v=3 */
 /* cache-bust desk154: Rohan Desai DP from B&W user photo (scrub sparkle, site 640x860 + flutter 864x1152) /img/instructors/rohan-desai.jpg?v=14 */
 /* cache-bust desk155: Neha Kapoor DP from user photo ref-3 (scrub sparkle, site 640x860 + flutter 864x1152) /img/instructors/neha-kapoor.jpg?v=10 */
+/* cache-bust desk156: About Us redesign — evening desk + Our Vision frosted overlap /css/about.css?v=desk156 /img/about/desk-evening.jpg?v=desk156 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
