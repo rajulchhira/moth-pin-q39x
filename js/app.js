@@ -2300,6 +2300,17 @@ const FAQ_SETS = {
     { q: "What language are the classrooms in?", a: "Most desks run in English and Hindi. Each course or live page lists the language." },
     { q: "Where do I get help?", a: "Open Help and search the FAQ, or write to desk@bizgarh.com. For a program you already joined, use the community room for follow-ups." }
   ],
+  about: [
+    { q: "Forgot password?", a: "Open Sign in, then Forgot password. Enter the email on your Bizgarh account and follow the reset steps in that email. If nothing arrives, check spam, wait a few minutes, and try again — or write to desk@bizgarh.com with the same email." },
+    { q: "Where can I see my purchased course?", a: "After you sign in, open My Learning. Your owned classrooms appear there on the website and in the Bizgarh app, with progress saved to the same account." },
+    { q: "Do I need an account?", a: "Yes, if you want to buy, enroll, keep progress, join live rooms, or open certificates. You can browse courses and About without signing in." },
+    { q: "What is Bizgarh?", a: "Bizgarh is a creator-driven learning platform that brings India's educators together for practical, process-driven classrooms. We teach how to learn markets with journals and risk — not tip groups, tip feeds, or guaranteed returns." },
+    { q: "Can I learn on my phone?", a: "Yes, you can download the official Bizgarh app from the Play Store and sign in. You can also use the mobile website in your phone browser; progress stays on the same account wherever you continue." },
+    { q: "Can I download the course videos?", a: "No, you can only access the course videos online. After purchase, stream lessons in the Bizgarh classroom player on the site or app. We do not provide offline video files." },
+    { q: "Is this investment advice or portfolio management?", a: "No. Bizgarh is education only. We do not give buy/sell tips, run tip groups, offer portfolio management (PMS), or provide personalized investment advice. You write your own process and size." },
+    { q: "What is the difference between a course, a webinar, and a mentorship?", a: "A course is a self-paced recorded classroom of lessons. A webinar is a live or scheduled single session in the Bizgarh room. A mentorship is a multi-week guided desk with the same mentor, live sessions, and a community room — still education, not a signals service." },
+    { q: "What language are the classrooms in?", a: "Classrooms run in English and Hindi. Check the language chips on each course, webinar, or mentorship page before you enroll." }
+  ],
   mentorList: [
     { q: "What is a live mentorship program?", a: "A guided multi-week desk with a working trader. You enroll, join live sessions inside Bizgarh, use the community room, and review recordings when they are uploaded." },
     { q: "How is this different from a webinar?", a: "A webinar is one session. A mentorship runs for several weeks with a fixed curriculum, weekly reviews, and a seat in the desk community." },
@@ -4941,6 +4952,10 @@ function traderIcon(kind) {
 /* cache-bust desk153: Ananya Rao DP from user photo ref-2 (site 640x860 + flutter 864x1152) /img/instructors/ananya-rao.jpg?v=3 */
 /* cache-bust desk154: Rohan Desai DP from B&W user photo (scrub sparkle, site 640x860 + flutter 864x1152) /img/instructors/rohan-desai.jpg?v=14 */
 /* cache-bust desk155: Neha Kapoor DP from user photo ref-3 (scrub sparkle, site 640x860 + flutter 864x1152) /img/instructors/neha-kapoor.jpg?v=10 */
+/* cache-bust desk156: About Us redesign — evening desk + Our Vision frosted overlap /css/about.css?v=desk156 /img/about/desk-evening.jpg?v=desk156 */
+/* cache-bust desk157: About Us polish — simple intro + wide Vision card /css/about.css?v=desk157 */
+/* cache-bust desk158: About Us Vision layout — left photo / right box, short crop /css/about.css?v=desk158 */
+/* cache-bust desk159: About Us FAQ set — data-faq-set=about (9 Q&As) */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
