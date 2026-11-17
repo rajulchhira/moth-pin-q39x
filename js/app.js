@@ -3676,31 +3676,28 @@ function footerHTML() {
       <div class="footer-main">
         <div class="footer-brand">
           <a class="logo" href="${homeHref()}">${brandLogoHTML()}</a>
-          <p>A classroom for Indian traders and long-term investors. Setups, risk, and process — not a tip feed.</p>
+          <p>A learning platform for aspiring traders and investors. Learn from top market experts, build practical skills, and understand the market beyond tips.</p>
           <a class="footer-mail" href="mailto:desk@bizgarh.com">desk@bizgarh.com</a>
         </div>
         <nav class="footer-nav" aria-label="Footer">
           <div>
             <h4>Classroom</h4>
-            <a href="/stock-market-courses">Stock market courses in India</a>
-            <a href="/courses">All stock market courses</a>
+            <a href="/courses">All Courses</a>
             <a href="/option-trading-course">Option trading course</a>
-            <a href="/nifty-options">Nifty options</a>
-            <a href="/technical-analysis-course">Technical analysis</a>
+            <a href="/technical-analysis-course">Technical analysis Courses</a>
             <a href="/live">Live webinars</a>
             <a href="/mentorship">Trading mentorship</a>
           </div>
           <div>
             <h4>Company</h4>
+            <a href="/about">About Us</a>
+            <a href="/become-a-creator">Become a Creator</a>
             <a href="/instructors">Instructors</a>
-            <a href="/about">About</a>
             <a href="/reviews">Reviews</a>
-            <a href="/contact">Help</a>
+            <a href="/contact">Help &amp; Support</a>
             <a href="/terms">Terms of Usage</a>
             <a href="/privacy">Privacy Policy</a>
             <a href="/refund">Refund Policy</a>
-            <a href="/dashboard">My Dashboard</a>
-            <a href="/learning">My Learning</a>
           </div>
         </nav>
       </div>
