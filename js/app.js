@@ -813,7 +813,7 @@ const MENTORS = [
   { name: "Vikram Singh", role: "Price action coach", tag: "Swing trading", img: "/img/instructors/vikram-singh.jpg?v=1" },
   { name: "Ananya Rao", role: "Long-term investor", tag: "Portfolio", img: "/img/instructors/ananya-rao.jpg?v=3" },
   { name: "Kabir Joshi", role: "Index options", tag: "Bank Nifty", img: "/img/instructors/kabir-joshi.jpg?v=10" },
-  { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=13" },
+  { name: "Rohan Desai", role: "Fund researcher", tag: "Mutual funds", img: "/img/instructors/rohan-desai.jpg?v=14" },
   { name: "Priya Nair", role: "Asset allocation", tag: "SIP lab", img: "/img/instructors/priya-nair.jpg?v=4" },
   { name: "Meera Iyer", role: "Options coach", tag: "Defined risk", img: "/img/instructors/meera-iyer.jpg?v=2" }
 ];
@@ -4939,6 +4939,7 @@ function traderIcon(kind) {
 /* cache-bust desk151: Aarav Mehta user-photo DP half-body crop (site 640x860 + flutter 864x1152) /img/instructors/aarav-mehta.jpg?v=8 */
 /* cache-bust desk152: Meera Iyer DP from user photo ref-2 (site 640x860 + flutter 864x1152) /img/instructors/meera-iyer.jpg?v=2 */
 /* cache-bust desk153: Ananya Rao DP from user photo ref-2 (site 640x860 + flutter 864x1152) /img/instructors/ananya-rao.jpg?v=3 */
+/* cache-bust desk154: Rohan Desai DP from B&W user photo (scrub sparkle, site 640x860 + flutter 864x1152) /img/instructors/rohan-desai.jpg?v=14 */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
