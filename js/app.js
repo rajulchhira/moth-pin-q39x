@@ -4232,25 +4232,161 @@ function unlockCourse(id, opts = {}) {
   location.href = `/course?id=${id}`;
 }
 
+let razorpayScriptPromise = null;
+
+function loadRazorpayScript() {
+  if (window.Razorpay) return Promise.resolve();
+  if (razorpayScriptPromise) return razorpayScriptPromise;
+  razorpayScriptPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => {
+      razorpayScriptPromise = null;
+      reject(new Error("Could not load Razorpay Checkout"));
+    };
+    document.head.appendChild(s);
+  });
+  return razorpayScriptPromise;
+}
+
+function payApi(path) {
+  return path;
+}
+
+async function startCourseCheckout(id) {
+  const course = allCourses().find((x) => x.id === id);
+  if (!course) {
+    toast("Classroom not found");
+    return;
+  }
+  if (isEnrolled(id)) {
+    const here = document.getElementById("courseDetail");
+    const current = new URLSearchParams(location.search).get("id");
+    if (here && current === id) {
+      unlockCourse(id, { silent: true, skipRender: true });
+      return;
+    }
+    unlockCourse(id, { silent: true });
+    return;
+  }
+
+  const rupees = Number(course.price || 0);
+  if (!Number.isFinite(rupees) || rupees <= 0) {
+    unlockCourse(id);
+    return;
+  }
+  const amountPaise = Math.round(rupees * 100);
+  if (!Number.isInteger(amountPaise) || amountPaise < 100) {
+    toast("Invalid course price");
+    return;
+  }
+
+  const u = getUser();
+  const buyBtns = [...document.querySelectorAll(".js-enroll")];
+  buyBtns.forEach((btn) => {
+    btn.disabled = true;
+    btn.dataset.prevLabel = btn.textContent || "";
+    btn.textContent = "Opening payment…";
+  });
+
+  const restoreBuyBtns = () => {
+    buyBtns.forEach((btn) => {
+      btn.disabled = false;
+      if (btn.dataset.prevLabel) btn.textContent = btn.dataset.prevLabel;
+      delete btn.dataset.prevLabel;
+    });
+  };
+
+  try {
+    await loadRazorpayScript();
+    const orderRes = await fetch(payApi("/api/create-order"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: amountPaise,
+        currency: "INR",
+        receipt: (`course_${id}`).slice(0, 40),
+        notes: { courseId: id, email: String(u?.email || "").toLowerCase() }
+      })
+    });
+    const order = await orderRes.json().catch(() => ({}));
+    if (!orderRes.ok || !order.order_id || !order.key_id) {
+      restoreBuyBtns();
+      toast(order.error || "Could not start payment. Check Razorpay env on Cloudflare Pages.");
+      return;
+    }
+
+    const rzp = new window.Razorpay({
+      key: order.key_id,
+      amount: order.amount,
+      currency: order.currency || "INR",
+      name: BRAND,
+      description: course.title,
+      order_id: order.order_id,
+      prefill: {
+        name: u?.name || "",
+        email: u?.email || ""
+      },
+      notes: { courseId: id },
+      theme: { color: "#4F46E5" },
+      handler: async function (response) {
+        try {
+          const verifyRes = await fetch(payApi("/api/verify-payment"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+          const verify = await verifyRes.json().catch(() => ({}));
+          if (!verifyRes.ok || !verify.ok) {
+            restoreBuyBtns();
+            toast(verify.error || "Payment could not be verified");
+            return;
+          }
+          unlockCourse(id);
+        } catch {
+          restoreBuyBtns();
+          toast("Payment verification failed");
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          restoreBuyBtns();
+          toast("Payment cancelled");
+        }
+      }
+    });
+    rzp.on("payment.failed", function (resp) {
+      restoreBuyBtns();
+      const msg = resp?.error?.description || resp?.error?.reason || "Payment failed";
+      toast(msg);
+    });
+    rzp.open();
+    restoreBuyBtns();
+  } catch (err) {
+    restoreBuyBtns();
+    toast(err?.message || "Could not open checkout");
+  }
+}
+
 function consumePendingBuy() {
   if (!getUser()) return;
   const id = sessionStorage.getItem("tradeshalaPendingBuy");
   if (!id) return;
   sessionStorage.removeItem("tradeshalaPendingBuy");
-  const here = document.getElementById("courseDetail");
-  const current = new URLSearchParams(location.search).get("id");
-  if (here && current === id) {
-    unlockCourse(id, { silent: false, skipRender: true });
-    return;
-  }
-  unlockCourse(id);
+  startCourseCheckout(id);
 }
 
 function enroll(id) {
   sessionStorage.setItem("tradeshalaPendingBuy", id);
   requireAuth(() => {
     sessionStorage.removeItem("tradeshalaPendingBuy");
-    unlockCourse(id);
+    startCourseCheckout(id);
   });
 }
 
@@ -4953,6 +5089,7 @@ function traderIcon(kind) {
 /* cache-bust desk157: About Us polish — simple intro + wide Vision card /css/about.css?v=desk157 */
 /* cache-bust desk158: About Us Vision layout — left photo / right box, short crop /css/about.css?v=desk158 */
 /* cache-bust desk159: About Us FAQ set — data-faq-set=about (9 Q&As) */
+/* cache-bust desk164: Razorpay Standard Checkout — create-order + verify-payment + Buy Now */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
   const cloneAttrs = opts.clone ? ' tabindex="-1" aria-hidden="true"' : "";
