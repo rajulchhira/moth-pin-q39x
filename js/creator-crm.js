@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk194 mesh behind desk shell + desk192 analytics */
+/* Creator CRM dashboard — desk195 durable mesh + desk192 analytics */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -426,14 +426,89 @@
     }
   }
 
+  function prefersReduceMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Structurally guarantee the dual-layer mesh exists and is animating.
+   * Survives hard refresh, theme toggle, login↔desk, and accidental DOM loss.
+   */
+  function ensureCrmMesh(opts) {
+    const restart = !!(opts && opts.restart);
+    const reduce = prefersReduceMotion();
+    document.documentElement.setAttribute("data-crm-reduce-motion", reduce ? "1" : "0");
+
+    let mesh = document.getElementById("crmMesh") || document.querySelector(".crm-mesh");
+    if (!mesh) {
+      mesh = document.createElement("div");
+      mesh.className = "crm-mesh";
+      mesh.id = "crmMesh";
+      mesh.setAttribute("aria-hidden", "true");
+      document.body.insertBefore(mesh, document.body.firstChild);
+    } else if (mesh.parentElement !== document.body || mesh !== document.body.firstElementChild) {
+      document.body.insertBefore(mesh, document.body.firstChild);
+    }
+
+    let layerA = mesh.querySelector(".crm-mesh-layer-a");
+    let layerB = mesh.querySelector(".crm-mesh-layer-b");
+    if (!layerA) {
+      layerA = document.createElement("div");
+      layerA.className = "crm-mesh-layer crm-mesh-layer-a";
+      mesh.appendChild(layerA);
+    }
+    if (!layerB) {
+      layerB = document.createElement("div");
+      layerB.className = "crm-mesh-layer crm-mesh-layer-b";
+      mesh.appendChild(layerB);
+    }
+
+    // Keep backdrop base in sync with theme (FOUC + inline style)
+    const base = getTheme() === "light" ? "#ffffff" : "#0c1834";
+    document.documentElement.style.background = base;
+    mesh.style.backgroundColor = base;
+
+    if (reduce) {
+      mesh.classList.remove("is-restarting");
+      return mesh;
+    }
+
+    const kick = () => {
+      mesh.classList.add("is-restarting");
+      // Force reflow so removing the class restarts CSS animations
+      void mesh.offsetWidth;
+      mesh.classList.remove("is-restarting");
+      [layerA, layerB].forEach((el) => {
+        if (!el) return;
+        el.style.animationPlayState = "running";
+      });
+    };
+
+    if (restart) kick();
+    else {
+      // Ensure play-state even without a full restart
+      [layerA, layerB].forEach((el) => {
+        if (!el) return;
+        el.style.animationPlayState = "running";
+      });
+    }
+    return mesh;
+  }
+
   function applyTheme(theme) {
     const next = theme === "light" ? "light" : "dark";
     try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
     document.documentElement.setAttribute("data-crm-theme", next);
     document.documentElement.style.colorScheme = next;
+    document.documentElement.style.background = next === "light" ? "#ffffff" : "#0c1834";
     const meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", next);
     $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
+    ensureCrmMesh({ restart: true });
   }
 
   function themeToggleHTML(id) {
@@ -452,6 +527,7 @@
     if (app) app.classList.add("crm-hidden");
     const err = $("#crmLoginErr");
     if (err) err.textContent = errMsg || "";
+    ensureCrmMesh({ restart: true });
   }
 
   function showApp() {
@@ -460,6 +536,7 @@
     if (login) login.classList.add("crm-hidden");
     if (app) app.classList.remove("crm-hidden");
     renderShell();
+    ensureCrmMesh({ restart: true });
   }
 
   function navSections() {
@@ -2038,6 +2115,7 @@
   }
 
   function boot() {
+    ensureCrmMesh({ restart: true });
     applyTheme(getTheme());
     ensureCreatorSeed();
     const existing = session();
@@ -2050,6 +2128,18 @@
     } else {
       showLogin();
     }
+
+    // Re-assert mesh after BFCache restore / tab focus / OS motion preference flips
+    window.addEventListener("pageshow", () => ensureCrmMesh({ restart: true }));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") ensureCrmMesh({ restart: true });
+    });
+    try {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const onMotion = () => ensureCrmMesh({ restart: true });
+      if (mq.addEventListener) mq.addEventListener("change", onMotion);
+      else if (mq.addListener) mq.addListener(onMotion);
+    } catch { /* ignore */ }
 
     // Delegated handlers — survive re-renders and automation hosts
     document.addEventListener("submit", (e) => {
@@ -2189,6 +2279,7 @@
 
     window.addEventListener("hashchange", () => {
       if (!$("#crmApp")?.classList.contains("crm-hidden")) renderShell();
+      ensureCrmMesh({ restart: false });
     });
   }
 

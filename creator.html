@@ -19,14 +19,17 @@
       } catch (e) {}
     })();
   </script>
-  <script src="/js/seo.js?v=desk194" defer></script>
+  <script src="/js/seo.js?v=desk195" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/creator-crm.css?v=desk194">
+  <link rel="stylesheet" href="/css/creator-crm.css?v=desk195">
 </head>
 <body class="crm-body">
-  <!-- Fixed dual-layer mesh: sits behind login AND post-login desk shell -->
-  <div class="crm-mesh" aria-hidden="true"></div>
+  <!-- Real DOM dual-layer mesh (not body pseudos) — JS ensureCrmMesh() repairs if missing -->
+  <div class="crm-mesh" id="crmMesh" aria-hidden="true">
+    <div class="crm-mesh-layer crm-mesh-layer-a"></div>
+    <div class="crm-mesh-layer crm-mesh-layer-b"></div>
+  </div>
   <div id="crmLogin" class="crm-login">
     <form class="crm-login-card" id="crmLoginForm" action="#" method="post" onsubmit="return false">
       <div class="crm-brand">
@@ -91,11 +94,11 @@
   <script>
     (function () {
       var files = [
-        "/js/app.js?v=desk194",
-        "/js/lms.js?v=desk194",
-        "/js/admin-core.js?v=desk194",
-        "/js/admin.js?v=desk194",
-        "/js/creator-crm.js?v=desk194"
+        "/js/app.js?v=desk195",
+        "/js/lms.js?v=desk195",
+        "/js/admin-core.js?v=desk195",
+        "/js/admin.js?v=desk195",
+        "/js/creator-crm.js?v=desk195"
       ];
       var i = 0;
       function add(src, done) {

@@ -5092,6 +5092,7 @@ function traderIcon(kind) {
 /* cache-bust desk192: Creator CRM analytics — nested View detail sheets */
 /* cache-bust desk193: Creator CRM white light + dual-layer transform mesh motion */
 /* cache-bust desk194: Creator CRM mesh behind post-login desk shell (.crm-mesh) */
+/* cache-bust desk195: Creator CRM durable real-DOM dual-layer mesh + ensure/restart */
 /* cache-bust desk164: Razorpay Standard Checkout — create-order + verify-payment + Buy Now */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
