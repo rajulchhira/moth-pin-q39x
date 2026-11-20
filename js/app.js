@@ -5093,6 +5093,7 @@ function traderIcon(kind) {
 /* cache-bust desk193: Creator CRM white light + dual-layer transform mesh motion */
 /* cache-bust desk194: Creator CRM Studio — scripts / recordings / editing queue / content library */
 /* cache-bust desk194: Creator CRM mesh behind post-login desk shell (.crm-mesh) */
+/* cache-bust desk195: Creator Studio — scripts no-upload for creators; editing queue read-only badges */
 /* cache-bust desk196: Creator CRM obvious viewport-travel mesh (vw/vh) + translucent panels */
 /* cache-bust desk164: Razorpay Standard Checkout — create-order + verify-payment + Buy Now */
 function traderCardHTML(m, i, opts = {}) {
