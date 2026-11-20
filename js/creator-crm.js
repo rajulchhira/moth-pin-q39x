@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk194 Creator Studio (scripts / recordings / queue / library) */
+/* Creator CRM dashboard — desk195 Creator Studio (scripts read-only upload; queue status badges) */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -12,7 +12,6 @@
   const ACTIVE_DAYS = 14;
   const DEFAULT_PERIOD = 30;
   const EDIT_STATUSES = ["Under Review", "Editing", "Revision", "Completed"];
-  const SCRIPT_ACCEPT = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   const VIDEO_ACCEPT = "video/*,.mp4,.webm,.mov,.m4v,.avi,.mkv";
   /** @type {Map<string, { blob: Blob, url: string }>} */
   const studioBlobs = new Map();
@@ -405,15 +404,6 @@
     return rememberBlob(id, new Blob([body], { type: mime || "text/plain" }), name);
   }
 
-  function isScriptFile(file) {
-    const name = String(file?.name || "").toLowerCase();
-    const type = String(file?.type || "").toLowerCase();
-    if (/\.(pdf|doc|docx)$/.test(name)) return true;
-    return type === "application/pdf"
-      || type === "application/msword"
-      || type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  }
-
   function isVideoFile(file) {
     const name = String(file?.name || "").toLowerCase();
     const type = String(file?.type || "").toLowerCase();
@@ -562,7 +552,10 @@
 
   function fileListHTML(kind, rows) {
     if (!rows.length) {
-      return `<div class="crm-file-empty">No files yet — drop ${kind === "scripts" ? "a PDF or DOC/DOCX" : "a video"} to get started.</div>`;
+      const empty = kind === "scripts"
+        ? "No scripts yet — the Bizgarh team will share files here."
+        : "No files yet — drop a video to get started.";
+      return `<div class="crm-file-empty">${empty}</div>`;
     }
     return `<ul class="crm-file-list">${rows.map((r) => {
       const when = r.uploadedAt ? fmtDate(r.uploadedAt) : "—";
@@ -586,11 +579,10 @@
         <div class="crm-section-head">
           <div>
             <h3>Scripts</h3>
-            <p>PDF or DOC/DOCX only. Files stay available for Download / Delete in this session.</p>
+            <p>Scripts are provided by the Bizgarh team. Download or delete from your list — creators cannot upload here.</p>
           </div>
           <span class="crm-studio-count">${rows.length} file${rows.length === 1 ? "" : "s"}</span>
         </div>
-        ${dropzoneHTML("scripts", SCRIPT_ACCEPT, "Accepts PDF, DOC, and DOCX")}
         <div class="crm-file-panel" id="crmStudioScriptsList">${fileListHTML("scripts", rows)}</div>
       </section>
     </div>`;
@@ -613,27 +605,26 @@
     </div>`;
   }
 
+  function editingStatusBadge(status) {
+    const label = EDIT_STATUSES.includes(status) ? status : "Under Review";
+    const slug = label.toLowerCase().replace(/\s+/g, "-");
+    return `<span class="crm-eq-badge crm-eq-badge-${esc(slug)}">${esc(label)}</span>`;
+  }
+
   function renderEditingQueue(root, s) {
     const rows = studioQueue(s.email);
     const body = rows.length
-      ? rows.map((r) => {
-        const opts = EDIT_STATUSES.map((st) =>
-          `<option value="${esc(st)}"${r.status === st ? " selected" : ""}>${esc(st)}</option>`
-        ).join("");
-        return `<tr data-eq-id="${esc(r.id)}">
+      ? rows.map((r) => `<tr data-eq-id="${esc(r.id)}">
           <td class="crm-eq-title">${esc(r.title)}</td>
-          <td>
-            <select class="crm-eq-status" data-studio-eq-status="${esc(r.id)}" aria-label="Status for ${esc(r.title)}">${opts}</select>
-          </td>
-        </tr>`;
-      }).join("")
+          <td>${editingStatusBadge(r.status)}</td>
+        </tr>`).join("")
       : `<tr><td colspan="2" class="crm-sheet-empty">No videos in the editing queue</td></tr>`;
     root.innerHTML = `<div class="crm-panel-view crm-studio">
       <section class="crm-section">
         <div class="crm-section-head">
           <div>
             <h3>Editing Queue</h3>
-            <p>Status flow: Under Review → Editing → Revision → Completed.</p>
+            <p>Status is set by the Bizgarh team — Under Review → Editing → Revision → Completed.</p>
           </div>
           <span class="crm-studio-count">${rows.length} video${rows.length === 1 ? "" : "s"}</span>
         </div>
@@ -712,31 +703,8 @@
   function addStudioFiles(kind, fileList, staff) {
     const files = Array.from(fileList || []);
     if (!files.length || !staff) return;
-    if (kind === "scripts") {
-      const accepted = files.filter(isScriptFile);
-      const rejected = files.length - accepted.length;
-      if (!accepted.length) {
-        alert("Scripts accept PDF or DOC/DOCX only.");
-        return;
-      }
-      if (rejected) alert(`${rejected} file(s) skipped — PDF or DOC/DOCX only.`);
-      const rows = studioScripts(staff.email).slice();
-      accepted.forEach((f) => {
-        const id = studioUid("script");
-        rememberBlob(id, f);
-        rows.unshift({
-          id,
-          name: f.name,
-          size: f.size,
-          mime: f.type || "application/octet-stream",
-          uploadedAt: new Date().toISOString(),
-          demo: false
-        });
-      });
-      writeStudioBucket(STUDIO_SCRIPTS_KEY, staff.email, rows);
-      renderScripts($("#crmView"), staff);
-      return;
-    }
+    // Creators cannot upload scripts — admin/team provides them
+    if (kind === "scripts") return;
     if (kind === "recordings") {
       const accepted = files.filter(isVideoFile);
       const rejected = files.length - accepted.length;
@@ -796,13 +764,6 @@
     }
   }
 
-  function setEditingStatus(id, status, staff) {
-    if (!staff || !id) return;
-    const next = studioQueue(staff.email).map((r) =>
-      r.id === id ? { ...r, status: EDIT_STATUSES.includes(status) ? status : r.status } : r
-    );
-    writeStudioBucket(STUDIO_QUEUE_KEY, staff.email, next);
-  }
 
   function socialLinks(email) {
     try {
@@ -1104,9 +1065,9 @@
       if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
       else if (view === "analytics") sub.textContent = "Student and revenue analytics with spreadsheet detail sheets";
       else if (view === "profile") sub.textContent = "Account and social links for Platform Performance";
-      else if (view === "scripts") sub.textContent = "Upload PDF or Word scripts — download or delete anytime";
+      else if (view === "scripts") sub.textContent = "Scripts from the Bizgarh team — download or delete anytime";
       else if (view === "recording-submissions") sub.textContent = "Drop raw video takes for the editing desk";
-      else if (view === "editing-queue") sub.textContent = "Track each cut from Under Review through Completed";
+      else if (view === "editing-queue") sub.textContent = "View status for each cut — team updates the queue";
       else if (view === "content-library") sub.textContent = "Approved videos, captions, and PDF attachments";
       else if (view === "review-approval") sub.textContent = "Covered by Editing Queue and Content Library";
       else sub.textContent = "Creator CRM module";
@@ -2696,11 +2657,7 @@
         fileInput.value = "";
         return;
       }
-      const eqStatus = t.closest("[data-studio-eq-status]");
-      if (eqStatus) {
-        const s = session();
-        setEditingStatus(eqStatus.getAttribute("data-studio-eq-status"), eqStatus.value, s);
-      }
+      // Editing queue status is display-only for creators (admin/Control updates it)
     });
 
     document.addEventListener("dragenter", (e) => {
