@@ -1,10 +1,10 @@
-/* Creator CRM — desk195 durable real-DOM mesh + analytics desk192 */
+/* Creator CRM — desk196 obvious viewport-travel mesh + analytics desk192 */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
   --crm-bg-2: #162848;
-  --crm-panel: rgba(22, 38, 72, 0.82);
-  --crm-panel-2: rgba(28, 48, 88, 0.88);
+  --crm-panel: rgba(22, 38, 72, 0.38);
+  --crm-panel-2: rgba(28, 48, 88, 0.44);
   --crm-line: rgba(148, 180, 220, 0.14);
   --crm-ink: #f4f7ff;
   --crm-muted: #a8bdd9;
@@ -19,24 +19,24 @@ html.crm-html {
   --crm-radius: 16px;
   --crm-side: 280px;
   --crm-font: "Nunito", "Segoe UI", sans-serif;
-  --crm-side-bg: rgba(12, 24, 52, 0.62);
+  --crm-side-bg: rgba(12, 24, 52, 0.28);
   --crm-head-ink: #f4f7ff;
   --crm-sub-ink: #a8bdd9;
   --crm-nav-on-bg: linear-gradient(135deg, rgba(94, 200, 255, 0.22), rgba(124, 108, 240, 0.18));
   --crm-nav-on-ink: #fff;
-  --crm-login-card-bg: linear-gradient(165deg, rgba(28, 48, 88, 0.94), rgba(15, 28, 56, 0.96));
+  --crm-login-card-bg: linear-gradient(165deg, rgba(28, 48, 88, 0.78), rgba(15, 28, 56, 0.82));
   --crm-toggle-track: #152445;
   --crm-toggle-glow: rgba(94, 200, 255, 0.5);
   --crm-input-bg: rgba(12, 24, 52, 0.9);
   --crm-chart-bg:
     linear-gradient(180deg, rgba(94, 200, 255, 0.1), transparent 55%),
-    #152848;
+    rgba(21, 40, 72, 0.55);
   --crm-panel-shadow: 0 12px 40px rgba(4, 12, 32, 0.35);
-  --crm-mesh-a: rgba(56, 160, 255, 0.88);
-  --crm-mesh-b: rgba(160, 120, 255, 0.78);
-  --crm-mesh-c: rgba(255, 110, 160, 0.62);
-  --crm-mesh-d: rgba(40, 230, 235, 0.65);
-  --crm-mesh-e: rgba(100, 180, 255, 0.55);
+  --crm-mesh-a: rgba(80, 190, 255, 1);
+  --crm-mesh-b: rgba(190, 110, 255, 1);
+  --crm-mesh-c: rgba(255, 70, 150, 1);
+  --crm-mesh-d: rgba(30, 255, 220, 0.95);
+  --crm-mesh-e: rgba(120, 200, 255, 0.95);
   --crm-mesh-base: #0c1834;
 }
 
@@ -44,30 +44,30 @@ html.crm-html[data-crm-theme="light"] {
   /* Light: clean white + soft cool/pastel moving mesh (not cream/beige) */
   --crm-bg: #ffffff;
   --crm-bg-2: #f3f6fb;
-  --crm-panel: rgba(255, 255, 255, 0.88);
-  --crm-panel-2: rgba(255, 255, 255, 0.94);
+  --crm-panel: rgba(255, 255, 255, 0.58);
+  --crm-panel-2: rgba(255, 255, 255, 0.66);
   --crm-line: rgba(15, 23, 42, 0.1);
   --crm-ink: #1c2433;
   --crm-muted: #64748b;
   --crm-soft: #94a3b8;
-  --crm-side-bg: rgba(255, 255, 255, 0.72);
+  --crm-side-bg: rgba(255, 255, 255, 0.42);
   --crm-head-ink: #1c2433;
   --crm-sub-ink: #64748b;
   --crm-nav-on-bg: linear-gradient(135deg, rgba(94, 180, 255, 0.22), rgba(160, 140, 255, 0.2));
   --crm-nav-on-ink: #1e293b;
-  --crm-login-card-bg: linear-gradient(165deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.98));
+  --crm-login-card-bg: linear-gradient(165deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 252, 0.88));
   --crm-toggle-track: #1a2438;
   --crm-input-bg: rgba(255, 255, 255, 0.96);
   --crm-chart-bg:
     linear-gradient(180deg, rgba(120, 180, 255, 0.14), transparent 55%),
-    #ffffff;
+    rgba(255, 255, 255, 0.55);
   --crm-panel-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
   /* Cool pastels only — avoid warm peach/beige that reads as cream */
-  --crm-mesh-a: rgba(80, 150, 255, 0.62);
-  --crm-mesh-b: rgba(150, 110, 255, 0.58);
-  --crm-mesh-c: rgba(40, 190, 230, 0.58);
-  --crm-mesh-d: rgba(100, 160, 255, 0.48);
-  --crm-mesh-e: rgba(180, 130, 255, 0.48);
+  --crm-mesh-a: rgba(40, 130, 255, 0.92);
+  --crm-mesh-b: rgba(150, 80, 255, 0.9);
+  --crm-mesh-c: rgba(0, 190, 230, 0.88);
+  --crm-mesh-d: rgba(70, 140, 255, 0.85);
+  --crm-mesh-e: rgba(200, 90, 255, 0.88);
   --crm-mesh-base: #ffffff;
   color-scheme: light;
 }
@@ -109,45 +109,45 @@ body.crm-body {
   pointer-events: none;
   overflow: hidden;
   background-color: var(--crm-mesh-base);
-  contain: layout style;
 }
 
+/*
+ * Viewport-relative travel (vw/vh), not % of a 180vmax layer — % travel looked
+ * almost static because the layer is huge. Faster cycles + denser blobs so
+ * color drift is obvious on login and behind translucent desk panels.
+ */
 .crm-mesh-layer {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 180vmax;
-  height: 180vmax;
-  margin: -90vmax 0 0 -90vmax;
+  inset: -45%;
+  width: 190%;
+  height: 190%;
   pointer-events: none;
-  transform-origin: center center;
+  transform-origin: 50% 50%;
   backface-visibility: hidden;
   will-change: transform;
 }
 
 .crm-mesh-layer-a {
+  /* Smaller, hotter blobs so travel reads as color migration, not a soft wash */
   background:
-    radial-gradient(ellipse 42% 36% at 18% 22%, var(--crm-mesh-a), transparent 68%),
-    radial-gradient(ellipse 38% 34% at 82% 16%, var(--crm-mesh-b), transparent 66%),
-    radial-gradient(ellipse 44% 40% at 76% 78%, var(--crm-mesh-c), transparent 70%),
-    radial-gradient(ellipse 36% 32% at 22% 84%, var(--crm-mesh-d), transparent 68%),
-    radial-gradient(ellipse 48% 42% at 50% 48%, var(--crm-mesh-e), transparent 72%);
-  animation: crmMeshDrift 9s ease-in-out infinite alternate;
+    radial-gradient(circle 28vmax at 18% 22%, var(--crm-mesh-a), transparent 58%),
+    radial-gradient(circle 26vmax at 82% 18%, var(--crm-mesh-b), transparent 56%),
+    radial-gradient(circle 30vmax at 78% 80%, var(--crm-mesh-c), transparent 58%),
+    radial-gradient(circle 24vmax at 20% 84%, var(--crm-mesh-d), transparent 56%),
+    radial-gradient(circle 22vmax at 48% 48%, var(--crm-mesh-e), transparent 54%);
+  animation: crmMeshDrift 5s ease-in-out infinite alternate;
   animation-play-state: running;
 }
 
 .crm-mesh-layer-b {
-  opacity: 0.85;
+  opacity: 1;
   background:
-    radial-gradient(ellipse 50% 44% at 70% 40%, var(--crm-mesh-b), transparent 72%),
-    radial-gradient(ellipse 46% 40% at 28% 62%, var(--crm-mesh-c), transparent 70%),
-    radial-gradient(ellipse 40% 36% at 40% 20%, var(--crm-mesh-a), transparent 70%);
-  animation: crmMeshDriftAlt 12s ease-in-out infinite alternate;
+    radial-gradient(circle 32vmax at 70% 40%, var(--crm-mesh-b), transparent 56%),
+    radial-gradient(circle 28vmax at 28% 66%, var(--crm-mesh-c), transparent 54%),
+    radial-gradient(circle 24vmax at 40% 16%, var(--crm-mesh-a), transparent 54%),
+    radial-gradient(circle 26vmax at 88% 78%, var(--crm-mesh-d), transparent 56%);
+  animation: crmMeshDriftAlt 6.5s ease-in-out infinite alternate;
   animation-play-state: running;
-}
-
-html.crm-html[data-crm-theme="light"] .crm-mesh-layer-b {
-  opacity: 0.95;
 }
 
 /* Force-restart hook toggled by ensureCrmMesh() */
@@ -155,38 +155,49 @@ html.crm-html[data-crm-theme="light"] .crm-mesh-layer-b {
   animation: none !important;
 }
 
-/* Login + desk shell sit above the mesh backdrop */
+/* Login + desk shell sit above the mesh; keep transparent so blobs show through */
 .crm-login,
 .crm-app {
   position: relative;
   z-index: 1;
   isolation: isolate;
+  background: transparent !important;
+}
+
+.crm-main {
+  background: transparent !important;
 }
 
 @keyframes crmMeshDrift {
   0% {
-    transform: translate3d(-12%, -9%, 0) rotate(0deg) scale(1);
+    transform: translate3d(-40vw, -32vh, 0) rotate(0deg) scale(1);
   }
-  33% {
-    transform: translate3d(11%, 7%, 0) rotate(4.5deg) scale(1.1);
+  25% {
+    transform: translate3d(28vw, -14vh, 0) rotate(8deg) scale(1.2);
   }
-  66% {
-    transform: translate3d(5%, 14%, 0) rotate(-3deg) scale(1.05);
+  50% {
+    transform: translate3d(36vw, 30vh, 0) rotate(-6deg) scale(1.12);
+  }
+  75% {
+    transform: translate3d(-18vw, 36vh, 0) rotate(7deg) scale(1.22);
   }
   100% {
-    transform: translate3d(14%, -11%, 0) rotate(-5deg) scale(1.12);
+    transform: translate3d(42vw, -28vh, 0) rotate(-9deg) scale(1.25);
   }
 }
 
 @keyframes crmMeshDriftAlt {
   0% {
-    transform: translate3d(11%, 9%, 0) rotate(0deg) scale(1.06);
+    transform: translate3d(38vw, 28vh, 0) rotate(0deg) scale(1.15);
   }
-  50% {
-    transform: translate3d(-12%, -7%, 0) rotate(-4deg) scale(1);
+  33% {
+    transform: translate3d(-34vw, 14vh, 0) rotate(-8deg) scale(1);
+  }
+  66% {
+    transform: translate3d(-40vw, -30vh, 0) rotate(7deg) scale(1.18);
   }
   100% {
-    transform: translate3d(-9%, 12%, 0) rotate(3.5deg) scale(1.1);
+    transform: translate3d(32vw, -36vh, 0) rotate(-7deg) scale(1.2);
   }
 }
 
@@ -223,8 +234,8 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-layer-b {
   border-radius: 20px;
   padding: 28px 26px 24px;
   box-shadow: var(--crm-panel-shadow);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   animation: crmFadeUp 0.45s ease both;
 }
 .crm-brand {
@@ -345,8 +356,8 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-layer-b {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  backdrop-filter: blur(18px) saturate(1.15);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
   overflow: hidden;
   z-index: 2;
 }
@@ -645,8 +656,8 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-layer-b {
     var(--crm-panel);
   border: 1px solid var(--crm-line);
   box-shadow: var(--crm-panel-shadow);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   margin-bottom: 16px;
   animation: crmFadeUp 0.5s ease both;
 }
@@ -699,8 +710,8 @@ html.crm-html[data-crm-theme="light"] .crm-period {
   padding: 16px;
   min-height: 118px;
   box-shadow: var(--crm-panel-shadow);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   animation: crmFadeUp 0.55s ease both;
 }
 .crm-metric:nth-child(2) { animation-delay: 0.05s; }
@@ -755,8 +766,8 @@ html.crm-html[data-crm-theme="light"] .crm-period {
 .crm-section {
   background: var(--crm-panel);
   box-shadow: var(--crm-panel-shadow);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid var(--crm-line);
   border-radius: var(--crm-radius);
   padding: 16px 18px 18px;
@@ -899,10 +910,12 @@ html.crm-html[data-crm-theme="light"] .crm-chart-wrap text { fill: #475569; }
   right: 22px;
   top: 72px;
   width: min(340px, calc(100vw - 48px));
-  background: #121a2b;
+  background: rgba(18, 26, 43, 0.72);
   border: 1px solid var(--crm-line);
   border-radius: 14px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 40;
   overflow: hidden;
 }
