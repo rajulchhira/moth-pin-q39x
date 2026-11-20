@@ -1,4 +1,4 @@
-/* Creator CRM — desk191 analytics (view-only sheets, no CSV) + mesh themes */
+/* Creator CRM — desk192 analytics (nested View detail sheets) + mesh themes */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
@@ -1079,6 +1079,9 @@ html.crm-html[data-crm-theme="light"] .crm-sheet-table tbody tr:nth-child(even) 
   border-radius: 16px;
   box-shadow: var(--crm-panel-shadow);
   padding: 14px 16px 16px;
+}
+.crm-sheet-panel-deep {
+  width: min(1120px, 100%);
 }
 .crm-sheet-head {
   display: flex;

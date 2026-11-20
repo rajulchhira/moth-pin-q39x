@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk191 analytics (view-only sheets, no CSV) */
+/* Creator CRM dashboard — desk192 analytics (nested View detail sheets) */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -1194,7 +1194,7 @@
     const revMode = localStorage.getItem("crmAnalyticsRevMode") || "weekly";
     const periodSeries = periodRevenueSeries(staff, revMode);
 
-    return {
+    const result = {
       metrics: m,
       days,
       completionRate,
@@ -1244,6 +1244,123 @@
         avgOrder: b.revenue
       }))
     };
+
+    // Level-2 in-depth rows (nested View detail)
+    const deepStudentRows = [];
+    result.studentRows.forEach((s) => {
+      const mail = String(s.email || "").toLowerCase();
+      const mine = enrolls.filter((e) => String(e.email || "").toLowerCase() === mail);
+      if (!mine.length) {
+        deepStudentRows.push({
+          name: s.name, email: s.email, phone: "—", course: "—", courseId: "—",
+          enrolled: s.firstAt, firstAt: s.firstAt, lastAt: s.lastAt,
+          progress: s.progress, lessonsDone: "—", lessonsTotal: "—",
+          status: s.status, isNew: s.isNew ? "Yes" : "No", active: s.active ? "Yes" : "No",
+          source: "enroll"
+        });
+        return;
+      }
+      mine.forEach((e) => {
+        const pct = Number(progressPct(e.email, e.courseId) || s.progress || 0);
+        const total = lessonCount(e.courseId);
+        const done = Math.round((pct / 100) * total);
+        deepStudentRows.push({
+          name: s.name || e.name || "—",
+          email: s.email || e.email || "—",
+          phone: "—",
+          course: courseTitle(e.courseId),
+          courseId: e.courseId || "—",
+          enrolled: e.at || "",
+          firstAt: s.firstAt || "",
+          lastAt: s.lastAt || e.at || "",
+          progress: pct,
+          lessonsDone: done,
+          lessonsTotal: total,
+          status: pct >= 100 ? "Completed" : (s.active ? "Active" : "Inactive"),
+          isNew: s.isNew ? "Yes" : "No",
+          active: s.active ? "Yes" : "No",
+          source: "creator enroll"
+        });
+      });
+    });
+    result.deepStudentRows = deepStudentRows;
+    result.deepNewRows = deepStudentRows.filter((r) => r.isNew === "Yes");
+    result.deepActiveRows = deepStudentRows.filter((r) => r.active === "Yes");
+    result.deepCompletionRows = completionRows.map((r) => {
+      const total = lessonCount(r.courseId);
+      const pct = Number(r.progress || 0);
+      return {
+        name: r.name,
+        email: r.email,
+        course: r.course,
+        courseId: r.courseId || "—",
+        enrolled: r.enrolled,
+        progress: pct,
+        lessonsDone: Math.round((pct / 100) * total),
+        lessonsTotal: total,
+        remaining: Math.max(0, 100 - pct),
+        status: r.status,
+        risk: pct < 25 ? "At risk" : pct < 70 ? "On track" : "Strong"
+      };
+    });
+    result.deepRevenueRows = paid
+      .slice()
+      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
+      .map((o) => ({
+        id: o.id || "—",
+        name: o.name || "—",
+        email: o.email || "—",
+        course: courseTitle(o.courseId),
+        courseId: o.courseId || "—",
+        gross: Number(o.amount || o.net || 0),
+        discount: Number(o.discount || 0),
+        tax: Number(o.tax || 0),
+        net: Number(o.net || o.amount || 0),
+        method: o.method || "upi",
+        tx: o.tx || "—",
+        at: o.at || "",
+        status: o.status || "PAID",
+        creator: o.creatorEmail || staff.email || "—",
+        referral: o.referralCode || "—"
+      }));
+    result.deepPeriodRows = periodSeries.map((b, i) => {
+      const prev = i > 0 ? periodSeries[i - 1].revenue : 0;
+      const delta = prev ? Math.round(((b.revenue - prev) / prev) * 1000) / 10 : (b.revenue ? 100 : 0);
+      return {
+        period: b.label,
+        revenue: b.revenue,
+        avgOrder: b.revenue,
+        deltaPct: delta,
+        mode: revMode
+      };
+    });
+    const courseRevTotal = courseWise.reduce((a, x) => a + Number(x.revenue || 0), 0) || 1;
+    result.deepCourseWise = courseWise.map((r, i) => ({
+      rank: i + 1,
+      course: r.course,
+      students: r.students,
+      orders: r.orders,
+      revenue: r.revenue,
+      avg: r.avg,
+      share: Math.round((r.revenue / courseRevTotal) * 1000) / 10,
+      perStudent: r.students ? Math.round(r.revenue / r.students) : 0
+    }));
+    result.deepPaymentRows = paymentRows.map((r) => ({
+      ...r,
+      gateway: "Razorpay",
+      settlement: "T+2",
+      currency: "INR",
+      feeEst: Math.round(Number(r.amount || 0) * 0.02),
+      netToCreator: Math.round(Number(r.amount || 0) * 0.8)
+    }));
+    result.deepOutstandingRows = outstandingRows.map((r) => ({
+      ...r,
+      phone: "—",
+      followUp: r.daysOverdue >= 14 ? "Escalated" : r.daysOverdue >= 7 ? "Reminder due" : "Watch",
+      priority: r.daysOverdue >= 21 ? "High" : r.daysOverdue >= 7 ? "Medium" : "Low",
+      notes: r.status === "FAILED" ? "Payment failed — retry link" : "Awaiting collection"
+    }));
+    return result;
   }
 
   const SHEET_DEFS = {
@@ -1259,7 +1376,28 @@
         { key: "progress", label: "Avg progress", fmt: "pct" },
         { key: "status", label: "Status" }
       ],
-      rows: (b) => b.studentRows
+      rows: (b) => b.studentRows,
+      deep: {
+        title: "Total Students — In-depth",
+        columns: [
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "phone", label: "Phone" },
+          { key: "course", label: "Course" },
+          { key: "courseId", label: "Course ID" },
+          { key: "enrolled", label: "Enrolled", fmt: "date" },
+          { key: "firstAt", label: "First enroll", fmt: "date" },
+          { key: "lastAt", label: "Last activity", fmt: "date" },
+          { key: "progress", label: "Progress", fmt: "pct" },
+          { key: "lessonsDone", label: "Lessons done" },
+          { key: "lessonsTotal", label: "Lessons total" },
+          { key: "status", label: "Status" },
+          { key: "isNew", label: "New?" },
+          { key: "active", label: "Active?" },
+          { key: "source", label: "Source" }
+        ],
+        rows: (b) => b.deepStudentRows
+      }
     },
     "new-students": {
       title: "New Students",
@@ -1271,7 +1409,25 @@
         { key: "courseList", label: "Enrolled in" },
         { key: "status", label: "Status" }
       ],
-      rows: (b) => b.newRows
+      rows: (b) => b.newRows,
+      deep: {
+        title: "New Students — In-depth",
+        columns: [
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "course", label: "Course" },
+          { key: "courseId", label: "Course ID" },
+          { key: "enrolled", label: "Enrolled", fmt: "date" },
+          { key: "firstAt", label: "First enroll", fmt: "date" },
+          { key: "progress", label: "Progress", fmt: "pct" },
+          { key: "lessonsDone", label: "Lessons done" },
+          { key: "lessonsTotal", label: "Lessons total" },
+          { key: "status", label: "Status" },
+          { key: "active", label: "Active?" },
+          { key: "source", label: "Source" }
+        ],
+        rows: (b) => b.deepNewRows
+      }
     },
     "active-students": {
       title: "Active Students",
@@ -1283,7 +1439,24 @@
         { key: "courses", label: "Courses" },
         { key: "status", label: "Status" }
       ],
-      rows: (b) => b.activeRows
+      rows: (b) => b.activeRows,
+      deep: {
+        title: "Active Students — In-depth",
+        columns: [
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "course", label: "Course" },
+          { key: "courseId", label: "Course ID" },
+          { key: "lastAt", label: "Last activity", fmt: "date" },
+          { key: "progress", label: "Progress", fmt: "pct" },
+          { key: "lessonsDone", label: "Lessons done" },
+          { key: "lessonsTotal", label: "Lessons total" },
+          { key: "status", label: "Status" },
+          { key: "isNew", label: "New?" },
+          { key: "source", label: "Source" }
+        ],
+        rows: (b) => b.deepActiveRows
+      }
     },
     "completion-rate": {
       title: "Course Completion Rate",
@@ -1295,7 +1468,24 @@
         { key: "progress", label: "Progress", fmt: "pct" },
         { key: "status", label: "Status" }
       ],
-      rows: (b) => b.completionRows
+      rows: (b) => b.completionRows,
+      deep: {
+        title: "Course Completion — In-depth",
+        columns: [
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "course", label: "Course" },
+          { key: "courseId", label: "Course ID" },
+          { key: "enrolled", label: "Enrolled", fmt: "date" },
+          { key: "progress", label: "Progress", fmt: "pct" },
+          { key: "lessonsDone", label: "Lessons done" },
+          { key: "lessonsTotal", label: "Lessons total" },
+          { key: "remaining", label: "Remaining %", fmt: "pct" },
+          { key: "status", label: "Status" },
+          { key: "risk", label: "Risk" }
+        ],
+        rows: (b) => b.deepCompletionRows
+      }
     },
     "total-revenue": {
       title: "Total Revenue",
@@ -1308,7 +1498,28 @@
         { key: "at", label: "Paid on", fmt: "date" },
         { key: "status", label: "Status" }
       ],
-      rows: (b) => b.revenueDetailRows
+      rows: (b) => b.revenueDetailRows,
+      deep: {
+        title: "Total Revenue — In-depth",
+        columns: [
+          { key: "id", label: "Order ID" },
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "course", label: "Course" },
+          { key: "courseId", label: "Course ID" },
+          { key: "gross", label: "Gross", fmt: "inr" },
+          { key: "discount", label: "Discount", fmt: "inr" },
+          { key: "tax", label: "Tax", fmt: "inr" },
+          { key: "net", label: "Net", fmt: "inr" },
+          { key: "method", label: "Method" },
+          { key: "tx", label: "Txn" },
+          { key: "at", label: "Paid on", fmt: "date" },
+          { key: "status", label: "Status" },
+          { key: "creator", label: "Creator" },
+          { key: "referral", label: "Referral" }
+        ],
+        rows: (b) => b.deepRevenueRows
+      }
     },
     "period-revenue": {
       title: "Daily / Weekly / Monthly Revenue",
@@ -1317,7 +1528,18 @@
         { key: "revenue", label: "Revenue", fmt: "inr" },
         { key: "avgOrder", label: "Bucket total", fmt: "inr" }
       ],
-      rows: (b) => b.periodDetailRows
+      rows: (b) => b.periodDetailRows,
+      deep: {
+        title: "Period Revenue — In-depth",
+        columns: [
+          { key: "period", label: "Period" },
+          { key: "mode", label: "Grain" },
+          { key: "revenue", label: "Revenue", fmt: "inr" },
+          { key: "avgOrder", label: "Bucket total", fmt: "inr" },
+          { key: "deltaPct", label: "vs prior %", fmt: "pct" }
+        ],
+        rows: (b) => b.deepPeriodRows
+      }
     },
     "course-revenue": {
       title: "Course-wise Revenue",
@@ -1328,7 +1550,21 @@
         { key: "revenue", label: "Revenue", fmt: "inr" },
         { key: "avg", label: "Avg order", fmt: "inr" }
       ],
-      rows: (b) => b.courseWise
+      rows: (b) => b.courseWise,
+      deep: {
+        title: "Course-wise Revenue — In-depth",
+        columns: [
+          { key: "rank", label: "Rank" },
+          { key: "course", label: "Course" },
+          { key: "students", label: "Students" },
+          { key: "orders", label: "Orders" },
+          { key: "revenue", label: "Revenue", fmt: "inr" },
+          { key: "avg", label: "Avg order", fmt: "inr" },
+          { key: "perStudent", label: "Rev / student", fmt: "inr" },
+          { key: "share", label: "Share %", fmt: "pct" }
+        ],
+        rows: (b) => b.deepCourseWise
+      }
     },
     "payment-collection": {
       title: "Payment Collection Report",
@@ -1343,7 +1579,27 @@
         { key: "at", label: "Collected", fmt: "date" },
         { key: "status", label: "Status" }
       ],
-      rows: (b) => b.paymentRows
+      rows: (b) => b.paymentRows,
+      deep: {
+        title: "Payment Collection — In-depth",
+        columns: [
+          { key: "id", label: "Order ID" },
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "course", label: "Course" },
+          { key: "amount", label: "Amount", fmt: "inr" },
+          { key: "method", label: "Method" },
+          { key: "gateway", label: "Gateway" },
+          { key: "tx", label: "Txn" },
+          { key: "currency", label: "Currency" },
+          { key: "feeEst", label: "Fee est.", fmt: "inr" },
+          { key: "netToCreator", label: "Creator net", fmt: "inr" },
+          { key: "settlement", label: "Settlement" },
+          { key: "at", label: "Collected", fmt: "date" },
+          { key: "status", label: "Status" }
+        ],
+        rows: (b) => b.deepPaymentRows
+      }
     },
     "outstanding": {
       title: "Outstanding Payments",
@@ -1357,7 +1613,25 @@
         { key: "due", label: "Raised", fmt: "date" },
         { key: "daysOverdue", label: "Days open" }
       ],
-      rows: (b) => b.outstandingRows
+      rows: (b) => b.outstandingRows,
+      deep: {
+        title: "Outstanding Payments — In-depth",
+        columns: [
+          { key: "id", label: "Order ID" },
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "phone", label: "Phone" },
+          { key: "course", label: "Course" },
+          { key: "amount", label: "Amount", fmt: "inr" },
+          { key: "status", label: "Status" },
+          { key: "due", label: "Raised", fmt: "date" },
+          { key: "daysOverdue", label: "Days open" },
+          { key: "priority", label: "Priority" },
+          { key: "followUp", label: "Follow-up" },
+          { key: "notes", label: "Notes" }
+        ],
+        rows: (b) => b.deepOutstandingRows
+      }
     }
   };
 
@@ -1382,33 +1656,52 @@
     $("#crmSheetOverlay")?.remove();
   }
 
-  function openAnalyticsSheet(sheetId, staff) {
+  function renderSheetPanel(sheetId, staff, level) {
     const def = SHEET_DEFS[sheetId];
-    if (!def) return;
+    if (!def) return "";
+    const deep = level === 2 && def.deep ? def.deep : null;
+    const view = deep || def;
     const periodSel = Number(localStorage.getItem("crmPeriodDays") || DEFAULT_PERIOD);
     const bundle = buildAnalyticsBundle(staff, periodSel);
-    const rows = def.rows(bundle) || [];
-    closeAnalyticsSheet();
-    const overlay = document.createElement("div");
-    overlay.id = "crmSheetOverlay";
-    overlay.className = "crm-sheet-overlay";
-    overlay.innerHTML = `
-      <div class="crm-sheet-panel" role="dialog" aria-modal="true" aria-label="${esc(def.title)}">
+    const rows = (view.rows ? view.rows(bundle) : []) || [];
+    const subtitle = deep
+      ? `${rows.length} row${rows.length === 1 ? "" : "s"} · in-depth spreadsheet`
+      : `${rows.length} row${rows.length === 1 ? "" : "s"} · spreadsheet detail`;
+    const actions = deep
+      ? `<button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-back="${esc(sheetId)}" style="width:auto;padding:6px 12px">Back</button>
+         <button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-close style="width:auto;padding:6px 12px">Close</button>`
+      : `<button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-deep="${esc(sheetId)}" style="width:auto;padding:6px 12px">View detail</button>
+         <button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-close style="width:auto;padding:6px 12px">Close</button>`;
+    return `
+      <div class="crm-sheet-panel${deep ? " crm-sheet-panel-deep" : ""}" role="dialog" aria-modal="true" aria-label="${esc(view.title)}">
         <header class="crm-sheet-head">
           <div>
-            <h2>${esc(def.title)}</h2>
-            <p>${rows.length} row${rows.length === 1 ? "" : "s"} · spreadsheet detail</p>
+            <h2>${esc(view.title)}</h2>
+            <p>${subtitle}</p>
           </div>
-          <div class="crm-sheet-actions">
-            <button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-close style="width:auto;padding:6px 12px">Close</button>
-          </div>
+          <div class="crm-sheet-actions">${actions}</div>
         </header>
-        ${sheetTableHTML(def, rows)}
+        ${sheetTableHTML(view, rows)}
       </div>`;
-    document.body.appendChild(overlay);
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) closeAnalyticsSheet();
-    });
+  }
+
+  function openAnalyticsSheet(sheetId, staff, level) {
+    const def = SHEET_DEFS[sheetId];
+    if (!def) return;
+    const lvl = level === 2 ? 2 : 1;
+    let overlay = $("#crmSheetOverlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "crmSheetOverlay";
+      overlay.className = "crm-sheet-overlay";
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeAnalyticsSheet();
+      });
+    }
+    overlay.dataset.sheetId = sheetId;
+    overlay.dataset.sheetLevel = String(lvl);
+    overlay.innerHTML = renderSheetPanel(sheetId, staff, lvl);
   }
 
   function renderAnalytics(root, s) {
@@ -1855,12 +2148,28 @@
         closeAnalyticsSheet();
         return;
       }
+      const sheetBack = t.closest("[data-crm-sheet-back]");
+      if (sheetBack) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        openAnalyticsSheet(sheetBack.getAttribute("data-crm-sheet-back"), s, 1);
+        return;
+      }
+      const sheetDeep = t.closest("[data-crm-sheet-deep]");
+      if (sheetDeep) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        openAnalyticsSheet(sheetDeep.getAttribute("data-crm-sheet-deep"), s, 2);
+        return;
+      }
       const sheetBtn = t.closest("[data-crm-sheet]");
       if (sheetBtn) {
         e.preventDefault();
         const s = session();
         if (!s) return;
-        openAnalyticsSheet(sheetBtn.getAttribute("data-crm-sheet"), s);
+        openAnalyticsSheet(sheetBtn.getAttribute("data-crm-sheet"), s, 1);
         return;
       }
       const revMode = t.closest("[data-crm-rev-mode]");
