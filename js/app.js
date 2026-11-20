@@ -5095,6 +5095,9 @@ function traderIcon(kind) {
 /* cache-bust desk194: Creator CRM mesh behind post-login desk shell (.crm-mesh) */
 /* cache-bust desk195: Creator Studio — scripts no-upload for creators; editing queue read-only badges */
 /* cache-bust desk196: Creator CRM obvious viewport-travel mesh (vw/vh) + translucent panels */
+/* cache-bust desk196: Creator Studio Content Library — fix caption empty box under cells */
+/* cache-bust desk196b: Content Library — top-align rows + inline actions so caption has no empty box */
+/* cache-bust desk197: Content Library caption empty-box polish */
 /* cache-bust desk164: Razorpay Standard Checkout — create-order + verify-payment + Buy Now */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();

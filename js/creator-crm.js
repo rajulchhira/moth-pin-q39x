@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk196 mesh + Creator Studio (scripts no-upload; queue badges) */
+/* Creator CRM dashboard — desk197 caption fix + desk196 mesh + Studio (no-upload; queue badges) */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -639,14 +639,16 @@
   }
 
   function libraryThumbHTML(row) {
+    // Prefer static poster/thumb — avoid <video> for demo text blobs (native player chrome / empty boxes)
+    if (row.thumb) {
+      return `<div class="crm-lib-thumb"><img src="${esc(row.thumb)}" alt=""></div>`;
+    }
     const url = blobUrlFor(row.id);
     const name = String(row.videoName || row.mime || "");
     const isVid = /\.(mp4|webm|mov|m4v)$/i.test(name) || String(row.mime || "").startsWith("video/");
-    if (url && isVid) {
+    const playable = url && isVid && !row.demo;
+    if (playable) {
       return `<div class="crm-lib-thumb"><video src="${esc(url)}" muted preload="metadata" playsinline></video></div>`;
-    }
-    if (row.thumb) {
-      return `<div class="crm-lib-thumb"><img src="${esc(row.thumb)}" alt=""></div>`;
     }
     return `<div class="crm-lib-thumb crm-lib-thumb-ph" aria-hidden="true">${icon("clapper")}</div>`;
   }
@@ -664,7 +666,7 @@
         return `<tr data-lib-id="${esc(r.id)}">
           <td class="crm-lib-preview-cell">${libraryThumbHTML(r)}</td>
           <td class="crm-lib-title">${esc(r.title)}</td>
-          <td class="crm-lib-caption" title="${esc(r.caption || "")}">${esc(r.caption || "—")}</td>
+          <td class="crm-lib-caption" title="${esc(r.caption || "")}"><span class="crm-lib-caption-text">${esc(r.caption || "—")}</span></td>
           <td>${pdfCell}</td>
           <td class="crm-lib-actions">
             <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm" data-studio-dl="library" data-id="${esc(r.id)}" data-name="${esc(r.videoName || r.title + ".mp4")}">Download</button>

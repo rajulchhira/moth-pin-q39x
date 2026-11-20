@@ -1,4 +1,4 @@
-/* Creator CRM — desk196 mesh + Creator Studio (scripts no-upload; queue badges) + analytics */
+/* Creator CRM — desk197 caption fix + desk196 mesh + Studio (no-upload; queue badges) + analytics */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
@@ -1387,13 +1387,16 @@ html.crm-html[data-crm-theme="light"] .crm-eq-badge-completed {
   min-width: 760px;
 }
 .crm-lib-table td {
-  vertical-align: middle;
+  vertical-align: top;
   white-space: normal;
   max-width: none;
-  overflow: visible;
+  overflow: hidden;
   text-overflow: unset;
 }
-.crm-lib-preview-cell { width: 120px; }
+.crm-lib-preview-cell {
+  width: 120px;
+  overflow: hidden;
+}
 .crm-lib-thumb {
   width: 104px;
   height: 58px;
@@ -1403,6 +1406,7 @@ html.crm-html[data-crm-theme="light"] .crm-eq-badge-completed {
   background: rgba(0, 0, 0, 0.25);
   display: grid;
   place-items: center;
+  position: relative;
 }
 html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   background: rgba(90, 70, 50, 0.08);
@@ -1411,8 +1415,11 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
 .crm-lib-thumb img {
   width: 100%;
   height: 100%;
+  max-width: 104px;
+  max-height: 58px;
   object-fit: cover;
   display: block;
+  pointer-events: none;
 }
 .crm-lib-thumb-ph {
   color: var(--crm-soft);
@@ -1422,20 +1429,27 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   font-weight: 800;
   max-width: 220px;
 }
+/* Keep caption as table-cell text — never display:-webkit-box on <td> (breaks row layout / empty boxes) */
 .crm-lib-caption {
   color: var(--crm-muted);
   max-width: 280px;
   font-size: 0.78rem;
   line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  white-space: normal;
+}
+.crm-lib-caption-text {
+  display: block;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 .crm-lib-actions {
   white-space: nowrap;
 }
-.crm-lib-actions .crm-btn { margin: 2px 0; }
+.crm-lib-actions .crm-btn {
+  display: inline-flex;
+  margin: 0 6px 0 0;
+  vertical-align: top;
+}
 .crm-lib-pdf { color: var(--crm-muted); font-weight: 700; }
 
 @media (max-width: 1100px) {
