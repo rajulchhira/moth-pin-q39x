@@ -1,72 +1,78 @@
-/* Creator CRM — desk183 accordion nav + dark/light theme (scoped to CRM shell only) */
+/* Creator CRM — desk187 cream/navy mesh themes + sidebar-only theme toggle */
 html.crm-html {
-  --crm-bg: #0b0f1a;
-  --crm-bg-2: #111827;
-  --crm-panel: #151c2c;
-  --crm-panel-2: #1a2236;
-  --crm-line: rgba(148, 163, 184, 0.12);
-  --crm-ink: #f8fafc;
-  --crm-muted: #94a3b8;
-  --crm-soft: #64748b;
-  --crm-purple: #7c3aed;
-  --crm-purple-2: #a78bfa;
-  --crm-blue: #38bdf8;
-  --crm-green: #34d399;
-  --crm-yellow: #fbbf24;
+  /* Dark default: deep navy (blue-ish), not flat near-black */
+  --crm-bg: #0f1c38;
+  --crm-bg-2: #162848;
+  --crm-panel: rgba(22, 38, 72, 0.82);
+  --crm-panel-2: rgba(28, 48, 88, 0.88);
+  --crm-line: rgba(148, 180, 220, 0.14);
+  --crm-ink: #f4f7ff;
+  --crm-muted: #a8bdd9;
+  --crm-soft: #7f96b8;
+  --crm-purple: #7c6cf0;
+  --crm-purple-2: #b4a7ff;
+  --crm-blue: #5ec8ff;
+  --crm-green: #3dd6a5;
+  --crm-yellow: #f5c15d;
   --crm-red: #f87171;
-  --crm-pink: #e11d74;
+  --crm-pink: #e879a9;
   --crm-radius: 16px;
   --crm-side: 280px;
   --crm-font: "Nunito", "Segoe UI", sans-serif;
-  --crm-side-bg: rgba(10, 14, 24, 0.92);
-  --crm-head-ink: #f8fafc;
-  --crm-sub-ink: #94a3b8;
-  --crm-nav-on-bg: linear-gradient(135deg, rgba(124, 58, 237, 0.28), rgba(225, 29, 116, 0.12));
+  --crm-side-bg: rgba(12, 24, 52, 0.78);
+  --crm-head-ink: #f4f7ff;
+  --crm-sub-ink: #a8bdd9;
+  --crm-nav-on-bg: linear-gradient(135deg, rgba(94, 200, 255, 0.22), rgba(124, 108, 240, 0.18));
   --crm-nav-on-ink: #fff;
-  --crm-body-grad:
-    radial-gradient(1200px 600px at 10% -10%, rgba(124, 58, 237, 0.22), transparent 55%),
-    radial-gradient(900px 500px at 90% 0%, rgba(225, 29, 116, 0.12), transparent 50%),
-    linear-gradient(180deg, #0d1220 0%, var(--crm-bg) 40%, #090d16 100%);
-  --crm-login-card-bg: linear-gradient(165deg, rgba(26, 34, 54, 0.95), rgba(17, 24, 39, 0.98));
-  --crm-toggle-track: #1a1d24;
-  --crm-toggle-glow: rgba(56, 189, 248, 0.55);
-  --crm-input-bg: #0b1220;
+  --crm-login-card-bg: linear-gradient(165deg, rgba(28, 48, 88, 0.94), rgba(15, 28, 56, 0.96));
+  --crm-toggle-track: #152445;
+  --crm-toggle-glow: rgba(94, 200, 255, 0.5);
+  --crm-input-bg: rgba(12, 24, 52, 0.9);
   --crm-chart-bg:
-    linear-gradient(180deg, rgba(56, 189, 248, 0.08), transparent 55%),
-    #0d1424;
+    linear-gradient(180deg, rgba(94, 200, 255, 0.1), transparent 55%),
+    #152848;
+  --crm-panel-shadow: 0 12px 40px rgba(4, 12, 32, 0.35);
+  --crm-mesh-a: rgba(56, 120, 210, 0.45);
+  --crm-mesh-b: rgba(120, 90, 210, 0.32);
+  --crm-mesh-c: rgba(232, 140, 120, 0.18);
+  --crm-mesh-d: rgba(40, 180, 200, 0.22);
+  --crm-mesh-base: #0c1834;
 }
 
 html.crm-html[data-crm-theme="light"] {
-  --crm-bg: #f4f6fb;
-  --crm-bg-2: #e8edf6;
-  --crm-panel: #ffffff;
-  --crm-panel-2: #f8fafc;
-  --crm-line: rgba(15, 23, 42, 0.1);
-  --crm-ink: #0f172a;
-  --crm-muted: #64748b;
-  --crm-soft: #94a3b8;
-  --crm-side-bg: rgba(255, 255, 255, 0.96);
-  --crm-head-ink: #0f172a;
-  --crm-sub-ink: #64748b;
-  --crm-nav-on-bg: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(56, 189, 248, 0.1));
-  --crm-nav-on-ink: #1e1b4b;
-  --crm-body-grad:
-    radial-gradient(1000px 520px at 8% -8%, rgba(124, 58, 237, 0.08), transparent 55%),
-    radial-gradient(800px 420px at 92% 0%, rgba(56, 189, 248, 0.08), transparent 50%),
-    linear-gradient(180deg, #eef2ff 0%, var(--crm-bg) 42%, #e8edf6 100%);
-  --crm-login-card-bg: linear-gradient(165deg, #ffffff, #f8fafc);
-  --crm-toggle-track: #1a1d24;
-  --crm-input-bg: #ffffff;
+  /* Light: warm cream / soft pastel mesh */
+  --crm-bg: #f6efe6;
+  --crm-bg-2: #efe4d6;
+  --crm-panel: rgba(255, 252, 247, 0.86);
+  --crm-panel-2: rgba(255, 248, 240, 0.92);
+  --crm-line: rgba(90, 70, 50, 0.12);
+  --crm-ink: #1c2433;
+  --crm-muted: #6b7280;
+  --crm-soft: #8b93a3;
+  --crm-side-bg: rgba(255, 250, 244, 0.82);
+  --crm-head-ink: #1c2433;
+  --crm-sub-ink: #6b7280;
+  --crm-nav-on-bg: linear-gradient(135deg, rgba(244, 170, 140, 0.28), rgba(140, 200, 220, 0.22));
+  --crm-nav-on-ink: #2a2030;
+  --crm-login-card-bg: linear-gradient(165deg, rgba(255, 252, 247, 0.95), rgba(255, 244, 232, 0.96));
+  --crm-toggle-track: #1a2438;
+  --crm-input-bg: rgba(255, 252, 247, 0.95);
   --crm-chart-bg:
-    linear-gradient(180deg, rgba(56, 189, 248, 0.1), transparent 55%),
-    #eef6ff;
+    linear-gradient(180deg, rgba(244, 180, 150, 0.18), transparent 55%),
+    #fff6ee;
+  --crm-panel-shadow: 0 12px 36px rgba(120, 90, 60, 0.1);
+  --crm-mesh-a: rgba(255, 200, 170, 0.7);
+  --crm-mesh-b: rgba(255, 180, 200, 0.45);
+  --crm-mesh-c: rgba(170, 220, 230, 0.55);
+  --crm-mesh-d: rgba(190, 230, 200, 0.4);
+  --crm-mesh-base: #f7f0e6;
   color-scheme: light;
 }
 
 html.crm-html, body.crm-body {
   margin: 0;
   min-height: 100%;
-  background: var(--crm-bg);
+  background: var(--crm-mesh-base);
   color: var(--crm-ink);
   font-family: var(--crm-font);
   color-scheme: dark;
@@ -77,8 +83,71 @@ html.crm-html[data-crm-theme="light"] body.crm-body {
   color-scheme: light;
 }
 
+/* Soft animated mesh gradient (scoped to CRM body only) */
 body.crm-body {
-  background: var(--crm-body-grad);
+  position: relative;
+  isolation: isolate;
+  background-color: var(--crm-mesh-base);
+  background-image:
+    radial-gradient(42% 48% at 12% 18%, var(--crm-mesh-a), transparent 70%),
+    radial-gradient(38% 42% at 88% 12%, var(--crm-mesh-b), transparent 68%),
+    radial-gradient(46% 50% at 78% 78%, var(--crm-mesh-c), transparent 72%),
+    radial-gradient(36% 40% at 18% 82%, var(--crm-mesh-d), transparent 70%),
+    linear-gradient(145deg, var(--crm-mesh-base) 0%, var(--crm-bg) 48%, var(--crm-bg-2) 100%);
+  background-size: 160% 160%, 170% 150%, 155% 165%, 150% 160%, 100% 100%;
+  background-position: 0% 20%, 100% 0%, 80% 100%, 0% 100%, 0 0;
+  background-attachment: fixed;
+  animation: crmMeshDrift 28s ease-in-out infinite alternate;
+}
+
+body.crm-body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.08) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.06) 0 1px, transparent 1.5px);
+  background-size: 72px 72px, 96px 96px;
+  background-position: 0 0, 24px 36px;
+  animation: crmMeshGrain 36s linear infinite;
+}
+
+html.crm-html[data-crm-theme="light"] body.crm-body::before {
+  opacity: 0.45;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(80, 60, 40, 0.05) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 70% 60%, rgba(60, 90, 100, 0.04) 0 1px, transparent 1.5px);
+}
+
+@keyframes crmMeshDrift {
+  0% {
+    background-position: 0% 20%, 100% 0%, 80% 100%, 0% 100%, 0 0;
+  }
+  50% {
+    background-position: 40% 60%, 60% 30%, 30% 50%, 50% 20%, 0 0;
+  }
+  100% {
+    background-position: 80% 10%, 20% 80%, 10% 30%, 90% 70%, 0 0;
+  }
+}
+
+@keyframes crmMeshGrain {
+  from { background-position: 0 0, 24px 36px; }
+  to { background-position: 72px 48px, -48px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.crm-body,
+  body.crm-body::before {
+    animation: none !important;
+  }
+  body.crm-body {
+    background-size: 120% 120%, 120% 120%, 120% 120%, 120% 120%, 100% 100%;
+    background-position: 20% 30%, 80% 20%, 70% 80%, 15% 75%, 0 0;
+  }
 }
 
 .crm-hidden { display: none !important; }
@@ -96,7 +165,9 @@ body.crm-body {
   border: 1px solid var(--crm-line);
   border-radius: 20px;
   padding: 28px 26px 24px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--crm-panel-shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   animation: crmFadeUp 0.45s ease both;
 }
 .crm-brand {
@@ -216,7 +287,8 @@ body.crm-body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
   overflow: hidden;
 }
 .crm-side-brand {
@@ -509,11 +581,22 @@ body.crm-body {
   padding: 18px 20px;
   border-radius: var(--crm-radius);
   background:
-    linear-gradient(120deg, rgba(124, 58, 237, 0.28), rgba(15, 23, 42, 0.2) 45%, rgba(225, 29, 116, 0.12)),
+    linear-gradient(120deg, rgba(94, 200, 255, 0.2), rgba(124, 108, 240, 0.16) 48%, rgba(232, 140, 120, 0.12)),
     var(--crm-panel);
   border: 1px solid var(--crm-line);
+  box-shadow: var(--crm-panel-shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   margin-bottom: 16px;
   animation: crmFadeUp 0.5s ease both;
+}
+html.crm-html[data-crm-theme="light"] .crm-welcome {
+  background:
+    linear-gradient(120deg, rgba(255, 190, 160, 0.45), rgba(255, 220, 210, 0.35) 45%, rgba(180, 220, 230, 0.35)),
+    var(--crm-panel);
+}
+html.crm-html[data-crm-theme="light"] .crm-period {
+  background: rgba(255, 252, 247, 0.75);
 }
 .crm-welcome h2 {
   margin: 0;
@@ -555,6 +638,9 @@ body.crm-body {
   border-radius: var(--crm-radius);
   padding: 16px;
   min-height: 118px;
+  box-shadow: var(--crm-panel-shadow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   animation: crmFadeUp 0.55s ease both;
 }
 .crm-metric:nth-child(2) { animation-delay: 0.05s; }
@@ -608,6 +694,9 @@ body.crm-body {
 
 .crm-section {
   background: var(--crm-panel);
+  box-shadow: var(--crm-panel-shadow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--crm-line);
   border-radius: var(--crm-radius);
   padding: 16px 18px 18px;

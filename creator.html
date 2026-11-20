@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="crm-html" style="background:#0b0f1a;color-scheme:dark">
+<html lang="en" class="crm-html" style="background:#0c1834;color-scheme:dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -13,16 +13,16 @@
         var t = localStorage.getItem("crmTheme") === "light" ? "light" : "dark";
         document.documentElement.setAttribute("data-crm-theme", t);
         document.documentElement.style.colorScheme = t;
-        document.documentElement.style.background = t === "light" ? "#f4f6fb" : "#0b0f1a";
+        document.documentElement.style.background = t === "light" ? "#f7f0e6" : "#0c1834";
         var m = document.querySelector('meta[name="color-scheme"]');
         if (m) m.setAttribute("content", t);
       } catch (e) {}
     })();
   </script>
-  <script src="/js/seo.js?v=desk186" defer></script>
+  <script src="/js/seo.js?v=desk187" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/creator-crm.css?v=desk186">
+  <link rel="stylesheet" href="/css/creator-crm.css?v=desk187">
 </head>
 <body class="crm-body">
   <div id="crmLogin" class="crm-login">
@@ -89,11 +89,11 @@
   <script>
     (function () {
       var files = [
-        "/js/app.js?v=desk186",
-        "/js/lms.js?v=desk186",
-        "/js/admin-core.js?v=desk186",
-        "/js/admin.js?v=desk186",
-        "/js/creator-crm.js?v=desk186"
+        "/js/app.js?v=desk187",
+        "/js/lms.js?v=desk187",
+        "/js/admin-core.js?v=desk187",
+        "/js/admin.js?v=desk187",
+        "/js/creator-crm.js?v=desk187"
       ];
       var i = 0;
       function add(src, done) {
