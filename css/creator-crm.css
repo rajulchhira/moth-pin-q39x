@@ -16,7 +16,7 @@ html.crm-html {
   --crm-red: #f87171;
   --crm-pink: #e11d74;
   --crm-radius: 16px;
-  --crm-side: 268px;
+  --crm-side: 280px;
   --crm-font: "Nunito", "Segoe UI", sans-serif;
   --crm-side-bg: rgba(10, 14, 24, 0.92);
   --crm-head-ink: #f8fafc;
@@ -259,8 +259,8 @@ body.crm-body {
   color: var(--crm-head-ink);
   font: inherit;
   font-weight: 800;
-  font-size: 0.92rem;
-  padding: 10px 10px;
+  font-size: 0.88rem;
+  padding: 9px 10px;
   border-radius: 12px;
   cursor: pointer;
 }
@@ -273,15 +273,14 @@ body.crm-body {
   opacity: 0.95;
 }
 .crm-nav-head .crm-nav-ico svg { width: 18px; height: 18px; display: block; }
-.crm-nav-head span { flex: 1; min-width: 0; }
-.crm-nav-chev {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  color: var(--crm-soft);
-  transition: transform 0.18s ease;
+.crm-nav-head .crm-nav-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
-.crm-nav-group.open .crm-nav-chev { transform: rotate(180deg); }
 .crm-nav-sub {
   display: none;
   flex-direction: column;
@@ -289,7 +288,9 @@ body.crm-body {
   padding: 2px 0 6px 8px;
 }
 .crm-nav-group.open .crm-nav-sub { display: flex; }
-.crm-nav-sub a, .crm-nav-sub button {
+.crm-nav-sub > a,
+.crm-nav-sub > button,
+.crm-nav-theme-wrap > button {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -306,11 +307,15 @@ body.crm-body {
   cursor: pointer;
   text-decoration: none;
 }
-.crm-nav-sub a:hover, .crm-nav-sub button:hover {
+.crm-nav-sub > a:hover,
+.crm-nav-sub > button:hover,
+.crm-nav-theme-wrap > button:hover {
   background: rgba(148, 163, 184, 0.1);
   color: var(--crm-ink);
 }
-.crm-nav-sub a.on, .crm-nav-sub button.on {
+.crm-nav-sub > a.on,
+.crm-nav-sub > button.on,
+.crm-nav-theme-wrap > button.on {
   background: var(--crm-nav-on-bg);
   color: var(--crm-nav-on-ink);
   box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22);
@@ -321,33 +326,48 @@ body.crm-body {
   gap: 2px;
 }
 .crm-nav-theme-row {
-  padding: 4px 8px 10px 18px;
+  padding: 2px 10px 8px 28px;
 }
-.crm-theme-toggle {
+/* Compact DARK|LIGHT pill — keep selectors specific so nav button rules never leak in */
+.crm-theme-toggle,
+.crm-nav-sub .crm-theme-toggle,
+.crm-nav-theme-row .crm-theme-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  width: 100%;
-  max-width: 220px;
-  padding: 3px;
+  align-items: stretch;
+  width: 132px;
+  max-width: 100%;
+  height: 26px;
+  padding: 2px;
+  margin: 0;
   border-radius: 999px;
   background: var(--crm-toggle-track);
   border: 0;
+  box-shadow: none;
   position: relative;
   cursor: pointer;
   user-select: none;
   box-sizing: border-box;
+  color: #f8fafc;
+  font: inherit;
+  gap: 0;
 }
 .crm-theme-toggle[aria-disabled="true"] { pointer-events: none; }
 .crm-theme-toggle .crm-theme-opt {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.58rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  padding: 8px 6px;
+  letter-spacing: 0.07em;
+  padding: 0 2px;
+  line-height: 1;
   color: #f8fafc;
   transition: color 0.15s ease;
+  pointer-events: auto;
 }
 .crm-theme-toggle[data-theme="light"] .crm-theme-opt[data-val="light"],
 .crm-theme-toggle[data-theme="dark"] .crm-theme-opt[data-val="dark"] {
@@ -355,15 +375,16 @@ body.crm-body {
 }
 .crm-theme-toggle .crm-theme-knob {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: calc(50% - 3px);
-  height: calc(100% - 6px);
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  height: calc(100% - 4px);
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 0 0 1.5px var(--crm-toggle-glow), 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 0 1.5px var(--crm-toggle-glow), 0 1px 3px rgba(0, 0, 0, 0.22);
   transition: transform 0.2s ease;
   z-index: 0;
+  pointer-events: none;
 }
 .crm-theme-toggle[data-theme="light"] .crm-theme-knob {
   transform: translateX(100%);
@@ -386,9 +407,10 @@ body.crm-body {
   max-width: 36rem;
 }
 .crm-theme-panel .crm-theme-toggle {
-  max-width: 260px;
+  width: 156px;
+  height: 30px;
 }
-.crm-theme-panel .crm-theme-opt { font-size: 0.8rem; padding: 10px 8px; }
+.crm-theme-panel .crm-theme-opt { font-size: 0.62rem; }
 .crm-side-foot {
   padding: 8px;
   border-top: 1px solid var(--crm-line);
@@ -798,7 +820,7 @@ html.crm-html[data-crm-theme="light"] .crm-chart-wrap text { fill: #475569; }
     left: 0;
     top: 0;
     z-index: 40;
-    width: min(280px, 86vw);
+    width: min(var(--crm-side), 86vw);
     transform: translateX(-105%);
     transition: transform 0.2s ease;
   }

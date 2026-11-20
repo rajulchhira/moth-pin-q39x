@@ -618,8 +618,7 @@
       return `<div class="crm-nav-group${open ? " open" : ""}" data-crm-section="${sec.id}">
         <button type="button" class="crm-nav-head" data-crm-accordion="${sec.id}" aria-expanded="${open ? "true" : "false"}">
           <span class="crm-nav-ico">${icon(sec.icon)}</span>
-          <span>${esc(sec.label)}</span>
-          <span class="crm-nav-chev">${icon("chevron")}</span>
+          <span class="crm-nav-label">${esc(sec.label)}</span>
         </button>
         <div class="crm-nav-sub">${subs}</div>
       </div>`;
