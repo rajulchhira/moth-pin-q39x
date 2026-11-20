@@ -13,16 +13,16 @@
         var t = localStorage.getItem("crmTheme") === "light" ? "light" : "dark";
         document.documentElement.setAttribute("data-crm-theme", t);
         document.documentElement.style.colorScheme = t;
-        document.documentElement.style.background = t === "light" ? "#f7f0e6" : "#0c1834";
+        document.documentElement.style.background = t === "light" ? "#ffffff" : "#0c1834";
         var m = document.querySelector('meta[name="color-scheme"]');
         if (m) m.setAttribute("content", t);
       } catch (e) {}
     })();
   </script>
-  <script src="/js/seo.js?v=desk192" defer></script>
+  <script src="/js/seo.js?v=desk193" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/creator-crm.css?v=desk192">
+  <link rel="stylesheet" href="/css/creator-crm.css?v=desk193">
 </head>
 <body class="crm-body">
   <div id="crmLogin" class="crm-login">
@@ -89,11 +89,11 @@
   <script>
     (function () {
       var files = [
-        "/js/app.js?v=desk192",
-        "/js/lms.js?v=desk192",
-        "/js/admin-core.js?v=desk192",
-        "/js/admin.js?v=desk192",
-        "/js/creator-crm.js?v=desk192"
+        "/js/app.js?v=desk193",
+        "/js/lms.js?v=desk193",
+        "/js/admin-core.js?v=desk193",
+        "/js/admin.js?v=desk193",
+        "/js/creator-crm.js?v=desk193"
       ];
       var i = 0;
       function add(src, done) {
