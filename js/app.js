@@ -5089,7 +5089,7 @@ function traderIcon(kind) {
 /* cache-bust desk157: About Us polish — simple intro + wide Vision card /css/about.css?v=desk157 */
 /* cache-bust desk158: About Us Vision layout — left photo / right box, short crop /css/about.css?v=desk158 */
 /* cache-bust desk159: About Us FAQ set — data-faq-set=about (9 Q&As) */
-/* cache-bust desk165: Creator CRM dashboard at /creator — metrics, content production, YT/IG/FB */
+/* cache-bust desk183: Creator CRM accordion sidebar + dark/light theme toggle */
 /* cache-bust desk164: Razorpay Standard Checkout — create-order + verify-payment + Buy Now */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();

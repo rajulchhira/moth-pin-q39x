@@ -1,8 +1,10 @@
-/* Creator CRM dashboard — desk165 */
+/* Creator CRM dashboard — desk183 accordion nav + theme */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
   const SOCIAL_CACHE_KEY = "tradeshalaCreatorSocialCache";
+  const THEME_KEY = "crmTheme";
+  const ACCORDION_KEY = "crmAccordionOpen";
   const ACTIVE_DAYS = 14;
   const DEFAULT_PERIOD = 30;
 
@@ -404,11 +406,43 @@
       eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>',
       check: '<path d="m6.5 12.2 3.4 3.4 7.6-7.6"/>',
       menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+      clapper: '<path d="M4 10h16v10H4z"/><path d="m4 10 3.2-5.2 3 1.8L7 10"/><path d="m10.2 6.6 3 1.8L10.8 14"/><path d="m16.2 6.4 3.2 1.9L17 10"/><path d="M4 14h16"/>',
+      book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v16H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v16h5.5A2.5 2.5 0 0 1 20 21.5Z"/>',
+      life: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/>',
+      chevron: '<path d="m6 9 6 6 6-6"/>',
       yt: '<path fill="currentColor" d="M23.5 7.2a2.9 2.9 0 0 0-2-2C19.5 4.7 12 4.7 12 4.7s-7.5 0-9.5.5a2.9 2.9 0 0 0-2 2A30 30 0 0 0 .1 12a30 30 0 0 0 .4 4.8 2.9 2.9 0 0 0 2 2c2 .5 9.5.5 9.5.5s7.5 0 9.5-.5a2.9 2.9 0 0 0 2-2A30 30 0 0 0 23.9 12a30 30 0 0 0-.4-4.8ZM9.8 15.5V8.5L16 12l-6.2 3.5Z"/>',
       ig: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/>',
       fb: '<path fill="currentColor" d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H8v3h2v7h3v-7h2.6L16 12h-3v-2c0-.6.4-1 1-1Z"/>'
     };
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.dash}</svg>`;
+  }
+
+  function getTheme() {
+    try {
+      const t = localStorage.getItem(THEME_KEY);
+      return t === "light" ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
+  }
+
+  function applyTheme(theme) {
+    const next = theme === "light" ? "light" : "dark";
+    try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
+    document.documentElement.setAttribute("data-crm-theme", next);
+    document.documentElement.style.colorScheme = next;
+    const meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.setAttribute("content", next);
+    $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
+  }
+
+  function themeToggleHTML(id) {
+    const t = getTheme();
+    return `<button type="button" class="crm-theme-toggle" id="${esc(id || "")}" data-theme="${t}" aria-label="Theme toggle" title="Switch theme">
+      <span class="crm-theme-knob" aria-hidden="true"></span>
+      <span class="crm-theme-opt" data-val="dark">DARK</span>
+      <span class="crm-theme-opt" data-val="light">LIGHT</span>
+    </button>`;
   }
 
   function showLogin(errMsg) {
@@ -428,17 +462,108 @@
     renderShell();
   }
 
-  function navItems() {
+  function navSections() {
     return [
-      { id: "dashboard", label: "Dashboard", icon: "dash" },
-      { id: "profile", label: "Profile", icon: "user" },
-      { id: "posts", label: "Posts", icon: "posts", stub: true },
-      { id: "feeds", label: "Feeds", icon: "feeds", stub: true },
-      { id: "followers", label: "Followers", icon: "followers", stub: true },
-      { id: "connections", label: "Connections", icon: "link", stub: true },
-      { id: "channels", label: "Channels", icon: "channels", stub: true },
-      { id: "settings", label: "Settings", icon: "settings" }
+      {
+        id: "overview",
+        label: "Overview",
+        icon: "dash",
+        items: [
+          { id: "dashboard", label: "Dashboard" },
+          { id: "analytics", label: "Analytics", stub: true },
+          { id: "students", label: "Students", stub: true }
+        ]
+      },
+      {
+        id: "creator-studio",
+        label: "Creator Studio",
+        icon: "clapper",
+        items: [
+          { id: "scripts", label: "Scripts", stub: true },
+          { id: "recording-submissions", label: "Recording Submissions", stub: true },
+          { id: "editing-queue", label: "Editing Queue", stub: true },
+          { id: "review-approval", label: "Review & Approval", stub: true },
+          { id: "content-library", label: "Content Library", stub: true }
+        ]
+      },
+      {
+        id: "finance",
+        label: "Finance",
+        icon: "wallet",
+        items: [
+          { id: "revenue-orders", label: "Revenue & Orders", stub: true },
+          { id: "commissions", label: "Commissions", stub: true },
+          { id: "payouts", label: "Payouts", stub: true },
+          { id: "refunds", label: "Refunds", stub: true },
+          { id: "pending-payments", label: "Pending Payments", stub: true }
+        ]
+      },
+      {
+        id: "courses-learning",
+        label: "Courses & Learning",
+        icon: "book",
+        items: [
+          { id: "courses", label: "Courses", stub: true },
+          { id: "mentorship", label: "Mentorship", stub: true },
+          { id: "webinars", label: "Webinars", stub: true },
+          { id: "study-materials", label: "Study materials", stub: true },
+          { id: "assignments", label: "Assignments", stub: true },
+          { id: "classroom-lms", label: "Classroom / LMS", stub: true }
+        ]
+      },
+      {
+        id: "support",
+        label: "Support",
+        icon: "life",
+        items: [
+          { id: "tickets", label: "Tickets", stub: true },
+          { id: "queries", label: "Queries", stub: true }
+        ]
+      },
+      {
+        id: "settings",
+        label: "Settings",
+        icon: "settings",
+        items: [
+          { id: "theme", label: "Theme" },
+          { id: "profile", label: "Profile" },
+          { id: "logout", label: "Logout", action: "logout" }
+        ]
+      }
     ];
+  }
+
+  function flatNavItems() {
+    return navSections().flatMap((sec) => sec.items.map((it) => ({ ...it, section: sec.id })));
+  }
+
+  function findNavItem(id) {
+    return flatNavItems().find((n) => n.id === id) || null;
+  }
+
+  function sectionForView(view) {
+    const hit = findNavItem(view);
+    return hit ? hit.section : "overview";
+  }
+
+  function getOpenSection(view) {
+    // Prefer the section that owns the current view so nav always reveals context.
+    // Accordion clicks update DOM until the next shell render.
+    try {
+      const saved = localStorage.getItem(ACCORDION_KEY);
+      if (saved && navSections().some((s) => s.id === saved)) {
+        const owned = sectionForView(view);
+        if (!owned || saved === owned) return saved;
+      }
+    } catch { /* ignore */ }
+    return sectionForView(view) || "overview";
+  }
+
+  function setOpenSection(id) {
+    try {
+      if (id) localStorage.setItem(ACCORDION_KEY, id);
+      else localStorage.removeItem(ACCORDION_KEY);
+    } catch { /* ignore */ }
   }
 
   function unreadNotes(email) {
@@ -448,11 +573,17 @@
 
   function currentView() {
     const h = String(location.hash || "").replace(/^#/, "").trim();
-    return h || "dashboard";
+    if (!h || h === "settings") return "dashboard";
+    if (h === "logout") return "dashboard";
+    return h;
   }
 
   function goView(id) {
     const next = String(id || "dashboard").replace(/^#/, "");
+    if (next === "logout") {
+      doLogout();
+      return;
+    }
     if (currentView() === next) {
       renderShell();
       return;
@@ -462,26 +593,56 @@
     renderShell();
   }
 
+  function doLogout() {
+    if (typeof AdminCore !== "undefined" && AdminCore.logout) AdminCore.logout();
+    else if (typeof clearStaffSession === "function") clearStaffSession();
+    location.hash = "";
+    showLogin();
+  }
+
+  function renderSideNav(view) {
+    const side = $("#crmSideNav");
+    if (!side) return;
+    const openId = getOpenSection(view);
+    side.innerHTML = navSections().map((sec) => {
+      const open = sec.id === openId;
+      const subs = sec.items.map((it) => {
+        if (it.id === "theme") {
+          return `<div class="crm-nav-theme-wrap">
+            <button type="button" data-crm-nav="theme" class="${view === "theme" ? "on" : ""}"><span>${esc(it.label)}</span></button>
+            <div class="crm-nav-theme-row">${themeToggleHTML("crmThemeSide")}</div>
+          </div>`;
+        }
+        return `<button type="button" data-crm-nav="${it.id}" class="${view === it.id ? "on" : ""}"><span>${esc(it.label)}</span></button>`;
+      }).join("");
+      return `<div class="crm-nav-group${open ? " open" : ""}" data-crm-section="${sec.id}">
+        <button type="button" class="crm-nav-head" data-crm-accordion="${sec.id}" aria-expanded="${open ? "true" : "false"}">
+          <span class="crm-nav-ico">${icon(sec.icon)}</span>
+          <span>${esc(sec.label)}</span>
+          <span class="crm-nav-chev">${icon("chevron")}</span>
+        </button>
+        <div class="crm-nav-sub">${subs}</div>
+      </div>`;
+    }).join("");
+  }
+
   function renderShell() {
     const s = session();
     if (!s) return showLogin();
-    const side = $("#crmSideNav");
+    applyTheme(getTheme());
     const view = currentView();
-    if (side) {
-      side.innerHTML = navItems().map((it) => `
-        <button type="button" data-crm-nav="${it.id}" class="${view === it.id ? "on" : ""}">${icon(it.icon)}<span>${esc(it.label)}</span></button>
-      `).join("");
-    }
+    setOpenSection(sectionForView(view));
+    renderSideNav(view);
     const title = $("#crmPageTitle");
     const sub = $("#crmPageSub");
-    const label = navItems().find((n) => n.id === view)?.label || "Dashboard";
+    const nav = findNavItem(view);
+    const label = nav?.label || "Dashboard";
     if (title) title.textContent = label;
     if (sub) {
-      sub.textContent = view === "dashboard"
-        ? "Creator-scoped metrics for your classrooms"
-        : (view === "profile" || view === "settings"
-          ? "Account and social links for Platform Performance"
-          : "Creator CRM module");
+      if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
+      else if (view === "profile") sub.textContent = "Account and social links for Platform Performance";
+      else if (view === "theme") sub.textContent = "Appearance for Creator CRM only — public site stays unchanged";
+      else sub.textContent = "Creator CRM module";
     }
     const who = $("#crmWho");
     if (who) {
@@ -498,15 +659,29 @@
     renderView(view);
   }
 
+  function renderThemePanel(root) {
+    root.innerHTML = `<div class="crm-panel-view crm-section">
+      <div class="crm-theme-panel">
+        <div>
+          <h3>Theme</h3>
+          <p>Switch Creator CRM between dark and light. Preference is saved on this device and does not affect the public Bizgarh site.</p>
+        </div>
+        ${themeToggleHTML("crmThemePanel")}
+      </div>
+    </div>`;
+  }
+
   function renderView(view) {
     const root = $("#crmView");
     if (!root) return;
     const s = session();
     if (!s) return;
-    if (view === "profile" || view === "settings") return renderProfile(root, s, view);
+    if (view === "theme") return renderThemePanel(root);
+    if (view === "profile") return renderProfile(root, s, view);
     if (view !== "dashboard") {
+      const label = findNavItem(view)?.label || "Section";
       root.innerHTML = `<div class="crm-panel-view crm-section"><div class="crm-stub">
-        <h3>${esc(navItems().find((n) => n.id === view)?.label || "Section")}</h3>
+        <h3>${esc(label)}</h3>
         <p>Coming soon — this nav shell is ready for the next creator CRM modules.</p>
         <p style="margin-top:12px"><a class="crm-link" href="#dashboard">← Back to Dashboard</a></p>
       </div></div>`;
@@ -811,11 +986,7 @@
       location.hash = "dashboard";
       setTimeout(() => loadPlatforms(s), 50);
     };
-    $("#crmLogout").onclick = () => {
-      if (typeof AdminCore !== "undefined" && AdminCore.logout) AdminCore.logout();
-      else if (typeof clearStaffSession === "function") clearStaffSession();
-      showLogin();
-    };
+    $("#crmLogout").onclick = () => doLogout();
   }
 
   function tryLogin(e) {
@@ -856,6 +1027,7 @@
   }
 
   function boot() {
+    applyTheme(getTheme());
     ensureCreatorSeed();
     const existing = session();
     if (existing && isCreatorStaff(existing)) {
@@ -877,6 +1049,41 @@
       if (!t || !t.closest) return;
       if (t.closest("#crmPassBtn")) {
         tryLogin(e);
+        return;
+      }
+      const themeBtn = t.closest(".crm-theme-toggle");
+      if (themeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const opt = t.closest(".crm-theme-opt");
+        let next = getTheme() === "light" ? "dark" : "light";
+        if (opt) next = opt.getAttribute("data-val") || next;
+        else if (themeBtn.getAttribute("data-theme") === "light") next = "dark";
+        else next = "light";
+        applyTheme(next);
+        setOpenSection("settings");
+        if (currentView() !== "theme") goView("theme");
+        else renderShell();
+        return;
+      }
+      const accordion = t.closest("[data-crm-accordion]");
+      if (accordion) {
+        e.preventDefault();
+        const id = accordion.getAttribute("data-crm-accordion");
+        const group = accordion.closest(".crm-nav-group");
+        const wasOpen = group?.classList.contains("open");
+        $$(".crm-nav-group").forEach((g) => {
+          g.classList.remove("open");
+          const head = g.querySelector("[data-crm-accordion]");
+          if (head) head.setAttribute("aria-expanded", "false");
+        });
+        if (!wasOpen && group) {
+          group.classList.add("open");
+          accordion.setAttribute("aria-expanded", "true");
+          setOpenSection(id);
+        } else {
+          setOpenSection(wasOpen ? "" : id);
+        }
         return;
       }
       const nav = t.closest("[data-crm-nav]");
