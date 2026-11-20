@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk195 durable mesh + desk192 analytics */
+/* Creator CRM dashboard — desk196 durable mesh + desk192 analytics */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -501,6 +501,8 @@
 
   function applyTheme(theme) {
     const next = theme === "light" ? "light" : "dark";
+    const prev = document.documentElement.getAttribute("data-crm-theme");
+    const changed = prev !== next;
     try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
     document.documentElement.setAttribute("data-crm-theme", next);
     document.documentElement.style.colorScheme = next;
@@ -508,7 +510,8 @@
     const meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", next);
     $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
-    ensureCrmMesh({ restart: true });
+    // Only hard-restart on real theme flips — renderShell() calls applyTheme every nav
+    ensureCrmMesh({ restart: changed });
   }
 
   function themeToggleHTML(id) {
