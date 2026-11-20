@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" class="crm-html" style="background:#0b0f1a;color-scheme:dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Creator CRM | Bizgarh</title>
+  <meta name="description" content="Bizgarh creator CRM — login once, then open your student, revenue, content, and social desk.">
+  <script src="/js/seo.js?v=desk165" defer></script>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css?v=hang1">
+  <link rel="stylesheet" href="/css/creator-crm.css?v=desk165">
+</head>
+<body class="crm-body">
+  <div id="crmLogin" class="crm-login">
+    <form class="crm-login-card" id="crmLoginForm" action="#" method="post" onsubmit="return false">
+      <div class="crm-brand">
+        <img src="/img/bizgarh-mark.svg" alt="" width="40" height="40">
+        <strong>Bizgarh</strong>
+      </div>
+      <h1>Creator CRM</h1>
+      <p class="crm-lead">One login for every Bizgarh creator. Sign in with your Bizgarh ID to open your desk.</p>
+      <div class="crm-field">
+        <label for="crmEmail">Bizgarh ID / Email</label>
+        <input id="crmEmail" name="email" type="email" autocomplete="username" placeholder="you@bizgarh.in" required>
+      </div>
+      <div class="crm-field">
+        <label for="crmPassword">Password</label>
+        <input id="crmPassword" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="crm-field crm-hidden" id="crmTotpWrap">
+        <label for="crmTotp">Authenticator code</label>
+        <input id="crmTotp" name="totp" inputmode="numeric" placeholder="000000">
+      </div>
+      <p id="crmLoginErr" class="crm-err" role="alert"></p>
+      <button type="button" class="crm-btn crm-btn-primary" id="crmPassBtn">Open my desk</button>
+      <p class="crm-login-hint">Demo creators: <code>aarav@bizgarh.in</code> / <code>creator123</code> (after first seed). Same staff login as Control when creator mode is on.</p>
+    </form>
+  </div>
+
+  <div id="crmApp" class="crm-app crm-hidden">
+    <div class="crm-scrim" id="crmScrim" aria-hidden="true"></div>
+    <aside class="crm-side" aria-label="Creator menu">
+      <div class="crm-side-brand">
+        <img src="/img/bizgarh-mark.svg" alt="">
+        <span>Bizgarh</span>
+      </div>
+      <nav class="crm-nav" id="crmSideNav"></nav>
+      <div class="crm-side-foot">
+        <a class="crm-btn crm-btn-ghost" href="/" style="width:100%">← Public site</a>
+      </div>
+    </aside>
+
+    <div class="crm-main">
+      <header class="crm-top">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <button type="button" class="crm-menu-btn" id="crmMenuBtn" aria-label="Open menu"></button>
+          <div>
+            <h1 id="crmPageTitle">Dashboard</h1>
+            <p class="crm-sub" id="crmPageSub">Creator-scoped metrics for your classrooms</p>
+          </div>
+        </div>
+        <div class="crm-top-right">
+          <button type="button" class="crm-icon-btn" id="crmBell" aria-label="Notifications">
+            <span id="crmBellIcon"></span>
+            <em class="crm-badge crm-hidden" id="crmBellBadge">0</em>
+          </button>
+          <div class="crm-who" id="crmWho"></div>
+        </div>
+      </header>
+      <div id="crmNotesPanel" class="crm-notes crm-hidden"></div>
+      <div id="crmView"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var files = [
+        "/js/app.js?v=desk165",
+        "/js/lms.js?v=desk165",
+        "/js/admin-core.js?v=desk165",
+        "/js/admin.js?v=desk165",
+        "/js/creator-crm.js?v=desk165"
+      ];
+      var i = 0;
+      function add(src, done) {
+        var s = document.createElement("script");
+        s.src = src;
+        s.onload = done;
+        s.onerror = done;
+        document.body.appendChild(s);
+      }
+      function next() {
+        if (i >= files.length) {
+          var btn = document.getElementById("crmMenuBtn");
+          if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+          var bell = document.getElementById("crmBellIcon");
+          if (bell) bell.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 16h11.2"/><path d="M7 16v-5.1a5 5 0 0 1 10 0V16"/><path d="M10.2 16.2a1.8 1.8 0 0 0 3.6 0"/></svg>';
+          return;
+        }
+        add(files[i++], next);
+      }
+      next();
+    })();
+  </script>
+</body>
+</html>
