@@ -45,6 +45,7 @@ const NAV = [
     { id: "coupons", label: "Coupons / Offers", mod: "coupons", act: "view" }
   ]},
   { group: "Ops", items: [
+    { id: "social", label: "Social profiles", owner: true },
     { id: "support", label: "Support", mod: "support", act: "view" },
     { id: "notifs", label: "Notifications", mod: "notifications", act: "view" },
     { id: "community", label: "Community", mod: "community", act: "view" },
@@ -449,6 +450,7 @@ function paint() {
     notifs: ["Notifications", "In-app announcements"],
     community: ["Community", "WhatsApp, Discord, YouTube, Telegram"],
     reviews: ["Reviews", "Ratings on courses, webinars, and desks"],
+    social: ["Social profiles", "YouTube URLs + growth history (owner only)"],
     analytics: ["Analytics", "Business, courses, creators"],
     sessions: ["Sessions", "Force logout"],
     audit: ["Audit logs", "Sub-admins cannot delete"],
@@ -706,6 +708,54 @@ const VIEWS = {
       <div class="staff-aside">${create}${grant}</div>
       <div class="staff-list">${cards || `<div class="cb-empty-box"><p>No sub-admins yet.</p></div>`}</div>
     </section>`;
+  },
+  social() {
+    if (!AdminCore.isOwner()) {
+      return `<div class="ad-card ad-forbidden"><h3>Not allowed</h3><p class="muted">Only owner / superadmin can manage social profile URLs.</p></div>`;
+    }
+    const creators = staffList()
+      .map((x) => AdminCore.normalizeStaff(x))
+      .filter((s) => s.creatorEnabled && s.status === "active");
+    const options = creators.map((c) => `<option value="${adEsc(c.email)}">${adEsc(c.name)} · ${adEsc(c.email)}</option>`).join("");
+    return `<div class="ad-card" id="socialGrowthDesk">
+      <h3>URL-based growth tracker</h3>
+      <p class="muted">Phase 1: YouTube live via Data API. Instagram / Facebook cards stay <strong>API Access Required</strong> — no scrape, no fake counts. New URLs show <strong>Unverified</strong> until you attest.</p>
+      <form class="ad-form" id="socialProfileForm" style="margin-top:12px;display:grid;gap:10px;grid-template-columns:1fr 1fr">
+        <label style="grid-column:1/-1">Creator
+          <select name="clientEmail" required>
+            <option value="">Select creator…</option>
+            ${options || `<option value="" disabled>No creator-enabled staff yet</option>`}
+          </select>
+        </label>
+        <label>Platform
+          <select name="platform">
+            <option value="youtube">YouTube (live)</option>
+            <option value="instagram">Instagram (gated)</option>
+            <option value="facebook">Facebook (gated)</option>
+          </select>
+        </label>
+        <label>Verification
+          <select name="verification">
+            <option value="unverified">Unverified</option>
+            <option value="admin_attested">Verified by Bizgarh</option>
+          </select>
+        </label>
+        <label style="grid-column:1/-1">Profile URL
+          <input name="url" type="url" placeholder="https://www.youtube.com/@handle" required>
+        </label>
+        <label style="grid-column:1/-1">Note (optional)
+          <input name="verificationNote" placeholder="How you confirmed ownership">
+        </label>
+        <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" type="submit">Save URL</button>
+          <button class="btn btn-ghost" type="button" id="socialLoadBtn">Load profiles</button>
+          <button class="btn btn-ghost" type="button" id="socialStatsBtn">Preview stats</button>
+        </div>
+      </form>
+      <p id="socialGrowthMsg" class="muted" style="margin-top:10px;min-height:1.2em"></p>
+      <div id="socialGrowthList" style="margin-top:8px"></div>
+      <div id="socialGrowthStats" style="margin-top:12px"></div>
+    </div>`;
   },
   performance() {
     const s = AdminCore.session();
@@ -1144,12 +1194,167 @@ function studentDrawer(email) {
   </div></div>`;
 }
 
+function socialStaffHeaders() {
+  const s = AdminCore.session();
+  if (!s?.email) return {};
+  return {
+    "Content-Type": "application/json",
+    "X-Staff-Email": s.email,
+    "X-Staff-Role": s.role || (AdminCore.isOwner() ? "owner" : "subadmin"),
+    "X-Staff-Creator": s.creatorEnabled ? "1" : "0"
+  };
+}
+
+function socialMsg(text, isErr) {
+  const el = document.getElementById("socialGrowthMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = isErr ? "#b91c1c" : "";
+}
+
+function socialBadgeHTML(badge) {
+  const b = badge || { kind: "unverified", label: "Unverified" };
+  const color = b.kind === "verified" ? "#0f766e" : b.kind === "api_access_required" ? "#a16207" : "#b45309";
+  return `<span class="ad-pill" style="background:${color}22;color:${color};border:1px solid ${color}55">${adEsc(b.label)}</span>`;
+}
+
+function socialSpark(days) {
+  const pts = (days || []).map((d) => (d.available && d.count != null ? Number(d.count) : null));
+  const nums = pts.filter((n) => n != null);
+  if (nums.length < 2) return `<p class="muted">Insufficient history for a chart (need ≥2 successful days).</p>`;
+  const max = Math.max(...nums);
+  const min = Math.min(...nums);
+  const w = 320;
+  const h = 64;
+  const step = w / Math.max(pts.length - 1, 1);
+  let d = "";
+  pts.forEach((n, i) => {
+    if (n == null) return;
+    const x = i * step;
+    const y = h - ((n - min) / Math.max(max - min, 1)) * (h - 8) - 4;
+    d += (d ? " L " : "M ") + x.toFixed(1) + " " + y.toFixed(1);
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="64" role="img" aria-label="Subscriber series">${d ? `<path d="${d}" fill="none" stroke="#4f46e5" stroke-width="2"/>` : ""}</svg>`;
+}
+
+async function socialLoadProfiles() {
+  const form = document.getElementById("socialProfileForm");
+  const email = form?.clientEmail?.value?.trim();
+  if (!email) { socialMsg("Select a creator first", true); return; }
+  socialMsg("Loading…");
+  try {
+    const res = await fetch("/api/social/profiles?clientEmail=" + encodeURIComponent(email), {
+      headers: socialStaffHeaders(),
+      credentials: "same-origin"
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch {
+      socialMsg(res.status === 404 ? "Social API not on this host yet (deploy Pages Functions)" : "Profiles response was not JSON", true);
+      return;
+    }
+    if (!data.ok) { socialMsg(data.error || "Could not load profiles", true); return; }
+    const host = document.getElementById("socialGrowthList");
+    if (!host) return;
+    if (!data.profiles?.length) {
+      host.innerHTML = `<p class="muted">No profiles saved for ${adEsc(email)}.</p>`;
+      socialMsg("No profiles yet");
+      return;
+    }
+    host.innerHTML = table(
+      ["Platform", "URL", "Verification", "Last success", "Last error", ""],
+      data.profiles.map((p) => `<tr>
+        <td>${adEsc(p.platform)}</td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${adEsc(p.url)}</td>
+        <td>${socialBadgeHTML({ kind: p.unverified ? "unverified" : "verified", label: p.unverified ? "Unverified" : "Verified by Bizgarh" })}</td>
+        <td>${p.lastSuccessAt ? adEsc(new Date(p.lastSuccessAt).toLocaleString("en-IN")) : "—"}</td>
+        <td>${p.lastErrorCode ? adEsc(p.lastErrorCode) : "—"}</td>
+        <td><button type="button" class="btn btn-ghost" data-social-del="${adEsc(p.platform)}" data-social-email="${adEsc(p.clientEmail)}">Remove</button></td>
+      </tr>`)
+    );
+    socialMsg("Loaded " + data.profiles.length + " profile(s)");
+  } catch (err) {
+    socialMsg(err.message || "Load failed", true);
+  }
+}
+
+async function socialPreviewStats() {
+  const form = document.getElementById("socialProfileForm");
+  const email = form?.clientEmail?.value?.trim();
+  if (!email) { socialMsg("Select a creator first", true); return; }
+  socialMsg("Fetching stats…");
+  try {
+    const res = await fetch("/api/social/stats?clientEmail=" + encodeURIComponent(email) + "&days=30", {
+      headers: socialStaffHeaders(),
+      credentials: "same-origin"
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch {
+      socialMsg(res.status === 404 ? "Social API not on this host yet (deploy Pages Functions)" : "Stats response was not JSON", true);
+      return;
+    }
+    if (!data.ok) { socialMsg(data.error || "Stats unavailable", true); return; }
+    const host = document.getElementById("socialGrowthStats");
+    if (!host) return;
+    const cards = data.cards || {};
+    host.innerHTML = `<div class="ad-grid-2">` + ["youtube", "instagram", "facebook"].map((plat) => {
+      const c = cards[plat] || {};
+      const countLabel = c.count != null
+        ? Number(c.count).toLocaleString("en-IN")
+        : (c.label || "Data unavailable");
+      const growth = c.growth && c.growth.deltaPct != null
+        ? `${c.growth.deltaPct > 0 ? "+" : ""}${c.growth.deltaPct}%`
+        : (c.growth?.reason === "api_access_required" ? "—" : "insufficient history");
+      return `<div class="ad-card">
+        <h3 style="display:flex;align-items:center;gap:8px;justify-content:space-between">${adEsc(plat)} ${socialBadgeHTML(c.badge)}</h3>
+        <p style="font-size:1.6rem;font-weight:800;margin:8px 0">${adEsc(String(countLabel))}</p>
+        <p class="muted">30d growth: ${adEsc(String(growth))}</p>
+        ${plat === "youtube" ? socialSpark(c.series?.days) : `<p class="muted">${adEsc(c.label || "API Access Required")}</p>`}
+      </div>`;
+    }).join("") + `</div>`;
+    socialMsg("Stats preview ready");
+  } catch (err) {
+    socialMsg(err.message || "Stats failed", true);
+  }
+}
+
 function bindApp() {
   document.getElementById("adminView").addEventListener("click", (e) => {
     const range = e.target.closest("[data-range]");
     if (range) {
       Ad.range = range.dataset.range;
       paint();
+      return;
+    }
+    if (e.target.id === "socialLoadBtn" || e.target.closest("#socialLoadBtn")) {
+      socialLoadProfiles();
+      return;
+    }
+    if (e.target.id === "socialStatsBtn" || e.target.closest("#socialStatsBtn")) {
+      socialPreviewStats();
+      return;
+    }
+    const del = e.target.closest("[data-social-del]");
+    if (del) {
+      (async () => {
+        if (!AdminCore.isOwner()) return;
+        socialMsg("Removing…");
+        try {
+          const res = await fetch("/api/social/profiles", {
+            method: "DELETE",
+            headers: socialStaffHeaders(),
+            credentials: "same-origin",
+            body: JSON.stringify({ clientEmail: del.dataset.socialEmail, platform: del.dataset.socialDel })
+          });
+          const data = await res.json();
+          if (!data.ok) { socialMsg(data.error || "Remove failed", true); return; }
+          socialMsg("Removed (history snaps kept)");
+          socialLoadProfiles();
+        } catch (err) {
+          socialMsg(err.message || "Remove failed", true);
+        }
+      })();
       return;
     }
     const applyCustom = e.target.closest("[data-apply-custom]");
@@ -1323,6 +1528,44 @@ function bindApp() {
   });
   document.getElementById("adminView").addEventListener("submit", (e) => {
     const f = e.target;
+    if (f.id === "socialProfileForm") {
+      e.preventDefault();
+      if (!AdminCore.isOwner()) { socialMsg("Owner only", true); return; }
+      (async () => {
+        socialMsg("Saving…");
+        try {
+          const res = await fetch("/api/social/profiles", {
+            method: "POST",
+            headers: socialStaffHeaders(),
+            credentials: "same-origin",
+            body: JSON.stringify({
+              clientEmail: f.clientEmail.value.trim().toLowerCase(),
+              platform: f.platform.value,
+              url: f.url.value.trim(),
+              verification: f.verification.value,
+              verificationNote: f.verificationNote.value.trim()
+            })
+          });
+          const text = await res.text();
+          let data = null;
+          try { data = JSON.parse(text); } catch {
+            socialMsg(res.status === 404 ? "Social API not on this host yet (deploy Pages Functions)" : "Save response was not JSON", true);
+            return;
+          }
+          if (!data.ok) {
+            socialMsg(data.error || "Save failed", true);
+            return;
+          }
+          const warn = data.resolveWarning ? ` (resolve note: ${data.resolveWarning.errorCode || data.resolveWarning.error})` : "";
+          socialMsg("Saved " + data.profile.platform + " for " + data.profile.clientEmail + warn);
+          socialLoadProfiles();
+          if (data.profile.platform === "youtube") socialPreviewStats();
+        } catch (err) {
+          socialMsg(err.message || "Save failed", true);
+        }
+      })();
+      return;
+    }
     if (f.id === "addLeadForm") {
       e.preventDefault();
       AdminCore.assert("leads","create");

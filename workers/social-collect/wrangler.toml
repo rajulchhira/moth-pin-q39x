@@ -1,0 +1,30 @@
+# Sibling Worker: daily YouTube social collect (Cron Trigger).
+# Pages Functions cannot use Cron — deploy this Worker separately.
+#
+# Deploy:
+#   cd workers/social-collect
+#   npx wrangler deploy
+#
+# Required secrets / vars (Cloudflare Dashboard → Workers → this worker → Settings):
+#   YOUTUBE_API_KEY
+#   SOCIAL_COLLECT_SECRET
+#
+# KV: bind the SAME SALES namespace id as the Pages project (wrangler.toml at repo root).
+
+name = "bizgarh-social-collect"
+main = "src/index.js"
+compatibility_date = "2025-09-13"
+compatibility_flags = ["nodejs_compat"]
+
+# Shortly after IST midnight (00:15 IST = 18:45 UTC previous calendar day).
+# 15 18 * * * = 18:15 UTC ≈ 23:45 IST — prefer 45 18 for ~00:15 IST:
+[triggers]
+crons = ["45 18 * * *"]
+
+[[kv_namespaces]]
+binding = "SALES"
+id = "4bf3b2ad591f4156b25009f3327810fa"
+
+# Optional: set vars in Dashboard rather than committing values.
+# [vars]
+# APP_URL = "https://www.bizgarh.com"
