@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk190 analytics (drop student big inset charts) */
+/* Creator CRM dashboard — desk191 analytics (view-only sheets, no CSV) */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -1378,33 +1378,6 @@
     return `<div class="crm-sheet-scroll"><table class="crm-sheet-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
-  function downloadSheetCSV(sheetId, bundle) {
-    const def = SHEET_DEFS[sheetId];
-    if (!def) return;
-    const rows = def.rows(bundle) || [];
-    const header = def.columns.map((c) => c.label);
-    const lines = [header.map(csvEscape).join(",")];
-    rows.forEach((r) => {
-      lines.push(def.columns.map((c) => csvEscape(cellDisplay(r, c))).join(","));
-    });
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "bizgarh-" + sheetId + ".csv";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(a.href);
-      a.remove();
-    }, 500);
-  }
-
-  function csvEscape(v) {
-    const s = String(v == null ? "" : v);
-    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-    return s;
-  }
-
   function closeAnalyticsSheet() {
     $("#crmSheetOverlay")?.remove();
   }
@@ -1427,7 +1400,6 @@
             <p>${rows.length} row${rows.length === 1 ? "" : "s"} · spreadsheet detail</p>
           </div>
           <div class="crm-sheet-actions">
-            <button type="button" class="crm-btn crm-btn-ghost" data-crm-csv="${esc(sheetId)}" style="width:auto;padding:6px 12px">Download CSV</button>
             <button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-close style="width:auto;padding:6px 12px">Close</button>
           </div>
         </header>
@@ -1881,15 +1853,6 @@
       if (sheetClose) {
         e.preventDefault();
         closeAnalyticsSheet();
-        return;
-      }
-      const csvBtn = t.closest("[data-crm-csv]");
-      if (csvBtn) {
-        e.preventDefault();
-        const s = session();
-        if (!s) return;
-        const periodSel = Number(localStorage.getItem("crmPeriodDays") || DEFAULT_PERIOD);
-        downloadSheetCSV(csvBtn.getAttribute("data-crm-csv"), buildAnalyticsBundle(s, periodSel));
         return;
       }
       const sheetBtn = t.closest("[data-crm-sheet]");
