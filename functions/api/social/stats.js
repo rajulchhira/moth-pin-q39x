@@ -29,8 +29,8 @@ function verificationBadge(profile) {
   return { kind: "unverified", label: "Unverified" };
 }
 
-function cardFor(profile, series) {
-  const platform = profile?.platform || series?.platform;
+function cardFor(profile, series, platformHint) {
+  const platform = profile?.platform || series?.platform || platformHint || "";
   const gate = platformPhase1Status(platform);
 
   if (!gate.live) {
@@ -49,8 +49,9 @@ function cardFor(profile, series) {
   }
 
   if (!profile) {
+    const plat = platform || "youtube";
     return {
-      platform,
+      platform: plat,
       url: "",
       status: "missing_profile",
       label: "No URL configured",
@@ -123,11 +124,12 @@ async function handler(event) {
         const series = await loadSeries(event.env, clientEmail, "youtube", days);
         cards.youtube = cardFor(profile, series);
       } else if (platform === "youtube") {
-        cards.youtube = cardFor(profile || null, null);
+        cards.youtube = cardFor(profile || null, null, "youtube");
       } else {
         cards[platform] = cardFor(
           profile && profile.status !== "deleted" ? profile : { platform, url: profile?.url || "", verification: profile?.verification || "unverified" },
-          null
+          null,
+          platform
         );
       }
     }
