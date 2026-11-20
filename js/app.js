@@ -5089,6 +5089,7 @@ function traderIcon(kind) {
 /* cache-bust desk157: About Us polish — simple intro + wide Vision card /css/about.css?v=desk157 */
 /* cache-bust desk158: About Us Vision layout — left photo / right box, short crop /css/about.css?v=desk158 */
 /* cache-bust desk159: About Us FAQ set — data-faq-set=about (9 Q&As) */
+/* cache-bust desk193: Creator CRM Students sheet + profiles */
 /* cache-bust desk192: Creator CRM analytics — nested View detail sheets */
 /* cache-bust desk193: Creator CRM white light + dual-layer transform mesh motion */
 /* cache-bust desk194: Creator CRM Studio — scripts / recordings / editing queue / content library */
@@ -5098,6 +5099,7 @@ function traderIcon(kind) {
 /* cache-bust desk196: Creator Studio Content Library — fix caption empty box under cells */
 /* cache-bust desk196b: Content Library — top-align rows + inline actions so caption has no empty box */
 /* cache-bust desk197: Content Library caption empty-box polish */
+/* cache-bust desk198: Creator CRM Students sheet + profiles */
 /* cache-bust desk164: Razorpay Standard Checkout — create-order + verify-payment + Buy Now */
 function traderCardHTML(m, i, opts = {}) {
   const title = String(m.role || m.tag || "Mentor").trim();
