@@ -1,12 +1,21 @@
-/* Creator CRM dashboard — desk192 analytics (nested View detail sheets) */
+/* Creator CRM dashboard — desk194 Creator Studio (scripts / recordings / queue / library) */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
   const SOCIAL_CACHE_KEY = "tradeshalaCreatorSocialCache";
   const THEME_KEY = "crmTheme";
   const ACCORDION_KEY = "crmAccordionOpen";
+  const STUDIO_SCRIPTS_KEY = "crmStudioScriptsV1";
+  const STUDIO_RECORDINGS_KEY = "crmStudioRecordingsV1";
+  const STUDIO_QUEUE_KEY = "crmStudioEditingQueueV1";
+  const STUDIO_LIBRARY_KEY = "crmStudioContentLibraryV1";
   const ACTIVE_DAYS = 14;
   const DEFAULT_PERIOD = 30;
+  const EDIT_STATUSES = ["Under Review", "Editing", "Revision", "Completed"];
+  const SCRIPT_ACCEPT = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  const VIDEO_ACCEPT = "video/*,.mp4,.webm,.mov,.m4v,.avi,.mkv";
+  /** @type {Map<string, { blob: Blob, url: string }>} */
+  const studioBlobs = new Map();
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -348,6 +357,453 @@
     localStorage.setItem(PROD_KEY, JSON.stringify(all));
   }
 
+  function studioUid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function studioEmailKey(email) {
+    return String(email || "creator").trim().toLowerCase();
+  }
+
+  function readStudioBucket(key, email) {
+    try {
+      const all = JSON.parse(localStorage.getItem(key) || "{}");
+      const row = all[studioEmailKey(email)];
+      return Array.isArray(row) ? row : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeStudioBucket(key, email, rows) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(key) || "{}"); } catch { all = {}; }
+    all[studioEmailKey(email)] = rows;
+    localStorage.setItem(key, JSON.stringify(all));
+  }
+
+  function rememberBlob(id, blob, preferredName) {
+    const prev = studioBlobs.get(id);
+    if (prev?.url) {
+      try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+    }
+    const file = blob instanceof File
+      ? blob
+      : new File([blob], preferredName || "file", { type: blob.type || "application/octet-stream" });
+    const url = URL.createObjectURL(file);
+    studioBlobs.set(id, { blob: file, url });
+    return url;
+  }
+
+  function blobUrlFor(id) {
+    return studioBlobs.get(id)?.url || "";
+  }
+
+  function ensureDemoBlob(id, name, mime, text) {
+    if (studioBlobs.has(id)) return blobUrlFor(id);
+    const body = text || `Bizgarh demo file: ${name}`;
+    return rememberBlob(id, new Blob([body], { type: mime || "text/plain" }), name);
+  }
+
+  function isScriptFile(file) {
+    const name = String(file?.name || "").toLowerCase();
+    const type = String(file?.type || "").toLowerCase();
+    if (/\.(pdf|doc|docx)$/.test(name)) return true;
+    return type === "application/pdf"
+      || type === "application/msword"
+      || type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+
+  function isVideoFile(file) {
+    const name = String(file?.name || "").toLowerCase();
+    const type = String(file?.type || "").toLowerCase();
+    if (type.startsWith("video/")) return true;
+    return /\.(mp4|webm|mov|m4v|avi|mkv|ogv)$/.test(name);
+  }
+
+  function fmtBytes(n) {
+    const v = Number(n) || 0;
+    if (v < 1024) return v + " B";
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1).replace(/\.0$/, "") + " KB";
+    return (v / (1024 * 1024)).toFixed(1).replace(/\.0$/, "") + " MB";
+  }
+
+  function seedStudioScripts(email) {
+    const rows = [
+      { id: "script_demo_1", name: "Module-1-Opening-Script.pdf", size: 48200, mime: "application/pdf", uploadedAt: "2026-11-12T09:10:00.000Z", demo: true },
+      { id: "script_demo_2", name: "Live-Session-Talking-Points.docx", size: 31800, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", uploadedAt: "2026-11-14T14:22:00.000Z", demo: true }
+    ];
+    rows.forEach((r) => ensureDemoBlob(r.id, r.name, r.mime, `Demo script\n${r.name}\n`));
+    writeStudioBucket(STUDIO_SCRIPTS_KEY, email, rows);
+    return rows;
+  }
+
+  function seedStudioRecordings(email) {
+    const rows = [
+      { id: "rec_demo_1", name: "Take-A-Intro-Hook.mp4", size: 18400000, mime: "video/mp4", uploadedAt: "2026-11-15T11:05:00.000Z", demo: true },
+      { id: "rec_demo_2", name: "Take-B-Chart-Walkthrough.webm", size: 22100000, mime: "video/webm", uploadedAt: "2026-11-16T16:40:00.000Z", demo: true }
+    ];
+    rows.forEach((r) => ensureDemoBlob(r.id, r.name, r.mime, `Demo video placeholder for ${r.name}`));
+    writeStudioBucket(STUDIO_RECORDINGS_KEY, email, rows);
+    return rows;
+  }
+
+  function seedStudioQueue(email) {
+    const rows = [
+      { id: "eq_demo_1", title: "Price Action Mastery — Episode 12", status: "Under Review" },
+      { id: "eq_demo_2", title: "Options Weekly Recap", status: "Editing" },
+      { id: "eq_demo_3", title: "Risk Rules for Beginners", status: "Revision" },
+      { id: "eq_demo_4", title: "Index Futures Warm-up", status: "Completed" }
+    ];
+    writeStudioBucket(STUDIO_QUEUE_KEY, email, rows);
+    return rows;
+  }
+
+  function seedStudioLibrary(email) {
+    const rows = [
+      {
+        id: "lib_demo_1",
+        title: "Opening Range Breakout Explained",
+        caption: "A calm walkthrough of ORB setups with risk notes for new traders.",
+        pdfName: "ORB-cheat-sheet.pdf",
+        pdfId: "lib_demo_1_pdf",
+        videoName: "orb-explained.mp4",
+        thumb: "",
+        uploadedAt: "2026-11-10T08:00:00.000Z",
+        demo: true
+      },
+      {
+        id: "lib_demo_2",
+        title: "Position Sizing in 8 Minutes",
+        caption: "Practical sizing rules — never risk more than you can sleep with.",
+        pdfName: "position-sizing.pdf",
+        pdfId: "lib_demo_2_pdf",
+        videoName: "position-sizing.mp4",
+        thumb: "",
+        uploadedAt: "2026-11-13T12:30:00.000Z",
+        demo: true
+      }
+    ];
+    rows.forEach((r) => {
+      ensureDemoBlob(r.id, r.videoName, "video/mp4", `Demo library video: ${r.title}`);
+      ensureDemoBlob(r.pdfId, r.pdfName, "application/pdf", `Demo PDF for ${r.title}`);
+    });
+    writeStudioBucket(STUDIO_LIBRARY_KEY, email, rows);
+    return rows;
+  }
+
+  function studioScripts(email) {
+    const existing = readStudioBucket(STUDIO_SCRIPTS_KEY, email);
+    if (existing) {
+      existing.forEach((r) => {
+        if (r.demo) ensureDemoBlob(r.id, r.name, r.mime, `Demo script\n${r.name}\n`);
+      });
+      return existing;
+    }
+    return seedStudioScripts(email);
+  }
+
+  function studioRecordings(email) {
+    const existing = readStudioBucket(STUDIO_RECORDINGS_KEY, email);
+    if (existing) {
+      existing.forEach((r) => {
+        if (r.demo) ensureDemoBlob(r.id, r.name, r.mime, `Demo video placeholder for ${r.name}`);
+      });
+      return existing;
+    }
+    return seedStudioRecordings(email);
+  }
+
+  function studioQueue(email) {
+    const existing = readStudioBucket(STUDIO_QUEUE_KEY, email);
+    if (existing) return existing;
+    return seedStudioQueue(email);
+  }
+
+  function studioLibrary(email) {
+    const existing = readStudioBucket(STUDIO_LIBRARY_KEY, email);
+    if (existing) {
+      existing.forEach((r) => {
+        if (r.demo) {
+          ensureDemoBlob(r.id, r.videoName || `${r.title}.mp4`, "video/mp4", `Demo library video: ${r.title}`);
+          if (r.pdfId) ensureDemoBlob(r.pdfId, r.pdfName || "notes.pdf", "application/pdf", `Demo PDF for ${r.title}`);
+        }
+      });
+      return existing;
+    }
+    return seedStudioLibrary(email);
+  }
+
+  function downloadStudioBlob(id, fallbackName) {
+    const entry = studioBlobs.get(id);
+    if (!entry) {
+      alert("File is only available for download in this browser session after upload (or as demo seed).");
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = entry.url;
+    a.download = entry.blob.name || fallbackName || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function dropzoneHTML(kind, accept, hint) {
+    return `<div class="crm-dropzone" data-studio-drop="${esc(kind)}" tabindex="0" role="button" aria-label="${esc(hint)}">
+      <input type="file" class="crm-drop-input" data-studio-file="${esc(kind)}" accept="${esc(accept)}" multiple hidden>
+      <div class="crm-drop-visual">
+        <span class="crm-drop-ico">${icon(kind === "scripts" ? "file" : "clapper")}</span>
+        <strong>Drag &amp; drop files here</strong>
+        <p>${esc(hint)}</p>
+        <button type="button" class="crm-btn crm-btn-ghost crm-drop-browse" data-studio-browse="${esc(kind)}" style="width:auto;padding:8px 14px">Browse files</button>
+      </div>
+    </div>`;
+  }
+
+  function fileListHTML(kind, rows) {
+    if (!rows.length) {
+      return `<div class="crm-file-empty">No files yet — drop ${kind === "scripts" ? "a PDF or DOC/DOCX" : "a video"} to get started.</div>`;
+    }
+    return `<ul class="crm-file-list">${rows.map((r) => {
+      const when = r.uploadedAt ? fmtDate(r.uploadedAt) : "—";
+      return `<li class="crm-file-row" data-studio-row="${esc(r.id)}">
+        <div class="crm-file-meta">
+          <b title="${esc(r.name)}">${esc(r.name)}</b>
+          <span>${esc(fmtBytes(r.size))} · ${esc(when)}${r.demo ? " · demo" : ""}</span>
+        </div>
+        <div class="crm-file-actions">
+          <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm" data-studio-dl="${esc(kind)}" data-id="${esc(r.id)}" data-name="${esc(r.name)}">Download</button>
+          <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm crm-btn-danger" data-studio-del="${esc(kind)}" data-id="${esc(r.id)}">Delete</button>
+        </div>
+      </li>`;
+    }).join("")}</ul>`;
+  }
+
+  function renderScripts(root, s) {
+    const rows = studioScripts(s.email);
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Scripts</h3>
+            <p>PDF or DOC/DOCX only. Files stay available for Download / Delete in this session.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} file${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        ${dropzoneHTML("scripts", SCRIPT_ACCEPT, "Accepts PDF, DOC, and DOCX")}
+        <div class="crm-file-panel" id="crmStudioScriptsList">${fileListHTML("scripts", rows)}</div>
+      </section>
+    </div>`;
+  }
+
+  function renderRecordings(root, s) {
+    const rows = studioRecordings(s.email);
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Recording Submissions</h3>
+            <p>Video formats only (mp4, webm, mov, and similar). Submit takes for the edit desk.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} file${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        ${dropzoneHTML("recordings", VIDEO_ACCEPT, "Accepts mp4, webm, mov, and other video files")}
+        <div class="crm-file-panel" id="crmStudioRecordingsList">${fileListHTML("recordings", rows)}</div>
+      </section>
+    </div>`;
+  }
+
+  function renderEditingQueue(root, s) {
+    const rows = studioQueue(s.email);
+    const body = rows.length
+      ? rows.map((r) => {
+        const opts = EDIT_STATUSES.map((st) =>
+          `<option value="${esc(st)}"${r.status === st ? " selected" : ""}>${esc(st)}</option>`
+        ).join("");
+        return `<tr data-eq-id="${esc(r.id)}">
+          <td class="crm-eq-title">${esc(r.title)}</td>
+          <td>
+            <select class="crm-eq-status" data-studio-eq-status="${esc(r.id)}" aria-label="Status for ${esc(r.title)}">${opts}</select>
+          </td>
+        </tr>`;
+      }).join("")
+      : `<tr><td colspan="2" class="crm-sheet-empty">No videos in the editing queue</td></tr>`;
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Editing Queue</h3>
+            <p>Status flow: Under Review → Editing → Revision → Completed.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} video${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="crm-sheet-scroll crm-studio-sheet">
+          <table class="crm-sheet-table crm-eq-table">
+            <thead><tr><th>Video Title</th><th>Status</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </section>
+    </div>`;
+  }
+
+  function libraryThumbHTML(row) {
+    const url = blobUrlFor(row.id);
+    const name = String(row.videoName || row.mime || "");
+    const isVid = /\.(mp4|webm|mov|m4v)$/i.test(name) || String(row.mime || "").startsWith("video/");
+    if (url && isVid) {
+      return `<div class="crm-lib-thumb"><video src="${esc(url)}" muted preload="metadata" playsinline></video></div>`;
+    }
+    if (row.thumb) {
+      return `<div class="crm-lib-thumb"><img src="${esc(row.thumb)}" alt=""></div>`;
+    }
+    return `<div class="crm-lib-thumb crm-lib-thumb-ph" aria-hidden="true">${icon("clapper")}</div>`;
+  }
+
+  function renderContentLibrary(root, s) {
+    const rows = studioLibrary(s.email);
+    const body = rows.length
+      ? rows.map((r) => {
+        const pdfUrl = r.pdfId ? blobUrlFor(r.pdfId) : "";
+        const pdfCell = r.pdfName
+          ? (pdfUrl
+            ? `<a class="crm-link" href="${esc(pdfUrl)}" download="${esc(r.pdfName)}">${esc(r.pdfName)}</a>`
+            : `<span class="crm-lib-pdf">${esc(r.pdfName)}</span>`)
+          : "—";
+        return `<tr data-lib-id="${esc(r.id)}">
+          <td class="crm-lib-preview-cell">${libraryThumbHTML(r)}</td>
+          <td class="crm-lib-title">${esc(r.title)}</td>
+          <td class="crm-lib-caption" title="${esc(r.caption || "")}">${esc(r.caption || "—")}</td>
+          <td>${pdfCell}</td>
+          <td class="crm-lib-actions">
+            <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm" data-studio-dl="library" data-id="${esc(r.id)}" data-name="${esc(r.videoName || r.title + ".mp4")}">Download</button>
+            <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm crm-btn-danger" data-studio-del="library" data-id="${esc(r.id)}">Delete</button>
+          </td>
+        </tr>`;
+      }).join("")
+      : `<tr><td colspan="5" class="crm-sheet-empty">Content library is empty</td></tr>`;
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Content Library</h3>
+            <p>Approved cuts with preview, caption, and PDF attachment.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} item${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="crm-sheet-scroll crm-studio-sheet">
+          <table class="crm-sheet-table crm-lib-table">
+            <thead>
+              <tr>
+                <th>Video Preview</th>
+                <th>Video title</th>
+                <th>Caption</th>
+                <th>PDF</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </section>
+    </div>`;
+  }
+
+  function addStudioFiles(kind, fileList, staff) {
+    const files = Array.from(fileList || []);
+    if (!files.length || !staff) return;
+    if (kind === "scripts") {
+      const accepted = files.filter(isScriptFile);
+      const rejected = files.length - accepted.length;
+      if (!accepted.length) {
+        alert("Scripts accept PDF or DOC/DOCX only.");
+        return;
+      }
+      if (rejected) alert(`${rejected} file(s) skipped — PDF or DOC/DOCX only.`);
+      const rows = studioScripts(staff.email).slice();
+      accepted.forEach((f) => {
+        const id = studioUid("script");
+        rememberBlob(id, f);
+        rows.unshift({
+          id,
+          name: f.name,
+          size: f.size,
+          mime: f.type || "application/octet-stream",
+          uploadedAt: new Date().toISOString(),
+          demo: false
+        });
+      });
+      writeStudioBucket(STUDIO_SCRIPTS_KEY, staff.email, rows);
+      renderScripts($("#crmView"), staff);
+      return;
+    }
+    if (kind === "recordings") {
+      const accepted = files.filter(isVideoFile);
+      const rejected = files.length - accepted.length;
+      if (!accepted.length) {
+        alert("Recording submissions accept video files only.");
+        return;
+      }
+      if (rejected) alert(`${rejected} file(s) skipped — video formats only.`);
+      const rows = studioRecordings(staff.email).slice();
+      accepted.forEach((f) => {
+        const id = studioUid("rec");
+        rememberBlob(id, f);
+        rows.unshift({
+          id,
+          name: f.name,
+          size: f.size,
+          mime: f.type || "video/mp4",
+          uploadedAt: new Date().toISOString(),
+          demo: false
+        });
+      });
+      writeStudioBucket(STUDIO_RECORDINGS_KEY, staff.email, rows);
+      renderRecordings($("#crmView"), staff);
+    }
+  }
+
+  function deleteStudioItem(kind, id, staff) {
+    if (!staff || !id) return;
+    if (kind === "scripts") {
+      const next = studioScripts(staff.email).filter((r) => r.id !== id);
+      writeStudioBucket(STUDIO_SCRIPTS_KEY, staff.email, next);
+      const prev = studioBlobs.get(id);
+      if (prev?.url) try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+      studioBlobs.delete(id);
+      renderScripts($("#crmView"), staff);
+      return;
+    }
+    if (kind === "recordings") {
+      const next = studioRecordings(staff.email).filter((r) => r.id !== id);
+      writeStudioBucket(STUDIO_RECORDINGS_KEY, staff.email, next);
+      const prev = studioBlobs.get(id);
+      if (prev?.url) try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+      studioBlobs.delete(id);
+      renderRecordings($("#crmView"), staff);
+      return;
+    }
+    if (kind === "library") {
+      const row = studioLibrary(staff.email).find((r) => r.id === id);
+      const next = studioLibrary(staff.email).filter((r) => r.id !== id);
+      writeStudioBucket(STUDIO_LIBRARY_KEY, staff.email, next);
+      [id, row?.pdfId].filter(Boolean).forEach((bid) => {
+        const prev = studioBlobs.get(bid);
+        if (prev?.url) try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+        studioBlobs.delete(bid);
+      });
+      renderContentLibrary($("#crmView"), staff);
+    }
+  }
+
+  function setEditingStatus(id, status, staff) {
+    if (!staff || !id) return;
+    const next = studioQueue(staff.email).map((r) =>
+      r.id === id ? { ...r, status: EDIT_STATUSES.includes(status) ? status : r.status } : r
+    );
+    writeStudioBucket(STUDIO_QUEUE_KEY, staff.email, next);
+  }
+
   function socialLinks(email) {
     try {
       const all = JSON.parse(localStorage.getItem(SOCIAL_KEY) || "{}");
@@ -479,11 +935,10 @@
         label: "Creator Studio",
         icon: "clapper",
         items: [
-          { id: "scripts", label: "Scripts", stub: true },
-          { id: "recording-submissions", label: "Recording Submissions", stub: true },
-          { id: "editing-queue", label: "Editing Queue", stub: true },
-          { id: "review-approval", label: "Review & Approval", stub: true },
-          { id: "content-library", label: "Content Library", stub: true }
+          { id: "scripts", label: "Scripts" },
+          { id: "recording-submissions", label: "Recording Submissions" },
+          { id: "editing-queue", label: "Editing Queue" },
+          { id: "content-library", label: "Content Library" }
         ]
       },
       {
@@ -574,6 +1029,8 @@
   function currentView() {
     const h = String(location.hash || "").replace(/^#/, "").trim();
     if (!h || h === "settings" || h === "theme" || h === "logout") return "dashboard";
+    // Review & Approval removed — flow lives in Editing Queue + Content Library
+    if (h === "review-approval") return "editing-queue";
     return h;
   }
 
@@ -647,6 +1104,11 @@
       if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
       else if (view === "analytics") sub.textContent = "Student and revenue analytics with spreadsheet detail sheets";
       else if (view === "profile") sub.textContent = "Account and social links for Platform Performance";
+      else if (view === "scripts") sub.textContent = "Upload PDF or Word scripts — download or delete anytime";
+      else if (view === "recording-submissions") sub.textContent = "Drop raw video takes for the editing desk";
+      else if (view === "editing-queue") sub.textContent = "Track each cut from Under Review through Completed";
+      else if (view === "content-library") sub.textContent = "Approved videos, captions, and PDF attachments";
+      else if (view === "review-approval") sub.textContent = "Covered by Editing Queue and Content Library";
       else sub.textContent = "Creator CRM module";
     }
     const who = $("#crmWho");
@@ -671,6 +1133,14 @@
     if (!s) return;
     if (view === "profile") return renderProfile(root, s, view);
     if (view === "analytics") return renderAnalytics(root, s);
+    if (view === "scripts") return renderScripts(root, s);
+    if (view === "recording-submissions") return renderRecordings(root, s);
+    if (view === "editing-queue") return renderEditingQueue(root, s);
+    if (view === "content-library") return renderContentLibrary(root, s);
+    if (view === "review-approval") {
+      location.hash = "editing-queue";
+      return renderEditingQueue(root, s);
+    }
     if (view !== "dashboard") {
       const label = findNavItem(view)?.label || "Section";
       root.innerHTML = `<div class="crm-panel-view crm-section"><div class="crm-stub">
@@ -2181,6 +2651,83 @@
         if (s && root && currentView() === "analytics") renderAnalytics(root, s);
         return;
       }
+      const browse = t.closest("[data-studio-browse]");
+      if (browse) {
+        e.preventDefault();
+        const kind = browse.getAttribute("data-studio-browse");
+        const input = $(`[data-studio-file="${kind}"]`);
+        if (input) input.click();
+        return;
+      }
+      const dropzone = t.closest("[data-studio-drop]");
+      if (dropzone && !t.closest("[data-studio-browse]") && !t.closest(".crm-drop-input")) {
+        const kind = dropzone.getAttribute("data-studio-drop");
+        const input = dropzone.querySelector("[data-studio-file]");
+        if (input) input.click();
+        return;
+      }
+      const dl = t.closest("[data-studio-dl]");
+      if (dl) {
+        e.preventDefault();
+        downloadStudioBlob(dl.getAttribute("data-id"), dl.getAttribute("data-name"));
+        return;
+      }
+      const del = t.closest("[data-studio-del]");
+      if (del) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        const kind = del.getAttribute("data-studio-del");
+        const id = del.getAttribute("data-id");
+        if (!confirm("Delete this file from Creator Studio?")) return;
+        deleteStudioItem(kind, id, s);
+        return;
+      }
+    });
+
+    document.addEventListener("change", (e) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      const fileInput = t.closest("[data-studio-file]");
+      if (fileInput) {
+        const kind = fileInput.getAttribute("data-studio-file");
+        const s = session();
+        addStudioFiles(kind, fileInput.files, s);
+        fileInput.value = "";
+        return;
+      }
+      const eqStatus = t.closest("[data-studio-eq-status]");
+      if (eqStatus) {
+        const s = session();
+        setEditingStatus(eqStatus.getAttribute("data-studio-eq-status"), eqStatus.value, s);
+      }
+    });
+
+    document.addEventListener("dragenter", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      e.preventDefault();
+      zone.classList.add("dragover");
+    });
+    document.addEventListener("dragover", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      e.preventDefault();
+      zone.classList.add("dragover");
+    });
+    document.addEventListener("dragleave", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      if (e.relatedTarget instanceof Node && zone.contains(e.relatedTarget)) return;
+      zone.classList.remove("dragover");
+    });
+    document.addEventListener("drop", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      e.preventDefault();
+      zone.classList.remove("dragover");
+      const kind = zone.getAttribute("data-studio-drop");
+      addStudioFiles(kind, e.dataTransfer?.files, session());
     });
 
     document.addEventListener("keydown", (e) => {
@@ -2188,6 +2735,11 @@
     });
 
     window.addEventListener("hashchange", () => {
+      const h = String(location.hash || "").replace(/^#/, "");
+      if (h === "review-approval") {
+        location.hash = "editing-queue";
+        return;
+      }
       if (!$("#crmApp")?.classList.contains("crm-hidden")) renderShell();
     });
   }
