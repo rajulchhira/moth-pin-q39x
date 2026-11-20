@@ -1,12 +1,21 @@
-/* Creator CRM dashboard — desk192 analytics (nested View detail sheets) */
+/* Creator CRM dashboard — desk198 students + desk197 caption + desk196 mesh + Studio */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
   const SOCIAL_CACHE_KEY = "tradeshalaCreatorSocialCache";
   const THEME_KEY = "crmTheme";
   const ACCORDION_KEY = "crmAccordionOpen";
+  const STUDENTS_DEMO_KEY = "crmStudentsDemoV1";
+  const STUDIO_SCRIPTS_KEY = "crmStudioScriptsV1";
+  const STUDIO_RECORDINGS_KEY = "crmStudioRecordingsV1";
+  const STUDIO_QUEUE_KEY = "crmStudioEditingQueueV1";
+  const STUDIO_LIBRARY_KEY = "crmStudioContentLibraryV1";
   const ACTIVE_DAYS = 14;
   const DEFAULT_PERIOD = 30;
+  const EDIT_STATUSES = ["Under Review", "Editing", "Revision", "Completed"];
+  const VIDEO_ACCEPT = "video/*,.mp4,.webm,.mov,.m4v,.avi,.mkv";
+  /** @type {Map<string, { blob: Blob, url: string }>} */
+  const studioBlobs = new Map();
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -348,6 +357,417 @@
     localStorage.setItem(PROD_KEY, JSON.stringify(all));
   }
 
+  function studioUid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function studioEmailKey(email) {
+    return String(email || "creator").trim().toLowerCase();
+  }
+
+  function readStudioBucket(key, email) {
+    try {
+      const all = JSON.parse(localStorage.getItem(key) || "{}");
+      const row = all[studioEmailKey(email)];
+      return Array.isArray(row) ? row : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeStudioBucket(key, email, rows) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(key) || "{}"); } catch { all = {}; }
+    all[studioEmailKey(email)] = rows;
+    localStorage.setItem(key, JSON.stringify(all));
+  }
+
+  function rememberBlob(id, blob, preferredName) {
+    const prev = studioBlobs.get(id);
+    if (prev?.url) {
+      try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+    }
+    const file = blob instanceof File
+      ? blob
+      : new File([blob], preferredName || "file", { type: blob.type || "application/octet-stream" });
+    const url = URL.createObjectURL(file);
+    studioBlobs.set(id, { blob: file, url });
+    return url;
+  }
+
+  function blobUrlFor(id) {
+    return studioBlobs.get(id)?.url || "";
+  }
+
+  function ensureDemoBlob(id, name, mime, text) {
+    if (studioBlobs.has(id)) return blobUrlFor(id);
+    const body = text || `Bizgarh demo file: ${name}`;
+    return rememberBlob(id, new Blob([body], { type: mime || "text/plain" }), name);
+  }
+
+  function isVideoFile(file) {
+    const name = String(file?.name || "").toLowerCase();
+    const type = String(file?.type || "").toLowerCase();
+    if (type.startsWith("video/")) return true;
+    return /\.(mp4|webm|mov|m4v|avi|mkv|ogv)$/.test(name);
+  }
+
+  function fmtBytes(n) {
+    const v = Number(n) || 0;
+    if (v < 1024) return v + " B";
+    if (v < 1024 * 1024) return (v / 1024).toFixed(1).replace(/\.0$/, "") + " KB";
+    return (v / (1024 * 1024)).toFixed(1).replace(/\.0$/, "") + " MB";
+  }
+
+  function seedStudioScripts(email) {
+    const rows = [
+      { id: "script_demo_1", name: "Module-1-Opening-Script.pdf", size: 48200, mime: "application/pdf", uploadedAt: "2026-11-12T09:10:00.000Z", demo: true },
+      { id: "script_demo_2", name: "Live-Session-Talking-Points.docx", size: 31800, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", uploadedAt: "2026-11-14T14:22:00.000Z", demo: true }
+    ];
+    rows.forEach((r) => ensureDemoBlob(r.id, r.name, r.mime, `Demo script\n${r.name}\n`));
+    writeStudioBucket(STUDIO_SCRIPTS_KEY, email, rows);
+    return rows;
+  }
+
+  function seedStudioRecordings(email) {
+    const rows = [
+      { id: "rec_demo_1", name: "Take-A-Intro-Hook.mp4", size: 18400000, mime: "video/mp4", uploadedAt: "2026-11-15T11:05:00.000Z", demo: true },
+      { id: "rec_demo_2", name: "Take-B-Chart-Walkthrough.webm", size: 22100000, mime: "video/webm", uploadedAt: "2026-11-16T16:40:00.000Z", demo: true }
+    ];
+    rows.forEach((r) => ensureDemoBlob(r.id, r.name, r.mime, `Demo video placeholder for ${r.name}`));
+    writeStudioBucket(STUDIO_RECORDINGS_KEY, email, rows);
+    return rows;
+  }
+
+  function seedStudioQueue(email) {
+    const rows = [
+      { id: "eq_demo_1", title: "Price Action Mastery — Episode 12", status: "Under Review" },
+      { id: "eq_demo_2", title: "Options Weekly Recap", status: "Editing" },
+      { id: "eq_demo_3", title: "Risk Rules for Beginners", status: "Revision" },
+      { id: "eq_demo_4", title: "Index Futures Warm-up", status: "Completed" }
+    ];
+    writeStudioBucket(STUDIO_QUEUE_KEY, email, rows);
+    return rows;
+  }
+
+  function seedStudioLibrary(email) {
+    const rows = [
+      {
+        id: "lib_demo_1",
+        title: "Opening Range Breakout Explained",
+        caption: "A calm walkthrough of ORB setups with risk notes for new traders.",
+        pdfName: "ORB-cheat-sheet.pdf",
+        pdfId: "lib_demo_1_pdf",
+        videoName: "orb-explained.mp4",
+        thumb: "",
+        uploadedAt: "2026-11-10T08:00:00.000Z",
+        demo: true
+      },
+      {
+        id: "lib_demo_2",
+        title: "Position Sizing in 8 Minutes",
+        caption: "Practical sizing rules — never risk more than you can sleep with.",
+        pdfName: "position-sizing.pdf",
+        pdfId: "lib_demo_2_pdf",
+        videoName: "position-sizing.mp4",
+        thumb: "",
+        uploadedAt: "2026-11-13T12:30:00.000Z",
+        demo: true
+      }
+    ];
+    rows.forEach((r) => {
+      ensureDemoBlob(r.id, r.videoName, "video/mp4", `Demo library video: ${r.title}`);
+      ensureDemoBlob(r.pdfId, r.pdfName, "application/pdf", `Demo PDF for ${r.title}`);
+    });
+    writeStudioBucket(STUDIO_LIBRARY_KEY, email, rows);
+    return rows;
+  }
+
+  function studioScripts(email) {
+    const existing = readStudioBucket(STUDIO_SCRIPTS_KEY, email);
+    if (existing) {
+      existing.forEach((r) => {
+        if (r.demo) ensureDemoBlob(r.id, r.name, r.mime, `Demo script\n${r.name}\n`);
+      });
+      return existing;
+    }
+    return seedStudioScripts(email);
+  }
+
+  function studioRecordings(email) {
+    const existing = readStudioBucket(STUDIO_RECORDINGS_KEY, email);
+    if (existing) {
+      existing.forEach((r) => {
+        if (r.demo) ensureDemoBlob(r.id, r.name, r.mime, `Demo video placeholder for ${r.name}`);
+      });
+      return existing;
+    }
+    return seedStudioRecordings(email);
+  }
+
+  function studioQueue(email) {
+    const existing = readStudioBucket(STUDIO_QUEUE_KEY, email);
+    if (existing) return existing;
+    return seedStudioQueue(email);
+  }
+
+  function studioLibrary(email) {
+    const existing = readStudioBucket(STUDIO_LIBRARY_KEY, email);
+    if (existing) {
+      existing.forEach((r) => {
+        if (r.demo) {
+          ensureDemoBlob(r.id, r.videoName || `${r.title}.mp4`, "video/mp4", `Demo library video: ${r.title}`);
+          if (r.pdfId) ensureDemoBlob(r.pdfId, r.pdfName || "notes.pdf", "application/pdf", `Demo PDF for ${r.title}`);
+        }
+      });
+      return existing;
+    }
+    return seedStudioLibrary(email);
+  }
+
+  function downloadStudioBlob(id, fallbackName) {
+    const entry = studioBlobs.get(id);
+    if (!entry) {
+      alert("File is only available for download in this browser session after upload (or as demo seed).");
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = entry.url;
+    a.download = entry.blob.name || fallbackName || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function dropzoneHTML(kind, accept, hint) {
+    return `<div class="crm-dropzone" data-studio-drop="${esc(kind)}" tabindex="0" role="button" aria-label="${esc(hint)}">
+      <input type="file" class="crm-drop-input" data-studio-file="${esc(kind)}" accept="${esc(accept)}" multiple hidden>
+      <div class="crm-drop-visual">
+        <span class="crm-drop-ico">${icon(kind === "scripts" ? "file" : "clapper")}</span>
+        <strong>Drag &amp; drop files here</strong>
+        <p>${esc(hint)}</p>
+        <button type="button" class="crm-btn crm-btn-ghost crm-drop-browse" data-studio-browse="${esc(kind)}" style="width:auto;padding:8px 14px">Browse files</button>
+      </div>
+    </div>`;
+  }
+
+  function fileListHTML(kind, rows) {
+    if (!rows.length) {
+      const empty = kind === "scripts"
+        ? "No scripts yet — the Bizgarh team will share files here."
+        : "No files yet — drop a video to get started.";
+      return `<div class="crm-file-empty">${empty}</div>`;
+    }
+    return `<ul class="crm-file-list">${rows.map((r) => {
+      const when = r.uploadedAt ? fmtDate(r.uploadedAt) : "—";
+      return `<li class="crm-file-row" data-studio-row="${esc(r.id)}">
+        <div class="crm-file-meta">
+          <b title="${esc(r.name)}">${esc(r.name)}</b>
+          <span>${esc(fmtBytes(r.size))} · ${esc(when)}${r.demo ? " · demo" : ""}</span>
+        </div>
+        <div class="crm-file-actions">
+          <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm" data-studio-dl="${esc(kind)}" data-id="${esc(r.id)}" data-name="${esc(r.name)}">Download</button>
+          <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm crm-btn-danger" data-studio-del="${esc(kind)}" data-id="${esc(r.id)}">Delete</button>
+        </div>
+      </li>`;
+    }).join("")}</ul>`;
+  }
+
+  function renderScripts(root, s) {
+    const rows = studioScripts(s.email);
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Scripts</h3>
+            <p>Scripts are provided by the Bizgarh team. Download or delete from your list — creators cannot upload here.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} file${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="crm-file-panel" id="crmStudioScriptsList">${fileListHTML("scripts", rows)}</div>
+      </section>
+    </div>`;
+  }
+
+  function renderRecordings(root, s) {
+    const rows = studioRecordings(s.email);
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Recording Submissions</h3>
+            <p>Video formats only (mp4, webm, mov, and similar). Submit takes for the edit desk.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} file${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        ${dropzoneHTML("recordings", VIDEO_ACCEPT, "Accepts mp4, webm, mov, and other video files")}
+        <div class="crm-file-panel" id="crmStudioRecordingsList">${fileListHTML("recordings", rows)}</div>
+      </section>
+    </div>`;
+  }
+
+  function editingStatusBadge(status) {
+    const label = EDIT_STATUSES.includes(status) ? status : "Under Review";
+    const slug = label.toLowerCase().replace(/\s+/g, "-");
+    return `<span class="crm-eq-badge crm-eq-badge-${esc(slug)}">${esc(label)}</span>`;
+  }
+
+  function renderEditingQueue(root, s) {
+    const rows = studioQueue(s.email);
+    const body = rows.length
+      ? rows.map((r) => `<tr data-eq-id="${esc(r.id)}">
+          <td class="crm-eq-title">${esc(r.title)}</td>
+          <td>${editingStatusBadge(r.status)}</td>
+        </tr>`).join("")
+      : `<tr><td colspan="2" class="crm-sheet-empty">No videos in the editing queue</td></tr>`;
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Editing Queue</h3>
+            <p>Status is set by the Bizgarh team — Under Review → Editing → Revision → Completed.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} video${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="crm-sheet-scroll crm-studio-sheet">
+          <table class="crm-sheet-table crm-eq-table">
+            <thead><tr><th>Video Title</th><th>Status</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </section>
+    </div>`;
+  }
+
+  function libraryThumbHTML(row) {
+    // Prefer static poster/thumb — avoid <video> for demo text blobs (native player chrome / empty boxes)
+    if (row.thumb) {
+      return `<div class="crm-lib-thumb"><img src="${esc(row.thumb)}" alt=""></div>`;
+    }
+    const url = blobUrlFor(row.id);
+    const name = String(row.videoName || row.mime || "");
+    const isVid = /\.(mp4|webm|mov|m4v)$/i.test(name) || String(row.mime || "").startsWith("video/");
+    const playable = url && isVid && !row.demo;
+    if (playable) {
+      return `<div class="crm-lib-thumb"><video src="${esc(url)}" muted preload="metadata" playsinline></video></div>`;
+    }
+    return `<div class="crm-lib-thumb crm-lib-thumb-ph" aria-hidden="true">${icon("clapper")}</div>`;
+  }
+
+  function renderContentLibrary(root, s) {
+    const rows = studioLibrary(s.email);
+    const body = rows.length
+      ? rows.map((r) => {
+        const pdfUrl = r.pdfId ? blobUrlFor(r.pdfId) : "";
+        const pdfCell = r.pdfName
+          ? (pdfUrl
+            ? `<a class="crm-link" href="${esc(pdfUrl)}" download="${esc(r.pdfName)}">${esc(r.pdfName)}</a>`
+            : `<span class="crm-lib-pdf">${esc(r.pdfName)}</span>`)
+          : "—";
+        return `<tr data-lib-id="${esc(r.id)}">
+          <td class="crm-lib-preview-cell">${libraryThumbHTML(r)}</td>
+          <td class="crm-lib-title">${esc(r.title)}</td>
+          <td class="crm-lib-caption" title="${esc(r.caption || "")}"><span class="crm-lib-caption-text">${esc(r.caption || "—")}</span></td>
+          <td>${pdfCell}</td>
+          <td class="crm-lib-actions">
+            <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm" data-studio-dl="library" data-id="${esc(r.id)}" data-name="${esc(r.videoName || r.title + ".mp4")}">Download</button>
+            <button type="button" class="crm-btn crm-btn-ghost crm-btn-sm crm-btn-danger" data-studio-del="library" data-id="${esc(r.id)}">Delete</button>
+          </td>
+        </tr>`;
+      }).join("")
+      : `<tr><td colspan="5" class="crm-sheet-empty">Content library is empty</td></tr>`;
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Content Library</h3>
+            <p>Approved cuts with preview, caption, and PDF attachment.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} item${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="crm-sheet-scroll crm-studio-sheet">
+          <table class="crm-sheet-table crm-lib-table">
+            <thead>
+              <tr>
+                <th>Video Preview</th>
+                <th>Video title</th>
+                <th>Caption</th>
+                <th>PDF</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </section>
+    </div>`;
+  }
+
+  function addStudioFiles(kind, fileList, staff) {
+    const files = Array.from(fileList || []);
+    if (!files.length || !staff) return;
+    // Creators cannot upload scripts — admin/team provides them
+    if (kind === "scripts") return;
+    if (kind === "recordings") {
+      const accepted = files.filter(isVideoFile);
+      const rejected = files.length - accepted.length;
+      if (!accepted.length) {
+        alert("Recording submissions accept video files only.");
+        return;
+      }
+      if (rejected) alert(`${rejected} file(s) skipped — video formats only.`);
+      const rows = studioRecordings(staff.email).slice();
+      accepted.forEach((f) => {
+        const id = studioUid("rec");
+        rememberBlob(id, f);
+        rows.unshift({
+          id,
+          name: f.name,
+          size: f.size,
+          mime: f.type || "video/mp4",
+          uploadedAt: new Date().toISOString(),
+          demo: false
+        });
+      });
+      writeStudioBucket(STUDIO_RECORDINGS_KEY, staff.email, rows);
+      renderRecordings($("#crmView"), staff);
+    }
+  }
+
+  function deleteStudioItem(kind, id, staff) {
+    if (!staff || !id) return;
+    if (kind === "scripts") {
+      const next = studioScripts(staff.email).filter((r) => r.id !== id);
+      writeStudioBucket(STUDIO_SCRIPTS_KEY, staff.email, next);
+      const prev = studioBlobs.get(id);
+      if (prev?.url) try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+      studioBlobs.delete(id);
+      renderScripts($("#crmView"), staff);
+      return;
+    }
+    if (kind === "recordings") {
+      const next = studioRecordings(staff.email).filter((r) => r.id !== id);
+      writeStudioBucket(STUDIO_RECORDINGS_KEY, staff.email, next);
+      const prev = studioBlobs.get(id);
+      if (prev?.url) try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+      studioBlobs.delete(id);
+      renderRecordings($("#crmView"), staff);
+      return;
+    }
+    if (kind === "library") {
+      const row = studioLibrary(staff.email).find((r) => r.id === id);
+      const next = studioLibrary(staff.email).filter((r) => r.id !== id);
+      writeStudioBucket(STUDIO_LIBRARY_KEY, staff.email, next);
+      [id, row?.pdfId].filter(Boolean).forEach((bid) => {
+        const prev = studioBlobs.get(bid);
+        if (prev?.url) try { URL.revokeObjectURL(prev.url); } catch { /* ignore */ }
+        studioBlobs.delete(bid);
+      });
+      renderContentLibrary($("#crmView"), staff);
+    }
+  }
+
+
   function socialLinks(email) {
     try {
       const all = JSON.parse(localStorage.getItem(SOCIAL_KEY) || "{}");
@@ -426,14 +846,92 @@
     }
   }
 
+  function prefersReduceMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Structurally guarantee the dual-layer mesh exists and is animating.
+   * Survives hard refresh, theme toggle, login↔desk, and accidental DOM loss.
+   */
+  function ensureCrmMesh(opts) {
+    const restart = !!(opts && opts.restart);
+    const reduce = prefersReduceMotion();
+    document.documentElement.setAttribute("data-crm-reduce-motion", reduce ? "1" : "0");
+
+    let mesh = document.getElementById("crmMesh") || document.querySelector(".crm-mesh");
+    if (!mesh) {
+      mesh = document.createElement("div");
+      mesh.className = "crm-mesh";
+      mesh.id = "crmMesh";
+      mesh.setAttribute("aria-hidden", "true");
+      document.body.insertBefore(mesh, document.body.firstChild);
+    } else if (mesh.parentElement !== document.body || mesh !== document.body.firstElementChild) {
+      document.body.insertBefore(mesh, document.body.firstChild);
+    }
+
+    let layerA = mesh.querySelector(".crm-mesh-layer-a");
+    let layerB = mesh.querySelector(".crm-mesh-layer-b");
+    if (!layerA) {
+      layerA = document.createElement("div");
+      layerA.className = "crm-mesh-layer crm-mesh-layer-a";
+      mesh.appendChild(layerA);
+    }
+    if (!layerB) {
+      layerB = document.createElement("div");
+      layerB.className = "crm-mesh-layer crm-mesh-layer-b";
+      mesh.appendChild(layerB);
+    }
+
+    // Keep backdrop base in sync with theme (FOUC + inline style)
+    const base = getTheme() === "light" ? "#ffffff" : "#0c1834";
+    document.documentElement.style.background = base;
+    mesh.style.backgroundColor = base;
+
+    if (reduce) {
+      mesh.classList.remove("is-restarting");
+      return mesh;
+    }
+
+    const kick = () => {
+      mesh.classList.add("is-restarting");
+      // Force reflow so removing the class restarts CSS animations
+      void mesh.offsetWidth;
+      mesh.classList.remove("is-restarting");
+      [layerA, layerB].forEach((el) => {
+        if (!el) return;
+        el.style.animationPlayState = "running";
+      });
+    };
+
+    if (restart) kick();
+    else {
+      // Ensure play-state even without a full restart
+      [layerA, layerB].forEach((el) => {
+        if (!el) return;
+        el.style.animationPlayState = "running";
+      });
+    }
+    return mesh;
+  }
+
   function applyTheme(theme) {
     const next = theme === "light" ? "light" : "dark";
+    const prev = document.documentElement.getAttribute("data-crm-theme");
+    const changed = prev !== next;
     try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
     document.documentElement.setAttribute("data-crm-theme", next);
     document.documentElement.style.colorScheme = next;
+    document.documentElement.style.background = next === "light" ? "#ffffff" : "#0c1834";
     const meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", next);
     $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
+    // Only hard-restart on real theme flips — renderShell() calls applyTheme every nav
+    ensureCrmMesh({ restart: changed });
   }
 
   function themeToggleHTML(id) {
@@ -452,6 +950,7 @@
     if (app) app.classList.add("crm-hidden");
     const err = $("#crmLoginErr");
     if (err) err.textContent = errMsg || "";
+    ensureCrmMesh({ restart: true });
   }
 
   function showApp() {
@@ -460,6 +959,7 @@
     if (login) login.classList.add("crm-hidden");
     if (app) app.classList.remove("crm-hidden");
     renderShell();
+    ensureCrmMesh({ restart: true });
   }
 
   function navSections() {
@@ -471,7 +971,7 @@
         items: [
           { id: "dashboard", label: "Dashboard" },
           { id: "analytics", label: "Analytics" },
-          { id: "students", label: "Students", stub: true }
+          { id: "students", label: "Students" }
         ]
       },
       {
@@ -479,11 +979,10 @@
         label: "Creator Studio",
         icon: "clapper",
         items: [
-          { id: "scripts", label: "Scripts", stub: true },
-          { id: "recording-submissions", label: "Recording Submissions", stub: true },
-          { id: "editing-queue", label: "Editing Queue", stub: true },
-          { id: "review-approval", label: "Review & Approval", stub: true },
-          { id: "content-library", label: "Content Library", stub: true }
+          { id: "scripts", label: "Scripts" },
+          { id: "recording-submissions", label: "Recording Submissions" },
+          { id: "editing-queue", label: "Editing Queue" },
+          { id: "content-library", label: "Content Library" }
         ]
       },
       {
@@ -574,6 +1073,8 @@
   function currentView() {
     const h = String(location.hash || "").replace(/^#/, "").trim();
     if (!h || h === "settings" || h === "theme" || h === "logout") return "dashboard";
+    // Review & Approval removed — flow lives in Editing Queue + Content Library
+    if (h === "review-approval") return "editing-queue";
     return h;
   }
 
@@ -646,7 +1147,13 @@
     if (sub) {
       if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
       else if (view === "analytics") sub.textContent = "Student and revenue analytics with spreadsheet detail sheets";
+      else if (view === "students") sub.textContent = "Full student roster — open any row for the complete profile";
       else if (view === "profile") sub.textContent = "Account and social links for Platform Performance";
+      else if (view === "scripts") sub.textContent = "Scripts from the Bizgarh team — download or delete anytime";
+      else if (view === "recording-submissions") sub.textContent = "Drop raw video takes for the editing desk";
+      else if (view === "editing-queue") sub.textContent = "View status for each cut — team updates the queue";
+      else if (view === "content-library") sub.textContent = "Approved videos, captions, and PDF attachments";
+      else if (view === "review-approval") sub.textContent = "Covered by Editing Queue and Content Library";
       else sub.textContent = "Creator CRM module";
     }
     const who = $("#crmWho");
@@ -671,6 +1178,15 @@
     if (!s) return;
     if (view === "profile") return renderProfile(root, s, view);
     if (view === "analytics") return renderAnalytics(root, s);
+    if (view === "students") return renderStudents(root, s);
+    if (view === "scripts") return renderScripts(root, s);
+    if (view === "recording-submissions") return renderRecordings(root, s);
+    if (view === "editing-queue") return renderEditingQueue(root, s);
+    if (view === "content-library") return renderContentLibrary(root, s);
+    if (view === "review-approval") {
+      location.hash = "editing-queue";
+      return renderEditingQueue(root, s);
+    }
     if (view !== "dashboard") {
       const label = findNavItem(view)?.label || "Section";
       root.innerHTML = `<div class="crm-panel-view crm-section"><div class="crm-stub">
@@ -1700,6 +2216,494 @@
     overlay.innerHTML = renderSheetPanel(sheetId, staff, lvl);
   }
 
+  function fmtMobile(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
+    if (digits.length === 10) return "+91 " + digits.slice(0, 5) + " " + digits.slice(5);
+    if (digits.length === 12 && digits.startsWith("91")) {
+      return "+91 " + digits.slice(2, 7) + " " + digits.slice(7);
+    }
+    return raw ? String(raw) : "—";
+  }
+
+  function demoPhoneFor(email, i) {
+    const base = [
+      "9876543210", "9823012345", "9811122233", "9988776655", "9765432109",
+      "9898989898", "9123456780", "9001122334", "9876500011", "9811100099",
+      "9822011122", "9900112233"
+    ];
+    const hash = String(email || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    return base[(hash + (i || 0)) % base.length];
+  }
+
+  function ensureStudentsDemo(staff) {
+    if (!staff) return;
+    try {
+      if (localStorage.getItem(STUDENTS_DEMO_KEY)) return;
+    } catch { /* ignore */ }
+
+    const courseIds = ownedCourseIds(staff);
+    if (!courseIds.length) return;
+
+    const demoPeople = [
+      ["Riya Shah", "riya@gmail.com", "9876543210"],
+      ["Omkar Kale", "omkar@gmail.com", "9823012345"],
+      ["Pooja Nair", "pooja@gmail.com", "9811122233"],
+      ["Sahil Khan", "sahil@gmail.com", "9988776655"],
+      ["Dev Joshi", "dev@gmail.com", "9765432109"],
+      ["Mehul Shah", "mehul@gmail.com", "9898989898"],
+      ["Ananya Bose", "ananya.b@gmail.com", "9123456780"],
+      ["Kabir Singh", "kabir.s@gmail.com", "9001122334"],
+      ["Nisha Bhatt", "nisha.b@gmail.com", "9876500011"],
+      ["Vikram Gill", "vikram.g@gmail.com", "9811100099"]
+    ];
+
+    if (typeof readList === "function" && typeof writeList === "function") {
+      const users = readList(USERS_KEY);
+      let usersChanged = false;
+      demoPeople.forEach(([name, email, phone], i) => {
+        const hit = users.find((u) => String(u.email || "").toLowerCase() === email);
+        if (!hit) {
+          users.push({
+            name,
+            email,
+            phone,
+            created: new Date(Date.now() - (45 - i * 3) * 86400000).toISOString(),
+            status: "active"
+          });
+          usersChanged = true;
+        } else if (!hit.phone) {
+          hit.phone = phone;
+          usersChanged = true;
+        }
+      });
+      if (usersChanged) writeList(USERS_KEY, users);
+
+      const enrolls = readList(ALL_ENROLL_KEY);
+      let enrollChanged = false;
+      demoPeople.forEach(([name, email], i) => {
+        const cid = courseIds[i % courseIds.length];
+        if (enrolls.some((e) => String(e.email || "").toLowerCase() === email && e.courseId === cid)) return;
+        enrolls.push({
+          name,
+          email,
+          courseId: cid,
+          at: new Date(Date.now() - (38 - i * 2) * 86400000).toISOString()
+        });
+        enrollChanged = true;
+      });
+      // Second course for a few learners so multi-enroll shows in profile
+      [0, 2, 4, 6].forEach((i) => {
+        if (courseIds.length < 2) return;
+        const [name, email] = demoPeople[i];
+        const cid = courseIds[(i + 1) % courseIds.length];
+        if (enrolls.some((e) => String(e.email || "").toLowerCase() === email && e.courseId === cid)) return;
+        enrolls.push({
+          name,
+          email,
+          courseId: cid,
+          at: new Date(Date.now() - (20 - i) * 86400000).toISOString()
+        });
+        enrollChanged = true;
+      });
+      if (enrollChanged) writeList(ALL_ENROLL_KEY, enrolls);
+    }
+
+    if (typeof AdminCore !== "undefined" && AdminCore.tickets && typeof saveStore === "function") {
+      const tickets = AdminCore.tickets().slice();
+      const supportSeed = [
+        { email: "riya@gmail.com", name: "Riya Shah", title: "Quiz unlock delay", body: "Module 3 quiz stays locked after finishing lessons.", courseId: courseIds[0], status: "OPEN", days: 4 },
+        { email: "omkar@gmail.com", name: "Omkar Kale", title: "Invoice copy", body: "Need GST invoice for company reimbursement.", courseId: courseIds[0], status: "RESOLVED", days: 18 },
+        { email: "pooja@gmail.com", name: "Pooja Nair", title: "Refund request — Mutual Funds", body: "Bought by mistake.", courseId: courseIds[1 % courseIds.length], status: "OPEN", days: 9 },
+        { email: "sahil@gmail.com", name: "Sahil Khan", title: "Live session link", body: "Missed the WhatsApp link for tonight's desk.", courseId: courseIds[0], status: "OPEN", days: 1 },
+        { email: "ananya.b@gmail.com", name: "Ananya Bose", title: "Certificate pending", body: "Finished course — certificate not showing.", courseId: courseIds[2 % courseIds.length], status: "RESOLVED", days: 22 },
+        { email: "kabir.s@gmail.com", name: "Kabir Singh", title: "Playback stutter", body: "Lesson 5 buffers on mobile Chrome.", courseId: courseIds[1 % courseIds.length], status: "OPEN", days: 6 }
+      ];
+      let ticketChanged = false;
+      supportSeed.forEach((s, i) => {
+        if (tickets.some((t) => String(t.email || "").toLowerCase() === s.email && t.title === s.title)) return;
+        tickets.push({
+          id: "crm-st-" + (i + 1),
+          title: s.title,
+          body: s.body,
+          email: s.email,
+          name: s.name,
+          courseId: s.courseId,
+          status: s.status,
+          assignee: s.status === "OPEN" ? staff.email : "",
+          replies: s.status === "RESOLVED"
+            ? [{ by: staff.email, body: "Resolved from creator desk.", at: new Date(Date.now() - (s.days - 1) * 86400000).toISOString() }]
+            : [],
+          at: new Date(Date.now() - s.days * 86400000).toISOString()
+        });
+        ticketChanged = true;
+      });
+      if (ticketChanged) {
+        const key = (typeof TICKET_KEY !== "undefined" && TICKET_KEY) || "tradeshalaTickets";
+        try { saveStore(key, tickets); }
+        catch {
+          try { localStorage.setItem(key, JSON.stringify(tickets)); } catch { /* ignore */ }
+        }
+      }
+    }
+
+    if (typeof AdminCore !== "undefined" && AdminCore.syncOrdersFromEnrolls) {
+      try { AdminCore.syncOrdersFromEnrolls(); } catch { /* ignore */ }
+    }
+
+    try { localStorage.setItem(STUDENTS_DEMO_KEY, "1"); } catch { /* ignore */ }
+  }
+
+  function studentTickets(email) {
+    const mail = String(email || "").toLowerCase();
+    let list = [];
+    if (typeof AdminCore !== "undefined" && AdminCore.tickets) list = AdminCore.tickets();
+    else if (typeof readList === "function" && typeof TICKETS_KEY !== "undefined") list = readList(TICKETS_KEY);
+    else {
+      try { list = JSON.parse(localStorage.getItem("tradeshalaTickets") || "[]"); } catch { list = []; }
+    }
+    return list
+      .filter((t) => String(t.email || "").toLowerCase() === mail)
+      .slice()
+      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+  }
+
+  function userPhone(email) {
+    const mail = String(email || "").toLowerCase();
+    if (typeof readList === "function" && typeof USERS_KEY !== "undefined") {
+      const u = readList(USERS_KEY).find((x) => String(x.email || "").toLowerCase() === mail);
+      if (u?.phone) return u.phone;
+    }
+    if (typeof AdminCore !== "undefined" && AdminCore.leads) {
+      const lead = AdminCore.leads().find((l) => String(l.email || "").toLowerCase() === mail);
+      if (lead?.phone) return lead.phone;
+    }
+    return "";
+  }
+
+  function buildStudentsBundle(staff) {
+    ensureStudentsDemo(staff);
+    ensureOutstandingDemo(staff);
+    const enrolls = creatorEnrolls(staff);
+    const orders = creatorOrders(staff);
+    const students = uniqueStudents(enrolls);
+
+    // Seed progress display when store empty (same idea as analytics)
+    const progressSeed = [0, 25, 48, 72, 100, 36, 88, 12, 55, 67];
+    let useSeed = true;
+    students.forEach((s) => {
+      enrolls.filter((e) => String(e.email || "").toLowerCase() === String(s.email || "").toLowerCase())
+        .forEach((e) => { if (progressPct(e.email, e.courseId)) useSeed = false; });
+    });
+
+    const rows = students.map((s, idx) => {
+      const mail = String(s.email || "").toLowerCase();
+      const mine = enrolls
+        .filter((e) => String(e.email || "").toLowerCase() === mail)
+        .slice()
+        .sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
+      const firstAt = mine[0]?.at || s.at || "";
+      const courseTitles = mine.map((e) => courseTitle(e.courseId));
+      const primaryCourse = courseTitles[courseTitles.length - 1] || "—";
+      const courseEnrolled = courseTitles.length > 1
+        ? primaryCourse + " +" + (courseTitles.length - 1)
+        : primaryCourse;
+
+      const mineOrders = orders
+        .filter((o) => String(o.email || "").toLowerCase() === mail)
+        .slice()
+        .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+      const paidOrders = mineOrders.filter((o) => o.status === "PAID");
+      const amountPaid = paidOrders.reduce((a, o) => a + Number(o.net || o.amount || 0), 0);
+
+      const progressRows = mine.map((e, i) => {
+        let pct = progressPct(e.email, e.courseId);
+        if (!pct && useSeed) pct = progressSeed[(idx + i) % progressSeed.length];
+        const total = lessonCount(e.courseId);
+        return {
+          courseId: e.courseId,
+          course: courseTitle(e.courseId),
+          enrolled: e.at || "",
+          progress: pct,
+          lessonsDone: Math.round((pct / 100) * total),
+          lessonsTotal: total,
+          status: pct >= 100 ? "Completed" : pct >= 40 ? "In progress" : "Started"
+        };
+      });
+      const avgProgress = progressRows.length
+        ? Math.round(progressRows.reduce((a, r) => a + Number(r.progress || 0), 0) / progressRows.length)
+        : 0;
+
+      const transactions = mineOrders.map((o) => ({
+        id: o.id || "—",
+        course: courseTitle(o.courseId),
+        amount: Number(o.net || o.amount || 0),
+        status: o.status || "—",
+        method: o.method || "upi",
+        tx: o.tx || "—",
+        at: o.at || ""
+      }));
+      const txnSummary = transactions.length
+        ? (transactions.length + " txn" + (transactions.length === 1 ? "" : "s") + " · " + inrFull(amountPaid))
+        : "No transactions";
+
+      const support = studentTickets(mail).map((t) => ({
+        id: t.id || "—",
+        title: t.title || "Support",
+        body: t.body || "",
+        status: t.status || "OPEN",
+        course: t.courseId ? courseTitle(t.courseId) : "—",
+        at: t.at || "",
+        replies: Array.isArray(t.replies) ? t.replies.length : 0
+      }));
+      const openSupport = support.filter((t) => String(t.status || "").toUpperCase() === "OPEN").length;
+      const supportSummary = support.length
+        ? (openSupport ? openSupport + " open · " + support.length + " total" : support.length + " closed")
+        : "No tickets";
+
+      const phone = userPhone(mail) || demoPhoneFor(mail, idx);
+
+      return {
+        key: mail,
+        name: s.name || mine[0]?.name || "—",
+        mobile: fmtMobile(phone),
+        mobileRaw: phone,
+        email: s.email || mail,
+        registeredAt: firstAt,
+        courseEnrolled,
+        courseList: courseTitles.join("; "),
+        amountPaid,
+        progress: avgProgress,
+        txnSummary,
+        txnCount: transactions.length,
+        supportSummary,
+        supportCount: support.length,
+        supportOpen: openSupport,
+        courses: progressRows,
+        transactions,
+        support,
+        status: progressRows.some((r) => r.progress > 0) || mine.some((e) => inLastDays(e.at, ACTIVE_DAYS))
+          ? "Active"
+          : "Inactive"
+      };
+    }).sort((a, b) => new Date(b.registeredAt || 0) - new Date(a.registeredAt || 0));
+
+    return { rows, total: rows.length };
+  }
+
+  function closeStudentProfile() {
+    $("#crmStudentOverlay")?.remove();
+  }
+
+  function renderStudentProfilePanel(row, focus) {
+    if (!row) return "";
+    const focusSec = focus === "support" ? "support" : focus === "txn" ? "txn" : "identity";
+    const courseRows = (row.courses || []).map((c) => `
+      <tr>
+        <td>${esc(c.course)}</td>
+        <td>${esc(fmtDate(c.enrolled))}</td>
+        <td>
+          <div class="crm-prog-cell">
+            <span class="crm-prog-bar"><i style="width:${Math.min(100, Number(c.progress) || 0)}%"></i></span>
+            <span>${esc(String(c.progress))}%</span>
+          </div>
+        </td>
+        <td>${esc(c.lessonsDone + "/" + c.lessonsTotal)}</td>
+        <td>${esc(c.status)}</td>
+      </tr>`).join("") || `<tr><td colspan="5" class="crm-sheet-empty">No course enrollments</td></tr>`;
+
+    const txnRows = (row.transactions || []).map((t) => `
+      <tr>
+        <td>${esc(t.id)}</td>
+        <td>${esc(t.course)}</td>
+        <td>${esc(inrFull(t.amount))}</td>
+        <td>${esc(t.status)}</td>
+        <td>${esc(t.method)}</td>
+        <td>${esc(t.tx)}</td>
+        <td>${esc(fmtDate(t.at))}</td>
+      </tr>`).join("") || `<tr><td colspan="7" class="crm-sheet-empty">No transactions yet</td></tr>`;
+
+    const supportRows = (row.support || []).map((t) => `
+      <tr>
+        <td>${esc(t.title)}</td>
+        <td><span class="crm-pill ${String(t.status).toUpperCase() === "OPEN" ? "warn" : "ok"}">${esc(t.status)}</span></td>
+        <td>${esc(t.course)}</td>
+        <td>${esc(fmtDate(t.at))}</td>
+        <td>${esc(String(t.replies))}</td>
+      </tr>`).join("") || `<tr><td colspan="5" class="crm-sheet-empty">No support history</td></tr>`;
+
+    return `
+      <div class="crm-sheet-panel crm-student-profile" role="dialog" aria-modal="true" aria-label="Student profile">
+        <header class="crm-sheet-head">
+          <div>
+            <h2>${esc(row.name)}</h2>
+            <p>Complete student profile · ${esc(row.status)} · registered ${esc(fmtDate(row.registeredAt))}</p>
+          </div>
+          <div class="crm-sheet-actions">
+            <button type="button" class="crm-btn crm-btn-ghost" data-crm-student-close style="width:auto;padding:6px 12px">Close</button>
+          </div>
+        </header>
+        <div class="crm-student-profile-body">
+          <section class="crm-student-sec${focusSec === "identity" ? " focus" : ""}" id="crmStudentIdentity">
+            <h3>Identity</h3>
+            <div class="crm-student-id-grid">
+              <div><span>Name</span><b>${esc(row.name)}</b></div>
+              <div><span>Mobile</span><b>${esc(row.mobile)}</b></div>
+              <div><span>Email</span><b>${esc(row.email)}</b></div>
+              <div><span>Registration</span><b>${esc(fmtDate(row.registeredAt))}</b></div>
+              <div><span>Amount paid</span><b>${esc(inrFull(row.amountPaid))}</b></div>
+              <div><span>Avg progress</span><b>${esc(String(row.progress))}%</b></div>
+            </div>
+          </section>
+          <section class="crm-student-sec" id="crmStudentCourses">
+            <h3>Courses &amp; progress</h3>
+            <div class="crm-sheet-scroll crm-sheet-scroll-short">
+              <table class="crm-sheet-table">
+                <thead><tr><th>Course</th><th>Enrolled</th><th>Progress</th><th>Lessons</th><th>Status</th></tr></thead>
+                <tbody>${courseRows}</tbody>
+              </table>
+            </div>
+          </section>
+          <section class="crm-student-sec${focusSec === "txn" ? " focus" : ""}" id="crmStudentTxn">
+            <h3>Payments / transactions</h3>
+            <p class="crm-student-sec-sub">${esc(row.txnSummary)}</p>
+            <div class="crm-sheet-scroll crm-sheet-scroll-short">
+              <table class="crm-sheet-table">
+                <thead><tr><th>Order</th><th>Course</th><th>Amount</th><th>Status</th><th>Method</th><th>Txn</th><th>Date</th></tr></thead>
+                <tbody>${txnRows}</tbody>
+              </table>
+            </div>
+          </section>
+          <section class="crm-student-sec${focusSec === "support" ? " focus" : ""}" id="crmStudentSupport">
+            <h3>Support history</h3>
+            <p class="crm-student-sec-sub">${esc(row.supportSummary)}</p>
+            <div class="crm-sheet-scroll crm-sheet-scroll-short">
+              <table class="crm-sheet-table">
+                <thead><tr><th>Ticket</th><th>Status</th><th>Course</th><th>Opened</th><th>Replies</th></tr></thead>
+                <tbody>${supportRows}</tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>`;
+  }
+
+  function openStudentProfile(staff, email, focus) {
+    const bundle = buildStudentsBundle(staff);
+    const mail = String(email || "").toLowerCase();
+    const row = bundle.rows.find((r) => r.key === mail);
+    if (!row) return;
+    closeAnalyticsSheet();
+    let overlay = $("#crmStudentOverlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "crmStudentOverlay";
+      overlay.className = "crm-sheet-overlay";
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeStudentProfile();
+      });
+    }
+    overlay.dataset.studentEmail = mail;
+    overlay.innerHTML = renderStudentProfilePanel(row, focus);
+    const target = focus === "support"
+      ? $("#crmStudentSupport", overlay)
+      : focus === "txn"
+        ? $("#crmStudentTxn", overlay)
+        : $("#crmStudentIdentity", overlay);
+    if (target) setTimeout(() => target.scrollIntoView({ block: "nearest", behavior: "smooth" }), 40);
+  }
+
+  function studentsSheetHTML(rows) {
+    const head = `
+      <th>Name</th>
+      <th>Mobile</th>
+      <th>Email</th>
+      <th>Registration date</th>
+      <th>Course enrolled</th>
+      <th>Amount paid</th>
+      <th>Course progress</th>
+      <th>Transaction history</th>
+      <th>Support history</th>`;
+    const body = rows.length
+      ? rows.map((r) => `
+        <tr class="crm-student-row" data-crm-student="${esc(r.key)}" tabindex="0">
+          <td><button type="button" class="crm-student-name" data-crm-student="${esc(r.key)}">${esc(r.name)}</button></td>
+          <td>${esc(r.mobile)}</td>
+          <td>${esc(r.email)}</td>
+          <td>${esc(fmtDate(r.registeredAt))}</td>
+          <td title="${esc(r.courseList)}">${esc(r.courseEnrolled)}</td>
+          <td>${esc(inrFull(r.amountPaid))}</td>
+          <td>
+            <div class="crm-prog-cell">
+              <span class="crm-prog-bar"><i style="width:${Math.min(100, Number(r.progress) || 0)}%"></i></span>
+              <span>${esc(String(r.progress))}%</span>
+            </div>
+          </td>
+          <td>
+            <button type="button" class="crm-link-btn crm-sheet-link" data-crm-student-txn="${esc(r.key)}">${esc(r.txnSummary)}</button>
+          </td>
+          <td>
+            <button type="button" class="crm-link-btn crm-sheet-link" data-crm-student-support="${esc(r.key)}">${esc(r.supportSummary)}</button>
+          </td>
+        </tr>`).join("")
+      : `<tr><td colspan="9" class="crm-sheet-empty">No students enrolled on your courses yet</td></tr>`;
+    return `<div class="crm-sheet-scroll crm-students-scroll"><table class="crm-sheet-table crm-students-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function renderStudents(root, s) {
+    const q = String(localStorage.getItem("crmStudentsQuery") || "").trim().toLowerCase();
+    const bundle = buildStudentsBundle(s);
+    let rows = bundle.rows;
+    if (q) {
+      rows = rows.filter((r) =>
+        [r.name, r.email, r.mobile, r.mobileRaw, r.courseEnrolled, r.courseList]
+          .join(" ")
+          .toLowerCase()
+          .includes(q)
+      );
+    }
+
+    root.innerHTML = `
+      <div class="crm-panel-view crm-students">
+        <div class="crm-welcome">
+          <div>
+            <h2>Students</h2>
+            <p>Spreadsheet roster of learners on your courses. Click a name or row for the full profile.</p>
+          </div>
+          <label class="crm-period crm-students-search">Search
+            <input id="crmStudentsSearch" type="search" placeholder="Name, email, mobile, course" value="${esc(q)}" autocomplete="off">
+          </label>
+        </div>
+        <section class="crm-section">
+          <div class="crm-analytics-table-card crm-students-sheet-card">
+            <div class="crm-analytics-table-head">
+              <h4>Student roster</h4>
+              <span class="crm-table-sum">${rows.length} of ${bundle.total} student${bundle.total === 1 ? "" : "s"}</span>
+            </div>
+            ${studentsSheetHTML(rows)}
+          </div>
+        </section>
+      </div>`;
+
+    const search = $("#crmStudentsSearch");
+    if (search) {
+      let timer = null;
+      search.addEventListener("input", () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          localStorage.setItem("crmStudentsQuery", search.value || "");
+          renderStudents(root, s);
+          const again = $("#crmStudentsSearch");
+          if (again) {
+            again.focus();
+            const len = again.value.length;
+            try { again.setSelectionRange(len, len); } catch { /* ignore */ }
+          }
+        }, 180);
+      });
+    }
+  }
+
   function renderAnalytics(root, s) {
     const periodSel = Number(localStorage.getItem("crmPeriodDays") || DEFAULT_PERIOD);
     const b = buildAnalyticsBundle(s, periodSel);
@@ -2034,6 +3038,7 @@
   }
 
   function boot() {
+    ensureCrmMesh({ restart: true });
     applyTheme(getTheme());
     ensureCreatorSeed();
     const existing = session();
@@ -2046,6 +3051,18 @@
     } else {
       showLogin();
     }
+
+    // Re-assert mesh after BFCache restore / tab focus / OS motion preference flips
+    window.addEventListener("pageshow", () => ensureCrmMesh({ restart: true }));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") ensureCrmMesh({ restart: true });
+    });
+    try {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const onMotion = () => ensureCrmMesh({ restart: true });
+      if (mq.addEventListener) mq.addEventListener("change", onMotion);
+      else if (mq.addListener) mq.addListener(onMotion);
+    } catch { /* ignore */ }
 
     // Delegated handlers — survive re-renders and automation hosts
     document.addEventListener("submit", (e) => {
@@ -2168,6 +3185,38 @@
         openAnalyticsSheet(sheetBtn.getAttribute("data-crm-sheet"), s, 1);
         return;
       }
+      const studentClose = t.closest("[data-crm-student-close]");
+      if (studentClose) {
+        e.preventDefault();
+        closeStudentProfile();
+        return;
+      }
+      const studentTxn = t.closest("[data-crm-student-txn]");
+      if (studentTxn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const s = session();
+        if (!s) return;
+        openStudentProfile(s, studentTxn.getAttribute("data-crm-student-txn"), "txn");
+        return;
+      }
+      const studentSupport = t.closest("[data-crm-student-support]");
+      if (studentSupport) {
+        e.preventDefault();
+        e.stopPropagation();
+        const s = session();
+        if (!s) return;
+        openStudentProfile(s, studentSupport.getAttribute("data-crm-student-support"), "support");
+        return;
+      }
+      const studentOpen = t.closest("[data-crm-student]");
+      if (studentOpen) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        openStudentProfile(s, studentOpen.getAttribute("data-crm-student"), "identity");
+        return;
+      }
       const revMode = t.closest("[data-crm-rev-mode]");
       if (revMode) {
         e.preventDefault();
@@ -2177,14 +3226,98 @@
         if (s && root && currentView() === "analytics") renderAnalytics(root, s);
         return;
       }
+      const browse = t.closest("[data-studio-browse]");
+      if (browse) {
+        e.preventDefault();
+        const kind = browse.getAttribute("data-studio-browse");
+        const input = $(`[data-studio-file="${kind}"]`);
+        if (input) input.click();
+        return;
+      }
+      const dropzone = t.closest("[data-studio-drop]");
+      if (dropzone && !t.closest("[data-studio-browse]") && !t.closest(".crm-drop-input")) {
+        const kind = dropzone.getAttribute("data-studio-drop");
+        const input = dropzone.querySelector("[data-studio-file]");
+        if (input) input.click();
+        return;
+      }
+      const dl = t.closest("[data-studio-dl]");
+      if (dl) {
+        e.preventDefault();
+        downloadStudioBlob(dl.getAttribute("data-id"), dl.getAttribute("data-name"));
+        return;
+      }
+      const del = t.closest("[data-studio-del]");
+      if (del) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        const kind = del.getAttribute("data-studio-del");
+        const id = del.getAttribute("data-id");
+        if (!confirm("Delete this file from Creator Studio?")) return;
+        deleteStudioItem(kind, id, s);
+        return;
+      }
+    });
+
+    document.addEventListener("change", (e) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      const fileInput = t.closest("[data-studio-file]");
+      if (fileInput) {
+        const kind = fileInput.getAttribute("data-studio-file");
+        const s = session();
+        addStudioFiles(kind, fileInput.files, s);
+        fileInput.value = "";
+        return;
+      }
+      // Editing queue status is display-only for creators (admin/Control updates it)
+    });
+
+    document.addEventListener("dragenter", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      e.preventDefault();
+      zone.classList.add("dragover");
+    });
+    document.addEventListener("dragover", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      e.preventDefault();
+      zone.classList.add("dragover");
+    });
+    document.addEventListener("dragleave", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      if (e.relatedTarget instanceof Node && zone.contains(e.relatedTarget)) return;
+      zone.classList.remove("dragover");
+    });
+    document.addEventListener("drop", (e) => {
+      const zone = e.target instanceof Element ? e.target.closest("[data-studio-drop]") : null;
+      if (!zone) return;
+      e.preventDefault();
+      zone.classList.remove("dragover");
+      const kind = zone.getAttribute("data-studio-drop");
+      addStudioFiles(kind, e.dataTransfer?.files, session());
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeAnalyticsSheet();
+      if (e.key !== "Escape") return;
+      if ($("#crmStudentOverlay")) {
+        closeStudentProfile();
+        return;
+      }
+      closeAnalyticsSheet();
     });
 
     window.addEventListener("hashchange", () => {
+      const h = String(location.hash || "").replace(/^#/, "");
+      if (h === "review-approval") {
+        location.hash = "editing-queue";
+        return;
+      }
       if (!$("#crmApp")?.classList.contains("crm-hidden")) renderShell();
+      ensureCrmMesh({ restart: false });
     });
   }
 
