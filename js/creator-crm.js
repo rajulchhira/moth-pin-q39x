@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk186 accordion nav + sidebar-only theme */
+/* Creator CRM dashboard — desk188 accordion nav + sidebar-only theme */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
