@@ -7,10 +7,22 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Creator CRM | Bizgarh</title>
   <meta name="description" content="Bizgarh creator CRM — login once, then open your student, revenue, content, and social desk.">
-  <script src="/js/seo.js?v=desk165" defer></script>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("crmTheme") === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-crm-theme", t);
+        document.documentElement.style.colorScheme = t;
+        document.documentElement.style.background = t === "light" ? "#f4f6fb" : "#0b0f1a";
+        var m = document.querySelector('meta[name="color-scheme"]');
+        if (m) m.setAttribute("content", t);
+      } catch (e) {}
+    })();
+  </script>
+  <script src="/js/seo.js?v=desk184" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/creator-crm.css?v=desk165">
+  <link rel="stylesheet" href="/css/creator-crm.css?v=desk184">
 </head>
 <body class="crm-body">
   <div id="crmLogin" class="crm-login">
@@ -77,11 +89,11 @@
   <script>
     (function () {
       var files = [
-        "/js/app.js?v=desk165",
-        "/js/lms.js?v=desk165",
-        "/js/admin-core.js?v=desk165",
-        "/js/admin.js?v=desk165",
-        "/js/creator-crm.js?v=desk165"
+        "/js/app.js?v=desk184",
+        "/js/lms.js?v=desk184",
+        "/js/admin-core.js?v=desk184",
+        "/js/admin.js?v=desk184",
+        "/js/creator-crm.js?v=desk184"
       ];
       var i = 0;
       function add(src, done) {
