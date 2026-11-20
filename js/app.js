@@ -4438,7 +4438,7 @@ function defaultNextCourseId(fromId) {
   const pool = catalog.filter((c) => c.id !== fromId && !own.has(c.id));
   if (!pool.length) return null;
   const related = pool.filter((c) => from && c.cat === from.cat && Number(c.price) >= Number(from.price || 0));
-  const pick = (related.length ? related : pool).slice().sort((a, b) => Number(a.price) - Number(b.price))[0];
+  const pick = (related.length ? related : pool).toSorted((a, b) => Number(a.price) - Number(b.price))[0];
   return pick ? { kind: "course", id: pick.id } : null;
 }
 
@@ -4456,7 +4456,7 @@ function nextOffer(kind, fromId) {
       : allMentorPrograms().find((p) => p.id === fromId)?.by;
     const pool = allCourses().filter((c) => !enrolled().includes(c.id));
     const same = pool.find((c) => c.instructor === host);
-    const fallback = same || pool.slice().sort((a, b) => Number(a.price) - Number(b.price))[0];
+    const fallback = same || pool.toSorted((a, b) => Number(a.price) - Number(b.price))[0];
     return fallback ? resolveNextTarget("course", fallback.id) : null;
   }
   return null;
@@ -4606,7 +4606,7 @@ function bindCourseNudge(root = document) {
 function dashboardPathNudgeHTML(user) {
   const mine = ownedCourses(user.email);
   if (!mine.length) return "";
-  const cheapest = mine.slice().sort((a, b) => Number(a.c.price) - Number(b.c.price))[0];
+  const cheapest = mine.toSorted((a, b) => Number(a.c.price) - Number(b.c.price))[0];
   const onlyStarter = mine.length === 1 || mine.every((x) => Number(x.c.price) <= 499);
   if (!onlyStarter && mine.length > 2) return "";
   return courseNudgeHTML(cheapest.c, "dash");

@@ -324,7 +324,7 @@
       if (form) {
         form.onsubmit = function () { tryLogin(); return false; };
         form.addEventListener("keydown", function (e) {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
             e.preventDefault();
             tryLogin();
           }

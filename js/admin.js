@@ -260,7 +260,7 @@ function renderCoursesAdmin() {
 
 function renderStudents() {
   const emails = new Set(scopedEnrolls().map((e) => e.email));
-  const rows = readList(USERS_KEY).filter((u) => isOwner() || emails.has(u.email)).slice().reverse();
+  const rows = readList(USERS_KEY).filter((u) => isOwner() || emails.has(u.email)).toReversed();
   document.getElementById("studentTable").innerHTML = table(
     ["Name", "Email", "Joined"],
     rows.map((u) => `<tr><td>${u.name}</td><td>${u.email}</td><td>${new Date(u.created).toLocaleDateString("en-IN")}</td></tr>`)
@@ -270,7 +270,7 @@ function renderStudents() {
 function renderEnrolls() {
   document.getElementById("enrollTable").innerHTML = table(
     ["Student", "Course", "Amount", "Date"],
-    scopedEnrolls().slice().reverse().map((e) => {
+    scopedEnrolls().toReversed().map((e) => {
       const c = courseById(e.courseId);
       return `<tr><td>${e.name}<div class="muted">${e.email}</div></td><td>${c?.title || e.courseId}</td><td>${inr(c?.price || 0)}</td><td>${new Date(e.at).toLocaleString("en-IN")}</td></tr>`;
     })
@@ -279,7 +279,7 @@ function renderEnrolls() {
 
 function renderLiveAdmin() {
   const s = staffNow();
-  const lives = scopedLives().slice().sort((a, b) => new Date(a.at) - new Date(b.at));
+  const lives = scopedLives().toSorted((a, b) => new Date(a.at) - new Date(b.at));
   document.getElementById("liveListHeading").textContent = isOwner() ? "All live classes" : "Your live classes";
   document.getElementById("liveClassTable").innerHTML = table(
     ["Class", "When", "Status", "Signups", ""],
@@ -300,7 +300,7 @@ function renderLiveAdmin() {
   );
   document.getElementById("liveTable").innerHTML = table(
     ["Class", "Student", "Email", "Date"],
-    readList(REGS_KEY).filter((r) => lives.some((w) => w.id === r.id)).slice().reverse().map((r) => {
+    readList(REGS_KEY).filter((r) => lives.some((w) => w.id === r.id)).toReversed().map((r) => {
       const live = allWebinars().find((w) => w.id === r.id);
       return `<tr><td>${live?.title || r.id}</td><td>${r.name}</td><td>${r.email}</td><td>${new Date(r.at).toLocaleString("en-IN")}</td></tr>`;
     })
@@ -410,7 +410,7 @@ function renderClassroom() {
   const subs = assignSubs().filter((s) => s.courseId === c.id);
   document.getElementById("assignSubTable").innerHTML = table(
     ["Student", "Assignment", "Submitted", "Status", ""],
-    subs.slice().reverse().map((s) => {
+    subs.toReversed().map((s) => {
       const a = assignmentsOf(c.id).find((x) => x.id === s.assignmentId);
       return `<tr><td>${s.name}<div class="muted">${s.email}</div></td><td>${a?.title || s.assignmentId}</td>
         <td>${new Date(s.at).toLocaleString("en-IN")}</td><td>${s.status}</td>
@@ -459,7 +459,7 @@ function renderCallsAdmin() {
   fillCourseSelects();
   document.getElementById("callTable").innerHTML = table(
     ["Student", "Topic", "When", "Mentor", "Status", ""],
-    scopedCalls().slice().reverse().map((c) => `<tr>
+    scopedCalls().toReversed().map((c) => `<tr>
       <td>${c.name}<div class="muted">${c.email}</div></td>
       <td>${c.topic}</td>
       <td>${c.date} ${c.time || ""}</td>
@@ -494,7 +494,7 @@ function renderAffiliateAdmin() {
   );
   document.getElementById("refTable").innerHTML = table(
     ["Affiliate", "Buyer", "Course", "Commission", "Status", ""],
-    scopedReferrals().slice().reverse().map((r) => {
+    scopedReferrals().toReversed().map((r) => {
       const c = courseById(r.courseId);
       return `<tr><td>${r.code}</td><td>${r.name}<div class="muted">${r.email}</div></td>
         <td>${c?.title || r.courseId}</td><td>${inr(r.commission)}</td><td>${r.status}</td>
@@ -504,7 +504,7 @@ function renderAffiliateAdmin() {
   const po = payouts().filter((p) => isOwner() || p.email === staffNow().email);
   document.getElementById("payoutTable").innerHTML = table(
     ["Affiliate", "Amount", "Status", "Date"],
-    po.slice().reverse().map((p) => `<tr><td>${p.email}</td><td>${inr(p.amount)}</td><td>${p.status}</td><td>${new Date(p.at).toLocaleDateString("en-IN")}</td></tr>`)
+    po.toReversed().map((p) => `<tr><td>${p.email}</td><td>${inr(p.amount)}</td><td>${p.status}</td><td>${new Date(p.at).toLocaleDateString("en-IN")}</td></tr>`)
   );
 }
 
@@ -521,11 +521,11 @@ function renderRegistrationAdmin() {
   const mineInv = invites().filter((i) => isOwner() || i.createdBy === staffNow().email);
   document.getElementById("inviteTable").innerHTML = table(
     ["Code", "Email lock", "Used", "By", ""],
-    mineInv.slice().reverse().map((i) => `<tr><td>${i.code}</td><td>${i.email || "any"}</td>
+    mineInv.toReversed().map((i) => `<tr><td>${i.code}</td><td>${i.email || "any"}</td>
       <td>${i.used ? "yes" : "open"}</td><td>${i.createdBy}</td>
       <td><button class="btn btn-ghost" data-del-invite="${i.code}">Remove</button></td></tr>`)
   );
-  const users = readList(USERS_KEY).slice().reverse();
+  const users = readList(USERS_KEY).toReversed();
   const scoped = isOwner() ? users : users.filter((u) => scopedEnrolls().some((e) => e.email === u.email) || u.invitedBy === staffNow().email);
   document.getElementById("accessTable").innerHTML = table(
     ["User", "Status", "Joined", ""],
@@ -554,7 +554,7 @@ function renderCommunityAdmin() {
   );
   document.getElementById("postTable").innerHTML = table(
     ["Post", "Course", "By", ""],
-    scopedPosts().slice().reverse().map((p) => {
+    scopedPosts().toReversed().map((p) => {
       const course = courseById(p.courseId);
       return `<tr><td>${p.title}<div class="muted">${escapeHtml((p.body || "").slice(0, 80))}</div></td>
         <td>${course?.title || "General"}</td><td>${p.author}</td>

@@ -1163,8 +1163,7 @@
       .sort((a, b) => b.revenue - a.revenue);
 
     const paymentRows = paid
-      .slice()
-      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
+      .toSorted((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
       .map((o) => ({
         id: o.id || "—",
         name: o.name || "—",
@@ -1178,8 +1177,7 @@
       }));
 
     const outstandingRows = outstanding
-      .slice()
-      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
+      .toSorted((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
       .map((o) => ({
         id: o.id || "—",
         name: o.name || "—",
@@ -1227,8 +1225,7 @@
       periodSeries,
       revMode,
       revenueDetailRows: paid
-        .slice()
-        .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
+        .toSorted((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
         .map((o) => ({
           id: o.id || "—",
           name: o.name || "—",
@@ -1304,8 +1301,7 @@
       };
     });
     result.deepRevenueRows = paid
-      .slice()
-      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
+      .toSorted((a, b) => new Date(b.at || 0) - new Date(a.at || 0))
       .map((o) => ({
         id: o.id || "—",
         name: o.name || "—",

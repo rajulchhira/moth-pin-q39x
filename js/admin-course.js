@@ -725,7 +725,7 @@ const CourseAdmin = {
   },
 
   mutateSyllabus(courseId, fn) {
-    const sy = JSON.parse(JSON.stringify(syllabusFor(courseId)));
+    const sy = structuredClone(syllabusFor(courseId));
     fn(sy);
     this.saveSyllabus(courseId, sy);
   },

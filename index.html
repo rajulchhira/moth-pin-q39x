@@ -16,7 +16,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/style.css?v=desk43">
+  <link rel="stylesheet" href="/css/style.css?v=desk44">
+  <script type="speculationrules">
+  {
+    "tag": "bizgarh-home",
+    "prefetch": [{
+      "urls": ["/courses", "/creator", "/about"],
+      "eagerness": "moderate"
+    }]
+  }
+  </script>
 </head>
 <body>
   <div id="bgBoot" aria-busy="true" aria-label="Loading Bizgarh"></div>
@@ -43,11 +52,11 @@
           <path class="hero-spark" d="M80 410 C 160 390, 190 250, 260 280 S 360 470, 430 360 S 540 180, 620 260 S 720 420, 820 300"/>
         </svg>
         <div class="hero-orbit">
-          <div class="orbit-card" style="--i:0"><img src="https://randomuser.me/api/portraits/men/32.jpg" alt=""></div>
-          <div class="orbit-card" style="--i:1"><img src="https://randomuser.me/api/portraits/women/44.jpg" alt=""></div>
-          <div class="orbit-card" style="--i:2"><img src="https://randomuser.me/api/portraits/men/52.jpg" alt=""></div>
-          <div class="orbit-card" style="--i:3"><img src="https://randomuser.me/api/portraits/women/65.jpg" alt=""></div>
-          <div class="orbit-card" style="--i:4"><img src="https://randomuser.me/api/portraits/men/22.jpg" alt=""></div>
+          <div class="orbit-card" style="--i:0"><img src="https://randomuser.me/api/portraits/men/32.jpg" alt="" decoding="async" fetchpriority="low"></div>
+          <div class="orbit-card" style="--i:1"><img src="https://randomuser.me/api/portraits/women/44.jpg" alt="" decoding="async" fetchpriority="low"></div>
+          <div class="orbit-card" style="--i:2"><img src="https://randomuser.me/api/portraits/men/52.jpg" alt="" decoding="async" fetchpriority="low"></div>
+          <div class="orbit-card" style="--i:3"><img src="https://randomuser.me/api/portraits/women/65.jpg" alt="" decoding="async" fetchpriority="low"></div>
+          <div class="orbit-card" style="--i:4"><img src="https://randomuser.me/api/portraits/men/22.jpg" alt="" decoding="async" fetchpriority="low"></div>
         </div>
         <div class="hero-dust" id="heroDust"></div>
       </div>

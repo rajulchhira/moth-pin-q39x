@@ -50,7 +50,7 @@ function renderLearnPage() {
   const root = document.getElementById("learnRoot");
   if (!root) return;
   if (window.top !== window.self) {
-    document.documentElement.innerHTML = "";
+    document.documentElement.replaceChildren();
     return;
   }
   const onCoursePage = Boolean(document.getElementById("courseDetail"));
