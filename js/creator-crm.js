@@ -1,10 +1,11 @@
-/* Creator CRM dashboard — desk192 analytics (nested View detail sheets) */
+/* Creator CRM dashboard — desk193 students sheet + profiles */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
   const SOCIAL_CACHE_KEY = "tradeshalaCreatorSocialCache";
   const THEME_KEY = "crmTheme";
   const ACCORDION_KEY = "crmAccordionOpen";
+  const STUDENTS_DEMO_KEY = "crmStudentsDemoV1";
   const ACTIVE_DAYS = 14;
   const DEFAULT_PERIOD = 30;
 
@@ -471,7 +472,7 @@
         items: [
           { id: "dashboard", label: "Dashboard" },
           { id: "analytics", label: "Analytics" },
-          { id: "students", label: "Students", stub: true }
+          { id: "students", label: "Students" }
         ]
       },
       {
@@ -646,6 +647,7 @@
     if (sub) {
       if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
       else if (view === "analytics") sub.textContent = "Student and revenue analytics with spreadsheet detail sheets";
+      else if (view === "students") sub.textContent = "Full student roster — open any row for the complete profile";
       else if (view === "profile") sub.textContent = "Account and social links for Platform Performance";
       else sub.textContent = "Creator CRM module";
     }
@@ -671,6 +673,7 @@
     if (!s) return;
     if (view === "profile") return renderProfile(root, s, view);
     if (view === "analytics") return renderAnalytics(root, s);
+    if (view === "students") return renderStudents(root, s);
     if (view !== "dashboard") {
       const label = findNavItem(view)?.label || "Section";
       root.innerHTML = `<div class="crm-panel-view crm-section"><div class="crm-stub">
@@ -1704,6 +1707,494 @@
     overlay.innerHTML = renderSheetPanel(sheetId, staff, lvl);
   }
 
+  function fmtMobile(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
+    if (digits.length === 10) return "+91 " + digits.slice(0, 5) + " " + digits.slice(5);
+    if (digits.length === 12 && digits.startsWith("91")) {
+      return "+91 " + digits.slice(2, 7) + " " + digits.slice(7);
+    }
+    return raw ? String(raw) : "—";
+  }
+
+  function demoPhoneFor(email, i) {
+    const base = [
+      "9876543210", "9823012345", "9811122233", "9988776655", "9765432109",
+      "9898989898", "9123456780", "9001122334", "9876500011", "9811100099",
+      "9822011122", "9900112233"
+    ];
+    const hash = String(email || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    return base[(hash + (i || 0)) % base.length];
+  }
+
+  function ensureStudentsDemo(staff) {
+    if (!staff) return;
+    try {
+      if (localStorage.getItem(STUDENTS_DEMO_KEY)) return;
+    } catch { /* ignore */ }
+
+    const courseIds = ownedCourseIds(staff);
+    if (!courseIds.length) return;
+
+    const demoPeople = [
+      ["Riya Shah", "riya@gmail.com", "9876543210"],
+      ["Omkar Kale", "omkar@gmail.com", "9823012345"],
+      ["Pooja Nair", "pooja@gmail.com", "9811122233"],
+      ["Sahil Khan", "sahil@gmail.com", "9988776655"],
+      ["Dev Joshi", "dev@gmail.com", "9765432109"],
+      ["Mehul Shah", "mehul@gmail.com", "9898989898"],
+      ["Ananya Bose", "ananya.b@gmail.com", "9123456780"],
+      ["Kabir Singh", "kabir.s@gmail.com", "9001122334"],
+      ["Nisha Bhatt", "nisha.b@gmail.com", "9876500011"],
+      ["Vikram Gill", "vikram.g@gmail.com", "9811100099"]
+    ];
+
+    if (typeof readList === "function" && typeof writeList === "function") {
+      const users = readList(USERS_KEY);
+      let usersChanged = false;
+      demoPeople.forEach(([name, email, phone], i) => {
+        const hit = users.find((u) => String(u.email || "").toLowerCase() === email);
+        if (!hit) {
+          users.push({
+            name,
+            email,
+            phone,
+            created: new Date(Date.now() - (45 - i * 3) * 86400000).toISOString(),
+            status: "active"
+          });
+          usersChanged = true;
+        } else if (!hit.phone) {
+          hit.phone = phone;
+          usersChanged = true;
+        }
+      });
+      if (usersChanged) writeList(USERS_KEY, users);
+
+      const enrolls = readList(ALL_ENROLL_KEY);
+      let enrollChanged = false;
+      demoPeople.forEach(([name, email], i) => {
+        const cid = courseIds[i % courseIds.length];
+        if (enrolls.some((e) => String(e.email || "").toLowerCase() === email && e.courseId === cid)) return;
+        enrolls.push({
+          name,
+          email,
+          courseId: cid,
+          at: new Date(Date.now() - (38 - i * 2) * 86400000).toISOString()
+        });
+        enrollChanged = true;
+      });
+      // Second course for a few learners so multi-enroll shows in profile
+      [0, 2, 4, 6].forEach((i) => {
+        if (courseIds.length < 2) return;
+        const [name, email] = demoPeople[i];
+        const cid = courseIds[(i + 1) % courseIds.length];
+        if (enrolls.some((e) => String(e.email || "").toLowerCase() === email && e.courseId === cid)) return;
+        enrolls.push({
+          name,
+          email,
+          courseId: cid,
+          at: new Date(Date.now() - (20 - i) * 86400000).toISOString()
+        });
+        enrollChanged = true;
+      });
+      if (enrollChanged) writeList(ALL_ENROLL_KEY, enrolls);
+    }
+
+    if (typeof AdminCore !== "undefined" && AdminCore.tickets && typeof saveStore === "function") {
+      const tickets = AdminCore.tickets().slice();
+      const supportSeed = [
+        { email: "riya@gmail.com", name: "Riya Shah", title: "Quiz unlock delay", body: "Module 3 quiz stays locked after finishing lessons.", courseId: courseIds[0], status: "OPEN", days: 4 },
+        { email: "omkar@gmail.com", name: "Omkar Kale", title: "Invoice copy", body: "Need GST invoice for company reimbursement.", courseId: courseIds[0], status: "RESOLVED", days: 18 },
+        { email: "pooja@gmail.com", name: "Pooja Nair", title: "Refund request — Mutual Funds", body: "Bought by mistake.", courseId: courseIds[1 % courseIds.length], status: "OPEN", days: 9 },
+        { email: "sahil@gmail.com", name: "Sahil Khan", title: "Live session link", body: "Missed the WhatsApp link for tonight's desk.", courseId: courseIds[0], status: "OPEN", days: 1 },
+        { email: "ananya.b@gmail.com", name: "Ananya Bose", title: "Certificate pending", body: "Finished course — certificate not showing.", courseId: courseIds[2 % courseIds.length], status: "RESOLVED", days: 22 },
+        { email: "kabir.s@gmail.com", name: "Kabir Singh", title: "Playback stutter", body: "Lesson 5 buffers on mobile Chrome.", courseId: courseIds[1 % courseIds.length], status: "OPEN", days: 6 }
+      ];
+      let ticketChanged = false;
+      supportSeed.forEach((s, i) => {
+        if (tickets.some((t) => String(t.email || "").toLowerCase() === s.email && t.title === s.title)) return;
+        tickets.push({
+          id: "crm-st-" + (i + 1),
+          title: s.title,
+          body: s.body,
+          email: s.email,
+          name: s.name,
+          courseId: s.courseId,
+          status: s.status,
+          assignee: s.status === "OPEN" ? staff.email : "",
+          replies: s.status === "RESOLVED"
+            ? [{ by: staff.email, body: "Resolved from creator desk.", at: new Date(Date.now() - (s.days - 1) * 86400000).toISOString() }]
+            : [],
+          at: new Date(Date.now() - s.days * 86400000).toISOString()
+        });
+        ticketChanged = true;
+      });
+      if (ticketChanged) {
+        const key = (typeof TICKET_KEY !== "undefined" && TICKET_KEY) || "tradeshalaTickets";
+        try { saveStore(key, tickets); }
+        catch {
+          try { localStorage.setItem(key, JSON.stringify(tickets)); } catch { /* ignore */ }
+        }
+      }
+    }
+
+    if (typeof AdminCore !== "undefined" && AdminCore.syncOrdersFromEnrolls) {
+      try { AdminCore.syncOrdersFromEnrolls(); } catch { /* ignore */ }
+    }
+
+    try { localStorage.setItem(STUDENTS_DEMO_KEY, "1"); } catch { /* ignore */ }
+  }
+
+  function studentTickets(email) {
+    const mail = String(email || "").toLowerCase();
+    let list = [];
+    if (typeof AdminCore !== "undefined" && AdminCore.tickets) list = AdminCore.tickets();
+    else if (typeof readList === "function" && typeof TICKETS_KEY !== "undefined") list = readList(TICKETS_KEY);
+    else {
+      try { list = JSON.parse(localStorage.getItem("tradeshalaTickets") || "[]"); } catch { list = []; }
+    }
+    return list
+      .filter((t) => String(t.email || "").toLowerCase() === mail)
+      .slice()
+      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+  }
+
+  function userPhone(email) {
+    const mail = String(email || "").toLowerCase();
+    if (typeof readList === "function" && typeof USERS_KEY !== "undefined") {
+      const u = readList(USERS_KEY).find((x) => String(x.email || "").toLowerCase() === mail);
+      if (u?.phone) return u.phone;
+    }
+    if (typeof AdminCore !== "undefined" && AdminCore.leads) {
+      const lead = AdminCore.leads().find((l) => String(l.email || "").toLowerCase() === mail);
+      if (lead?.phone) return lead.phone;
+    }
+    return "";
+  }
+
+  function buildStudentsBundle(staff) {
+    ensureStudentsDemo(staff);
+    ensureOutstandingDemo(staff);
+    const enrolls = creatorEnrolls(staff);
+    const orders = creatorOrders(staff);
+    const students = uniqueStudents(enrolls);
+
+    // Seed progress display when store empty (same idea as analytics)
+    const progressSeed = [0, 25, 48, 72, 100, 36, 88, 12, 55, 67];
+    let useSeed = true;
+    students.forEach((s) => {
+      enrolls.filter((e) => String(e.email || "").toLowerCase() === String(s.email || "").toLowerCase())
+        .forEach((e) => { if (progressPct(e.email, e.courseId)) useSeed = false; });
+    });
+
+    const rows = students.map((s, idx) => {
+      const mail = String(s.email || "").toLowerCase();
+      const mine = enrolls
+        .filter((e) => String(e.email || "").toLowerCase() === mail)
+        .slice()
+        .sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
+      const firstAt = mine[0]?.at || s.at || "";
+      const courseTitles = mine.map((e) => courseTitle(e.courseId));
+      const primaryCourse = courseTitles[courseTitles.length - 1] || "—";
+      const courseEnrolled = courseTitles.length > 1
+        ? primaryCourse + " +" + (courseTitles.length - 1)
+        : primaryCourse;
+
+      const mineOrders = orders
+        .filter((o) => String(o.email || "").toLowerCase() === mail)
+        .slice()
+        .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+      const paidOrders = mineOrders.filter((o) => o.status === "PAID");
+      const amountPaid = paidOrders.reduce((a, o) => a + Number(o.net || o.amount || 0), 0);
+
+      const progressRows = mine.map((e, i) => {
+        let pct = progressPct(e.email, e.courseId);
+        if (!pct && useSeed) pct = progressSeed[(idx + i) % progressSeed.length];
+        const total = lessonCount(e.courseId);
+        return {
+          courseId: e.courseId,
+          course: courseTitle(e.courseId),
+          enrolled: e.at || "",
+          progress: pct,
+          lessonsDone: Math.round((pct / 100) * total),
+          lessonsTotal: total,
+          status: pct >= 100 ? "Completed" : pct >= 40 ? "In progress" : "Started"
+        };
+      });
+      const avgProgress = progressRows.length
+        ? Math.round(progressRows.reduce((a, r) => a + Number(r.progress || 0), 0) / progressRows.length)
+        : 0;
+
+      const transactions = mineOrders.map((o) => ({
+        id: o.id || "—",
+        course: courseTitle(o.courseId),
+        amount: Number(o.net || o.amount || 0),
+        status: o.status || "—",
+        method: o.method || "upi",
+        tx: o.tx || "—",
+        at: o.at || ""
+      }));
+      const txnSummary = transactions.length
+        ? (transactions.length + " txn" + (transactions.length === 1 ? "" : "s") + " · " + inrFull(amountPaid))
+        : "No transactions";
+
+      const support = studentTickets(mail).map((t) => ({
+        id: t.id || "—",
+        title: t.title || "Support",
+        body: t.body || "",
+        status: t.status || "OPEN",
+        course: t.courseId ? courseTitle(t.courseId) : "—",
+        at: t.at || "",
+        replies: Array.isArray(t.replies) ? t.replies.length : 0
+      }));
+      const openSupport = support.filter((t) => String(t.status || "").toUpperCase() === "OPEN").length;
+      const supportSummary = support.length
+        ? (openSupport ? openSupport + " open · " + support.length + " total" : support.length + " closed")
+        : "No tickets";
+
+      const phone = userPhone(mail) || demoPhoneFor(mail, idx);
+
+      return {
+        key: mail,
+        name: s.name || mine[0]?.name || "—",
+        mobile: fmtMobile(phone),
+        mobileRaw: phone,
+        email: s.email || mail,
+        registeredAt: firstAt,
+        courseEnrolled,
+        courseList: courseTitles.join("; "),
+        amountPaid,
+        progress: avgProgress,
+        txnSummary,
+        txnCount: transactions.length,
+        supportSummary,
+        supportCount: support.length,
+        supportOpen: openSupport,
+        courses: progressRows,
+        transactions,
+        support,
+        status: progressRows.some((r) => r.progress > 0) || mine.some((e) => inLastDays(e.at, ACTIVE_DAYS))
+          ? "Active"
+          : "Inactive"
+      };
+    }).sort((a, b) => new Date(b.registeredAt || 0) - new Date(a.registeredAt || 0));
+
+    return { rows, total: rows.length };
+  }
+
+  function closeStudentProfile() {
+    $("#crmStudentOverlay")?.remove();
+  }
+
+  function renderStudentProfilePanel(row, focus) {
+    if (!row) return "";
+    const focusSec = focus === "support" ? "support" : focus === "txn" ? "txn" : "identity";
+    const courseRows = (row.courses || []).map((c) => `
+      <tr>
+        <td>${esc(c.course)}</td>
+        <td>${esc(fmtDate(c.enrolled))}</td>
+        <td>
+          <div class="crm-prog-cell">
+            <span class="crm-prog-bar"><i style="width:${Math.min(100, Number(c.progress) || 0)}%"></i></span>
+            <span>${esc(String(c.progress))}%</span>
+          </div>
+        </td>
+        <td>${esc(c.lessonsDone + "/" + c.lessonsTotal)}</td>
+        <td>${esc(c.status)}</td>
+      </tr>`).join("") || `<tr><td colspan="5" class="crm-sheet-empty">No course enrollments</td></tr>`;
+
+    const txnRows = (row.transactions || []).map((t) => `
+      <tr>
+        <td>${esc(t.id)}</td>
+        <td>${esc(t.course)}</td>
+        <td>${esc(inrFull(t.amount))}</td>
+        <td>${esc(t.status)}</td>
+        <td>${esc(t.method)}</td>
+        <td>${esc(t.tx)}</td>
+        <td>${esc(fmtDate(t.at))}</td>
+      </tr>`).join("") || `<tr><td colspan="7" class="crm-sheet-empty">No transactions yet</td></tr>`;
+
+    const supportRows = (row.support || []).map((t) => `
+      <tr>
+        <td>${esc(t.title)}</td>
+        <td><span class="crm-pill ${String(t.status).toUpperCase() === "OPEN" ? "warn" : "ok"}">${esc(t.status)}</span></td>
+        <td>${esc(t.course)}</td>
+        <td>${esc(fmtDate(t.at))}</td>
+        <td>${esc(String(t.replies))}</td>
+      </tr>`).join("") || `<tr><td colspan="5" class="crm-sheet-empty">No support history</td></tr>`;
+
+    return `
+      <div class="crm-sheet-panel crm-student-profile" role="dialog" aria-modal="true" aria-label="Student profile">
+        <header class="crm-sheet-head">
+          <div>
+            <h2>${esc(row.name)}</h2>
+            <p>Complete student profile · ${esc(row.status)} · registered ${esc(fmtDate(row.registeredAt))}</p>
+          </div>
+          <div class="crm-sheet-actions">
+            <button type="button" class="crm-btn crm-btn-ghost" data-crm-student-close style="width:auto;padding:6px 12px">Close</button>
+          </div>
+        </header>
+        <div class="crm-student-profile-body">
+          <section class="crm-student-sec${focusSec === "identity" ? " focus" : ""}" id="crmStudentIdentity">
+            <h3>Identity</h3>
+            <div class="crm-student-id-grid">
+              <div><span>Name</span><b>${esc(row.name)}</b></div>
+              <div><span>Mobile</span><b>${esc(row.mobile)}</b></div>
+              <div><span>Email</span><b>${esc(row.email)}</b></div>
+              <div><span>Registration</span><b>${esc(fmtDate(row.registeredAt))}</b></div>
+              <div><span>Amount paid</span><b>${esc(inrFull(row.amountPaid))}</b></div>
+              <div><span>Avg progress</span><b>${esc(String(row.progress))}%</b></div>
+            </div>
+          </section>
+          <section class="crm-student-sec" id="crmStudentCourses">
+            <h3>Courses &amp; progress</h3>
+            <div class="crm-sheet-scroll crm-sheet-scroll-short">
+              <table class="crm-sheet-table">
+                <thead><tr><th>Course</th><th>Enrolled</th><th>Progress</th><th>Lessons</th><th>Status</th></tr></thead>
+                <tbody>${courseRows}</tbody>
+              </table>
+            </div>
+          </section>
+          <section class="crm-student-sec${focusSec === "txn" ? " focus" : ""}" id="crmStudentTxn">
+            <h3>Payments / transactions</h3>
+            <p class="crm-student-sec-sub">${esc(row.txnSummary)}</p>
+            <div class="crm-sheet-scroll crm-sheet-scroll-short">
+              <table class="crm-sheet-table">
+                <thead><tr><th>Order</th><th>Course</th><th>Amount</th><th>Status</th><th>Method</th><th>Txn</th><th>Date</th></tr></thead>
+                <tbody>${txnRows}</tbody>
+              </table>
+            </div>
+          </section>
+          <section class="crm-student-sec${focusSec === "support" ? " focus" : ""}" id="crmStudentSupport">
+            <h3>Support history</h3>
+            <p class="crm-student-sec-sub">${esc(row.supportSummary)}</p>
+            <div class="crm-sheet-scroll crm-sheet-scroll-short">
+              <table class="crm-sheet-table">
+                <thead><tr><th>Ticket</th><th>Status</th><th>Course</th><th>Opened</th><th>Replies</th></tr></thead>
+                <tbody>${supportRows}</tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>`;
+  }
+
+  function openStudentProfile(staff, email, focus) {
+    const bundle = buildStudentsBundle(staff);
+    const mail = String(email || "").toLowerCase();
+    const row = bundle.rows.find((r) => r.key === mail);
+    if (!row) return;
+    closeAnalyticsSheet();
+    let overlay = $("#crmStudentOverlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "crmStudentOverlay";
+      overlay.className = "crm-sheet-overlay";
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeStudentProfile();
+      });
+    }
+    overlay.dataset.studentEmail = mail;
+    overlay.innerHTML = renderStudentProfilePanel(row, focus);
+    const target = focus === "support"
+      ? $("#crmStudentSupport", overlay)
+      : focus === "txn"
+        ? $("#crmStudentTxn", overlay)
+        : $("#crmStudentIdentity", overlay);
+    if (target) setTimeout(() => target.scrollIntoView({ block: "nearest", behavior: "smooth" }), 40);
+  }
+
+  function studentsSheetHTML(rows) {
+    const head = `
+      <th>Name</th>
+      <th>Mobile</th>
+      <th>Email</th>
+      <th>Registration date</th>
+      <th>Course enrolled</th>
+      <th>Amount paid</th>
+      <th>Course progress</th>
+      <th>Transaction history</th>
+      <th>Support history</th>`;
+    const body = rows.length
+      ? rows.map((r) => `
+        <tr class="crm-student-row" data-crm-student="${esc(r.key)}" tabindex="0">
+          <td><button type="button" class="crm-student-name" data-crm-student="${esc(r.key)}">${esc(r.name)}</button></td>
+          <td>${esc(r.mobile)}</td>
+          <td>${esc(r.email)}</td>
+          <td>${esc(fmtDate(r.registeredAt))}</td>
+          <td title="${esc(r.courseList)}">${esc(r.courseEnrolled)}</td>
+          <td>${esc(inrFull(r.amountPaid))}</td>
+          <td>
+            <div class="crm-prog-cell">
+              <span class="crm-prog-bar"><i style="width:${Math.min(100, Number(r.progress) || 0)}%"></i></span>
+              <span>${esc(String(r.progress))}%</span>
+            </div>
+          </td>
+          <td>
+            <button type="button" class="crm-link-btn crm-sheet-link" data-crm-student-txn="${esc(r.key)}">${esc(r.txnSummary)}</button>
+          </td>
+          <td>
+            <button type="button" class="crm-link-btn crm-sheet-link" data-crm-student-support="${esc(r.key)}">${esc(r.supportSummary)}</button>
+          </td>
+        </tr>`).join("")
+      : `<tr><td colspan="9" class="crm-sheet-empty">No students enrolled on your courses yet</td></tr>`;
+    return `<div class="crm-sheet-scroll crm-students-scroll"><table class="crm-sheet-table crm-students-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function renderStudents(root, s) {
+    const q = String(localStorage.getItem("crmStudentsQuery") || "").trim().toLowerCase();
+    const bundle = buildStudentsBundle(s);
+    let rows = bundle.rows;
+    if (q) {
+      rows = rows.filter((r) =>
+        [r.name, r.email, r.mobile, r.mobileRaw, r.courseEnrolled, r.courseList]
+          .join(" ")
+          .toLowerCase()
+          .includes(q)
+      );
+    }
+
+    root.innerHTML = `
+      <div class="crm-panel-view crm-students">
+        <div class="crm-welcome">
+          <div>
+            <h2>Students</h2>
+            <p>Spreadsheet roster of learners on your courses. Click a name or row for the full profile.</p>
+          </div>
+          <label class="crm-period crm-students-search">Search
+            <input id="crmStudentsSearch" type="search" placeholder="Name, email, mobile, course" value="${esc(q)}" autocomplete="off">
+          </label>
+        </div>
+        <section class="crm-section">
+          <div class="crm-analytics-table-card crm-students-sheet-card">
+            <div class="crm-analytics-table-head">
+              <h4>Student roster</h4>
+              <span class="crm-table-sum">${rows.length} of ${bundle.total} student${bundle.total === 1 ? "" : "s"}</span>
+            </div>
+            ${studentsSheetHTML(rows)}
+          </div>
+        </section>
+      </div>`;
+
+    const search = $("#crmStudentsSearch");
+    if (search) {
+      let timer = null;
+      search.addEventListener("input", () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          localStorage.setItem("crmStudentsQuery", search.value || "");
+          renderStudents(root, s);
+          const again = $("#crmStudentsSearch");
+          if (again) {
+            again.focus();
+            const len = again.value.length;
+            try { again.setSelectionRange(len, len); } catch { /* ignore */ }
+          }
+        }, 180);
+      });
+    }
+  }
+
   function renderAnalytics(root, s) {
     const periodSel = Number(localStorage.getItem("crmPeriodDays") || DEFAULT_PERIOD);
     const b = buildAnalyticsBundle(s, periodSel);
@@ -2172,6 +2663,38 @@
         openAnalyticsSheet(sheetBtn.getAttribute("data-crm-sheet"), s, 1);
         return;
       }
+      const studentClose = t.closest("[data-crm-student-close]");
+      if (studentClose) {
+        e.preventDefault();
+        closeStudentProfile();
+        return;
+      }
+      const studentTxn = t.closest("[data-crm-student-txn]");
+      if (studentTxn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const s = session();
+        if (!s) return;
+        openStudentProfile(s, studentTxn.getAttribute("data-crm-student-txn"), "txn");
+        return;
+      }
+      const studentSupport = t.closest("[data-crm-student-support]");
+      if (studentSupport) {
+        e.preventDefault();
+        e.stopPropagation();
+        const s = session();
+        if (!s) return;
+        openStudentProfile(s, studentSupport.getAttribute("data-crm-student-support"), "support");
+        return;
+      }
+      const studentOpen = t.closest("[data-crm-student]");
+      if (studentOpen) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        openStudentProfile(s, studentOpen.getAttribute("data-crm-student"), "identity");
+        return;
+      }
       const revMode = t.closest("[data-crm-rev-mode]");
       if (revMode) {
         e.preventDefault();
@@ -2184,7 +2707,12 @@
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeAnalyticsSheet();
+      if (e.key !== "Escape") return;
+      if ($("#crmStudentOverlay")) {
+        closeStudentProfile();
+        return;
+      }
+      closeAnalyticsSheet();
     });
 
     window.addEventListener("hashchange", () => {

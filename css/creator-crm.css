@@ -1,4 +1,4 @@
-/* Creator CRM — desk192 analytics (nested View detail sheets) + mesh themes */
+/* Creator CRM — desk193 students sheet + profiles + mesh themes */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
@@ -1109,6 +1109,154 @@ html.crm-html[data-crm-theme="light"] .crm-sheet-table tbody tr:nth-child(even) 
   flex: 1;
 }
 
+/* ——— Students roster (desk193) ——— */
+.crm-students-search input {
+  min-width: min(260px, 72vw);
+  margin-left: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--crm-line);
+  background: var(--crm-panel-2);
+  color: var(--crm-ink);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.crm-students-sheet-card {
+  padding-bottom: 12px;
+}
+.crm-students-scroll {
+  max-height: min(70vh, 640px);
+}
+.crm-students-table {
+  min-width: 1080px;
+}
+.crm-student-row {
+  cursor: pointer;
+}
+.crm-student-row:focus {
+  outline: 2px solid rgba(94, 200, 255, 0.45);
+  outline-offset: -2px;
+}
+.crm-student-name {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--crm-purple-2);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+}
+.crm-student-name:hover {
+  text-decoration: underline;
+}
+.crm-sheet-link {
+  margin-top: 0;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  text-align: left;
+}
+.crm-prog-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+}
+.crm-prog-bar {
+  display: inline-block;
+  width: 72px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 180, 220, 0.18);
+  overflow: hidden;
+  vertical-align: middle;
+}
+html.crm-html[data-crm-theme="light"] .crm-prog-bar {
+  background: rgba(90, 70, 50, 0.12);
+}
+.crm-prog-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #34d399, #5ec8ff);
+}
+.crm-student-profile {
+  width: min(980px, 100%);
+  max-height: min(90vh, 860px);
+}
+.crm-student-profile-body {
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding-right: 2px;
+  max-height: min(74vh, 700px);
+}
+.crm-student-sec {
+  background: var(--crm-panel-2);
+  border: 1px solid var(--crm-line);
+  border-radius: 12px;
+  padding: 12px 12px 10px;
+}
+.crm-student-sec.focus {
+  box-shadow: 0 0 0 1px rgba(94, 200, 255, 0.35);
+}
+.crm-student-sec h3 {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+.crm-student-sec-sub {
+  margin: -2px 0 8px;
+  color: var(--crm-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.crm-student-id-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+.crm-student-id-grid > div {
+  display: grid;
+  gap: 2px;
+}
+.crm-student-id-grid span {
+  color: var(--crm-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.crm-student-id-grid b {
+  font-size: 0.92rem;
+  font-weight: 800;
+  word-break: break-word;
+}
+.crm-sheet-scroll-short {
+  max-height: 220px;
+}
+.crm-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  border: 1px solid var(--crm-line);
+  background: rgba(148, 180, 220, 0.08);
+}
+.crm-pill.warn {
+  color: var(--crm-yellow);
+  border-color: rgba(250, 204, 21, 0.35);
+}
+.crm-pill.ok {
+  color: var(--crm-green);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
 @media (max-width: 1100px) {
   .crm-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .crm-prod, .crm-platforms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1135,4 +1283,7 @@ html.crm-html[data-crm-theme="light"] .crm-sheet-table tbody tr:nth-child(even) 
   .crm-metrics, .crm-prod, .crm-platforms { grid-template-columns: 1fr; }
   .crm-who small { display: none; }
   .crm-sheet-panel { padding: 12px; }
+  .crm-student-id-grid { grid-template-columns: 1fr; }
+  .crm-students-search { width: 100%; }
+  .crm-students-search input { margin-left: 0; margin-top: 6px; width: 100%; }
 }
