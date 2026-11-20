@@ -1,4 +1,4 @@
-/* Creator CRM — desk196 Content Library caption fix + Studio + analytics + mesh */
+/* Creator CRM — desk196b Content Library caption fix + Studio + analytics + mesh */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
@@ -1314,7 +1314,7 @@ html.crm-html[data-crm-theme="light"] .crm-eq-badge-completed {
   min-width: 760px;
 }
 .crm-lib-table td {
-  vertical-align: middle;
+  vertical-align: top;
   white-space: normal;
   max-width: none;
   overflow: hidden;
@@ -1372,7 +1372,11 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
 .crm-lib-actions {
   white-space: nowrap;
 }
-.crm-lib-actions .crm-btn { margin: 2px 0; }
+.crm-lib-actions .crm-btn {
+  display: inline-flex;
+  margin: 0 6px 0 0;
+  vertical-align: top;
+}
 .crm-lib-pdf { color: var(--crm-muted); font-weight: 700; }
 
 @media (max-width: 1100px) {

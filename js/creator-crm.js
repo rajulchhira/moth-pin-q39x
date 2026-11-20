@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk196 Content Library caption cell fix */
+/* Creator CRM dashboard — desk196b Content Library caption empty-box fix */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
