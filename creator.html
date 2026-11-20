@@ -19,12 +19,14 @@
       } catch (e) {}
     })();
   </script>
-  <script src="/js/seo.js?v=desk193" defer></script>
+  <script src="/js/seo.js?v=desk194" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/creator-crm.css?v=desk193">
+  <link rel="stylesheet" href="/css/creator-crm.css?v=desk194">
 </head>
 <body class="crm-body">
+  <!-- Fixed dual-layer mesh: sits behind login AND post-login desk shell -->
+  <div class="crm-mesh" aria-hidden="true"></div>
   <div id="crmLogin" class="crm-login">
     <form class="crm-login-card" id="crmLoginForm" action="#" method="post" onsubmit="return false">
       <div class="crm-brand">
@@ -89,11 +91,11 @@
   <script>
     (function () {
       var files = [
-        "/js/app.js?v=desk193",
-        "/js/lms.js?v=desk193",
-        "/js/admin-core.js?v=desk193",
-        "/js/admin.js?v=desk193",
-        "/js/creator-crm.js?v=desk193"
+        "/js/app.js?v=desk194",
+        "/js/lms.js?v=desk194",
+        "/js/admin-core.js?v=desk194",
+        "/js/admin.js?v=desk194",
+        "/js/creator-crm.js?v=desk194"
       ];
       var i = 0;
       function add(src, done) {

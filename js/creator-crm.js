@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk193 white mesh motion + desk192 analytics */
+/* Creator CRM dashboard — desk194 mesh behind desk shell + desk192 analytics */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";

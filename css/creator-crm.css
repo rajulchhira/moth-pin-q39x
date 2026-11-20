@@ -1,4 +1,4 @@
-/* Creator CRM — desk193 white/navy dual-layer moving mesh + analytics desk192 */
+/* Creator CRM — desk194 mesh behind login + desk shell + analytics desk192 */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
@@ -19,7 +19,7 @@ html.crm-html {
   --crm-radius: 16px;
   --crm-side: 280px;
   --crm-font: "Nunito", "Segoe UI", sans-serif;
-  --crm-side-bg: rgba(12, 24, 52, 0.78);
+  --crm-side-bg: rgba(12, 24, 52, 0.62);
   --crm-head-ink: #f4f7ff;
   --crm-sub-ink: #a8bdd9;
   --crm-nav-on-bg: linear-gradient(135deg, rgba(94, 200, 255, 0.22), rgba(124, 108, 240, 0.18));
@@ -32,11 +32,11 @@ html.crm-html {
     linear-gradient(180deg, rgba(94, 200, 255, 0.1), transparent 55%),
     #152848;
   --crm-panel-shadow: 0 12px 40px rgba(4, 12, 32, 0.35);
-  --crm-mesh-a: rgba(56, 150, 255, 0.72);
-  --crm-mesh-b: rgba(150, 110, 255, 0.62);
-  --crm-mesh-c: rgba(255, 100, 150, 0.42);
-  --crm-mesh-d: rgba(40, 220, 230, 0.48);
-  --crm-mesh-e: rgba(90, 170, 255, 0.4);
+  --crm-mesh-a: rgba(56, 150, 255, 0.82);
+  --crm-mesh-b: rgba(150, 110, 255, 0.72);
+  --crm-mesh-c: rgba(255, 100, 150, 0.55);
+  --crm-mesh-d: rgba(40, 220, 230, 0.58);
+  --crm-mesh-e: rgba(90, 170, 255, 0.5);
   --crm-mesh-base: #0c1834;
 }
 
@@ -50,7 +50,7 @@ html.crm-html[data-crm-theme="light"] {
   --crm-ink: #1c2433;
   --crm-muted: #64748b;
   --crm-soft: #94a3b8;
-  --crm-side-bg: rgba(255, 255, 255, 0.86);
+  --crm-side-bg: rgba(255, 255, 255, 0.72);
   --crm-head-ink: #1c2433;
   --crm-sub-ink: #64748b;
   --crm-nav-on-bg: linear-gradient(135deg, rgba(94, 180, 255, 0.22), rgba(160, 140, 255, 0.2));
@@ -86,26 +86,40 @@ html.crm-html[data-crm-theme="light"] body.crm-body {
   color-scheme: light;
 }
 
-/* Moving mesh behind content: transform layers (bg-position + fixed attachment does not drift) */
+/*
+ * Moving mesh behind login AND authenticated desk.
+ * body::before/::after at z-index:-1 under isolation got buried by the desk
+ * stacking contexts (sticky sidebar + backdrop-filter + panels), so motion
+ * read on the login card page but looked frozen after auth. A dedicated
+ * .crm-mesh fixed layer (z-index:0) with shell content at z-index:1 keeps
+ * the same dual-layer transform drift visible on every CRM page.
+ */
 body.crm-body {
   position: relative;
-  isolation: isolate;
   background-color: var(--crm-mesh-base);
   background-image: none;
   overflow-x: hidden;
 }
 
-body.crm-body::before,
-body.crm-body::after {
-  content: "";
+.crm-mesh {
   position: fixed;
+  inset: 0;
+  z-index: 0;
   pointer-events: none;
-  z-index: -1;
+  overflow: hidden;
+  background-color: var(--crm-mesh-base);
+}
+
+.crm-mesh::before,
+.crm-mesh::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
   will-change: transform;
 }
 
 /* Primary drifting color blobs */
-body.crm-body::before {
+.crm-mesh::before {
   inset: -40%;
   width: 180%;
   height: 180%;
@@ -115,31 +129,34 @@ body.crm-body::before {
     radial-gradient(ellipse 44% 40% at 76% 78%, var(--crm-mesh-c), transparent 70%),
     radial-gradient(ellipse 36% 32% at 22% 84%, var(--crm-mesh-d), transparent 68%),
     radial-gradient(ellipse 48% 42% at 50% 48%, var(--crm-mesh-e), transparent 72%);
-  filter: saturate(1.2);
+  filter: saturate(1.25);
   animation: crmMeshDrift 12s ease-in-out infinite alternate;
 }
 
-/* Secondary counter-moving wash for depth */
-body.crm-body::after {
+/* Secondary counter-moving wash for depth (normal blend — soft-light hid dark drift) */
+.crm-mesh::after {
   inset: -30%;
   width: 160%;
   height: 160%;
-  opacity: 0.9;
+  opacity: 0.72;
   background:
     radial-gradient(ellipse 50% 44% at 70% 40%, var(--crm-mesh-b), transparent 72%),
     radial-gradient(ellipse 46% 40% at 28% 62%, var(--crm-mesh-c), transparent 70%),
-    linear-gradient(135deg, transparent 30%, var(--crm-bg-2) 100%);
-  mix-blend-mode: soft-light;
+    radial-gradient(ellipse 40% 36% at 40% 20%, var(--crm-mesh-a), transparent 70%),
+    linear-gradient(135deg, transparent 35%, var(--crm-bg-2) 100%);
+  mix-blend-mode: normal;
   animation: crmMeshDriftAlt 16s ease-in-out infinite alternate;
 }
 
-html.crm-html[data-crm-theme="light"] body.crm-body::after {
-  mix-blend-mode: normal;
-  opacity: 0.85;
-  background:
-    radial-gradient(ellipse 50% 44% at 70% 40%, var(--crm-mesh-b), transparent 72%),
-    radial-gradient(ellipse 46% 40% at 28% 62%, var(--crm-mesh-c), transparent 70%),
-    radial-gradient(ellipse 40% 36% at 40% 20%, var(--crm-mesh-a), transparent 70%);
+html.crm-html[data-crm-theme="light"] .crm-mesh::after {
+  opacity: 0.9;
+}
+
+/* Login + desk shell sit above the mesh backdrop */
+.crm-login,
+.crm-app {
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes crmMeshDrift {
@@ -170,18 +187,18 @@ html.crm-html[data-crm-theme="light"] body.crm-body::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body.crm-body::before,
-  body.crm-body::after {
+  .crm-mesh::before,
+  .crm-mesh::after {
     animation: none !important;
     transform: none !important;
     will-change: auto;
   }
-  body.crm-body::before {
+  .crm-mesh::before {
     inset: -10%;
     width: 120%;
     height: 120%;
   }
-  body.crm-body::after {
+  .crm-mesh::after {
     inset: -5%;
     width: 110%;
     height: 110%;
@@ -314,6 +331,7 @@ html.crm-html[data-crm-theme="light"] body.crm-body::after {
   display: grid;
   grid-template-columns: var(--crm-side) 1fr;
   min-height: 100vh;
+  background: transparent;
 }
 .crm-side {
   position: sticky;
@@ -329,6 +347,7 @@ html.crm-html[data-crm-theme="light"] body.crm-body::after {
   backdrop-filter: blur(18px) saturate(1.15);
   -webkit-backdrop-filter: blur(18px) saturate(1.15);
   overflow: hidden;
+  z-index: 2;
 }
 .crm-side-brand {
   display: flex;
@@ -540,6 +559,7 @@ html.crm-html[data-crm-theme="light"] body.crm-body::after {
 .crm-main {
   min-width: 0;
   padding: 18px 22px 40px;
+  background: transparent;
 }
 .crm-top {
   display: flex;
