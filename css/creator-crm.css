@@ -712,11 +712,17 @@ html.crm-html[data-crm-theme="light"] .crm-period {
   box-shadow: var(--crm-panel-shadow);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  --stagger-time: 0.05s;
   animation: crmFadeUp 0.55s ease both;
 }
-.crm-metric:nth-child(2) { animation-delay: 0.05s; }
-.crm-metric:nth-child(3) { animation-delay: 0.1s; }
-.crm-metric:nth-child(4) { animation-delay: 0.15s; }
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .crm-metric { animation-delay: calc((sibling-index() - 1) * var(--stagger-time)); }
+}
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .crm-metric:nth-child(2) { animation-delay: 0.05s; }
+  .crm-metric:nth-child(3) { animation-delay: 0.1s; }
+  .crm-metric:nth-child(4) { animation-delay: 0.15s; }
+}
 .crm-metric-head {
   display: flex;
   align-items: center;

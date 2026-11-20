@@ -613,7 +613,7 @@ const VIEWS = {
   },
   students() {
     AdminCore.assert("students", "view");
-    let rows = searchRows(AdminCore.scope.students(readList(USERS_KEY)).slice().reverse(), ["name","email","referredBy"]);
+    let rows = searchRows(AdminCore.scope.students(readList(USERS_KEY)).toReversed(), ["name","email","referredBy"]);
     const page = slice(rows);
     return `${toolbar("Search students", "students")}
       ${table(["Student","Email","Status","Attribution","Enrolls","Joined","Actions"], page.map((u) => {
@@ -626,7 +626,7 @@ const VIEWS = {
   },
   leads() {
     AdminCore.assert("leads", "view");
-    let rows = searchRows(AdminCore.scope.leads(AdminCore.leads()).slice().reverse(), ["name","email","status","source"]);
+    let rows = searchRows(AdminCore.scope.leads(AdminCore.leads()).toReversed(), ["name","email","status","source"]);
     const page = slice(rows);
     const form = AdminCore.can("leads","create") ? `<form class="ad-form ad-card" id="addLeadForm" style="margin-bottom:14px;grid-template-columns:1fr 1fr 1fr auto">
       <input name="name" placeholder="Name" required><input name="email" type="email" placeholder="Email" required>
@@ -777,7 +777,7 @@ const VIEWS = {
       <td>${AdminCore.inr(r.comm.filter((c)=>c.status!=="PAID"&&c.status!=="REVERSED").reduce((s,c)=>s+Number(c.final||0),0))}</td></tr>`))}`;
   },
   referrals() {
-    const rows = AdminCore.scope.commissions(AdminCore.commissions()).slice().reverse();
+    const rows = AdminCore.scope.commissions(AdminCore.commissions()).toReversed();
     const clicks = AdminCore.clicks();
     return `<div class="ad-kpis"><div class="ad-kpi"><span>Clicks</span><b>${clicks.length}</b></div>
       <div class="ad-kpi"><span>Attributed sales</span><b>${rows.length}</b></div></div>
@@ -789,7 +789,7 @@ const VIEWS = {
   },
   commissions() {
     AdminCore.assert("commission","view");
-    const rows = AdminCore.scope.commissions(AdminCore.commissions()).slice().reverse();
+    const rows = AdminCore.scope.commissions(AdminCore.commissions()).toReversed();
     return table(["Date","Creator","Student","Course","Net","Commission","Status","Actions"], rows.map((c)=>`<tr>
       <td>${new Date(c.created).toLocaleDateString("en-IN")}</td><td>${adEsc(c.creatorEmail)}</td>
       <td>${adEsc(c.student)}</td><td>${adEsc(adTitle(c.courseId))}</td>
@@ -817,14 +817,14 @@ const VIEWS = {
   },
   enrolls() {
     AdminCore.assert("enrollments","view");
-    const rows = searchRows(AdminCore.scope.enrolls(readList(ALL_ENROLL_KEY)).slice().reverse(), ["name","email","courseId"]);
+    const rows = searchRows(AdminCore.scope.enrolls(readList(ALL_ENROLL_KEY)).toReversed(), ["name","email","courseId"]);
     return `${toolbar("Search enrollments", "enrollments")}${table(["Student","Course","When"], slice(rows).map((e)=>`<tr>
       <td>${adEsc(e.name)}<div class="muted">${adEsc(e.email)}</div></td>
       <td>${adEsc(adTitle(e.courseId))}</td><td>${new Date(e.at).toLocaleString("en-IN")}</td></tr>`))}${pager(rows.length)}`;
   },
   orders() {
     AdminCore.assert("orders","view");
-    const rows = searchRows(AdminCore.scope.orders(AdminCore.orders()).slice().reverse(), ["name","email","tx","id"]);
+    const rows = searchRows(AdminCore.scope.orders(AdminCore.orders()).toReversed(), ["name","email","tx","id"]);
     return `${toolbar("Search orders / TXN", "orders")}${table(["Order","Student","Course","Net","Creator","Status","TXN","Actions"], slice(rows).map((o)=>`<tr>
       <td>${adEsc(o.id)}</td><td>${adEsc(o.name)}</td><td>${adEsc(adTitle(o.courseId))}</td>
       <td>${AdminCore.inr(o.net)}</td><td>${adEsc(o.creatorEmail||"—")}</td><td>${badge(o.status)}</td>
@@ -834,7 +834,7 @@ const VIEWS = {
   payments() {
     AdminCore.assert("payments","view");
     const rows = AdminCore.scope.payments(AdminCore.payments());
-    return table(["When","Student","Amount","Status","TXN"], rows.slice().reverse().map((p)=>`<tr>
+    return table(["When","Student","Amount","Status","TXN"], rows.toReversed().map((p)=>`<tr>
       <td>${new Date(p.at).toLocaleString("en-IN")}</td><td>${adEsc(p.email)}</td>
       <td>${AdminCore.inr(p.amount)}</td><td>${badge(p.status)}</td><td>${adEsc(p.tx)}</td></tr>`));
   },
@@ -964,7 +964,7 @@ const VIEWS = {
         ${AdminCore.can("live","edit") ? `<button class="btn btn-ghost" type="button" data-live-extras="${adEsc(w.id)}">Notes / PDF</button>` : ""}
       </td></tr>`))
       + `<h3 style="margin:22px 0 8px">1:1 calls</h3>`
-      + table(["Student","Topic","When","Mentor","Status",""], calls.slice().reverse().map((c)=>`<tr>
+      + table(["Student","Topic","When","Mentor","Status",""], calls.toReversed().map((c)=>`<tr>
       <td>${adEsc(c.name)}<div class="muted">${adEsc(c.email)}</div></td>
       <td>${adEsc(c.topic)}</td>
       <td>${adEsc(c.date)} ${adEsc(c.time||"")}</td>
