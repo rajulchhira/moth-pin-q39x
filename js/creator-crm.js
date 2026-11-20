@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk183 accordion nav + theme */
+/* Creator CRM dashboard — desk186 accordion nav + sidebar-only theme */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -525,7 +525,7 @@
         label: "Settings",
         icon: "settings",
         items: [
-          { id: "theme", label: "Theme" },
+          { id: "theme", label: "Theme", action: "theme-sidebar" },
           { id: "profile", label: "Profile" },
           { id: "logout", label: "Logout", action: "logout" }
         ]
@@ -573,8 +573,7 @@
 
   function currentView() {
     const h = String(location.hash || "").replace(/^#/, "").trim();
-    if (!h || h === "settings") return "dashboard";
-    if (h === "logout") return "dashboard";
+    if (!h || h === "settings" || h === "theme" || h === "logout") return "dashboard";
     return h;
   }
 
@@ -582,6 +581,13 @@
     const next = String(id || "dashboard").replace(/^#/, "");
     if (next === "logout") {
       doLogout();
+      return;
+    }
+    // Theme lives only in the sidebar toggle — never open a main Theme panel
+    if (next === "theme") {
+      setOpenSection("settings");
+      if (String(location.hash || "").replace(/^#/, "") === "theme") location.hash = "dashboard";
+      renderShell();
       return;
     }
     if (currentView() === next) {
@@ -607,9 +613,9 @@
     side.innerHTML = navSections().map((sec) => {
       const open = sec.id === openId;
       const subs = sec.items.map((it) => {
-        if (it.id === "theme") {
+        if (it.id === "theme" || it.action === "theme-sidebar") {
           return `<div class="crm-nav-theme-wrap">
-            <button type="button" data-crm-nav="theme" class="${view === "theme" ? "on" : ""}"><span>${esc(it.label)}</span></button>
+            <div class="crm-nav-theme-label"><span>${esc(it.label)}</span></div>
             <div class="crm-nav-theme-row">${themeToggleHTML("crmThemeSide")}</div>
           </div>`;
         }
@@ -640,7 +646,6 @@
     if (sub) {
       if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
       else if (view === "profile") sub.textContent = "Account and social links for Platform Performance";
-      else if (view === "theme") sub.textContent = "Appearance for Creator CRM only — public site stays unchanged";
       else sub.textContent = "Creator CRM module";
     }
     const who = $("#crmWho");
@@ -658,24 +663,11 @@
     renderView(view);
   }
 
-  function renderThemePanel(root) {
-    root.innerHTML = `<div class="crm-panel-view crm-section">
-      <div class="crm-theme-panel">
-        <div>
-          <h3>Theme</h3>
-          <p>Switch Creator CRM between dark and light. Preference is saved on this device and does not affect the public Bizgarh site.</p>
-        </div>
-        ${themeToggleHTML("crmThemePanel")}
-      </div>
-    </div>`;
-  }
-
   function renderView(view) {
     const root = $("#crmView");
     if (!root) return;
     const s = session();
     if (!s) return;
-    if (view === "theme") return renderThemePanel(root);
     if (view === "profile") return renderProfile(root, s, view);
     if (view !== "dashboard") {
       const label = findNavItem(view)?.label || "Section";
@@ -1061,8 +1053,15 @@
         else next = "light";
         applyTheme(next);
         setOpenSection("settings");
-        if (currentView() !== "theme") goView("theme");
-        else renderShell();
+        // Keep current main view — theme toggle is sidebar-only
+        const openSettings = document.querySelector('[data-crm-section="settings"]');
+        $$(".crm-nav-group").forEach((g) => {
+          const on = g === openSettings;
+          g.classList.toggle("open", on);
+          const head = g.querySelector("[data-crm-accordion]");
+          if (head) head.setAttribute("aria-expanded", on ? "true" : "false");
+        });
+        $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
         return;
       }
       const accordion = t.closest("[data-crm-accordion]");
