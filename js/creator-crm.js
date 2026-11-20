@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk189 analytics (students + revenue sheets) */
+/* Creator CRM dashboard — desk190 analytics (drop student big inset charts) */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -1474,28 +1474,24 @@
               <div class="crm-metric-head"><span>Total Students</span><div class="crm-metric-ico purple">${icon("cap")}</div></div>
               <b>${fmtNum(m.totalStudents)}</b>
               <div class="crm-metric-foot">${deltaHTML(m.totalDelta)}${sparkSVG(m.sparks.total, "#a78bfa")}</div>
-              <div class="crm-chart-wrap crm-chart-mini">${lineChartSVG(b.studentCharts.total, { color: "#a78bfa", label: "Total students", h: 110 })}</div>
               <button type="button" class="crm-view-detail" data-crm-sheet="total-students">View detail</button>
             </article>
             <article class="crm-metric crm-analytics-card">
               <div class="crm-metric-head"><span>New Student</span><div class="crm-metric-ico blue">${icon("user")}</div></div>
               <b>${fmtNum(m.newStudents)}</b>
               <div class="crm-metric-foot">${deltaHTML(m.newDelta)}${sparkSVG(m.sparks.neu, "#38bdf8")}</div>
-              <div class="crm-chart-wrap crm-chart-mini">${lineChartSVG(b.studentCharts.neu, { color: "#38bdf8", label: "New students", h: 110 })}</div>
               <button type="button" class="crm-view-detail" data-crm-sheet="new-students">View detail</button>
             </article>
             <article class="crm-metric crm-analytics-card">
               <div class="crm-metric-head"><span>Active Students</span><div class="crm-metric-ico green">${icon("pulse")}</div></div>
               <b>${fmtNum(m.activeStudents)}</b>
               <div class="crm-metric-foot">${deltaHTML(m.activeDelta)}${sparkSVG(m.sparks.active, "#34d399")}</div>
-              <div class="crm-chart-wrap crm-chart-mini">${lineChartSVG(b.studentCharts.active, { color: "#34d399", label: "Active students", h: 110 })}</div>
               <button type="button" class="crm-view-detail" data-crm-sheet="active-students">View detail</button>
             </article>
             <article class="crm-metric crm-analytics-card">
               <div class="crm-metric-head"><span>Course Completion Rate</span><div class="crm-metric-ico cyan">${icon("check")}</div></div>
               <b>${fmtNum(b.completionRate)}%</b>
               <div class="crm-metric-foot"><span class="crm-delta flat">avg across enrolls</span>${sparkSVG(b.studentSpark.completion.length ? b.studentSpark.completion : [10, 20, 30, 40, 50, 60, 70, 80], "#67e8f9")}</div>
-              <div class="crm-chart-wrap crm-chart-mini">${barChartSVG(b.studentCharts.completion, { color: "#67e8f9", label: "Completion", h: 110 })}</div>
               <button type="button" class="crm-view-detail" data-crm-sheet="completion-rate">View detail</button>
             </article>
           </div>
