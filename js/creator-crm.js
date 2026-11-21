@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk200 finance/learning + pic4 mesh + Studio */
+/* Creator CRM dashboard — desk201 full-bleed mesh + finance/learning + pic4 mesh + Studio */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -906,7 +906,7 @@
     }
 
     // Keep backdrop base in sync with theme (FOUC + inline style)
-    const base = getTheme() === "light" ? "#f7fbff" : "#0c1834";
+    const base = getTheme() === "light" ? "#eef8ff" : "#0c1834";
     document.documentElement.style.background = base;
     mesh.style.backgroundColor = base;
 
@@ -944,7 +944,7 @@
     try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
     document.documentElement.setAttribute("data-crm-theme", next);
     document.documentElement.style.colorScheme = next;
-    document.documentElement.style.background = next === "light" ? "#f7fbff" : "#0c1834";
+    document.documentElement.style.background = next === "light" ? "#eef8ff" : "#0c1834";
     const meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", next);
     $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
@@ -1091,7 +1091,7 @@
     if (!h || h === "settings" || h === "theme" || h === "logout") return "dashboard";
     // Review & Approval removed — flow lives in Editing Queue + Content Library
     if (h === "review-approval") return "editing-queue";
-    // desk200 renames / removals
+    // desk201 renames / removals
     if (h === "assignments" || h === "classroom-lms") return "courses";
     if (h === "revenue-orders" || h === "refunds" || h === "pending-payments") return "today-revenue";
     if (h === "commissions") return "commission";
@@ -1201,7 +1201,7 @@
   }
 
 
-  /* ——— desk200: Finance / Course Learning / Support / Profile helpers ——— */
+  /* ——— desk201: Finance / Course Learning / Support / Profile helpers ——— */
 
   function socialApiState(email) {
     try {
