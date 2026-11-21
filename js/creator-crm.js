@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk199 finance/learning + pic4 mesh + Studio */
+/* Creator CRM dashboard — desk201 full-bleed mesh + finance/learning + pic4 mesh + Studio */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -906,7 +906,7 @@
     }
 
     // Keep backdrop base in sync with theme (FOUC + inline style)
-    const base = getTheme() === "light" ? "#f7fbff" : "#0c1834";
+    const base = getTheme() === "light" ? "#eef8ff" : "#0c1834";
     document.documentElement.style.background = base;
     mesh.style.backgroundColor = base;
 
@@ -944,7 +944,7 @@
     try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
     document.documentElement.setAttribute("data-crm-theme", next);
     document.documentElement.style.colorScheme = next;
-    document.documentElement.style.background = next === "light" ? "#f7fbff" : "#0c1834";
+    document.documentElement.style.background = next === "light" ? "#eef8ff" : "#0c1834";
     const meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", next);
     $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
@@ -1091,7 +1091,7 @@
     if (!h || h === "settings" || h === "theme" || h === "logout") return "dashboard";
     // Review & Approval removed — flow lives in Editing Queue + Content Library
     if (h === "review-approval") return "editing-queue";
-    // desk199 renames / removals
+    // desk201 renames / removals
     if (h === "assignments" || h === "classroom-lms") return "courses";
     if (h === "revenue-orders" || h === "refunds" || h === "pending-payments") return "today-revenue";
     if (h === "commissions") return "commission";
@@ -1169,13 +1169,14 @@
       if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
       else if (view === "analytics") sub.textContent = "Student and revenue analytics with spreadsheet detail sheets";
       else if (view === "students") sub.textContent = "Full student roster — open any row for the complete profile";
-      else if (view === "profile") sub.textContent = "Editable profile · locked ID/referral · social API connect";
+      else if (view === "profile") sub.textContent = "Display name · locked ID/referral · social API connect";
       else if (view === "scripts") sub.textContent = "Scripts from the Bizgarh team — download or delete anytime";
       else if (view === "recording-submissions") sub.textContent = "Drop raw video takes for the editing desk";
       else if (view === "editing-queue") sub.textContent = "View status for each cut — team updates the queue";
       else if (view === "content-library") sub.textContent = "Approved videos, captions, and PDF attachments";
       else if (view === "review-approval") sub.textContent = "Covered by Editing Queue and Content Library";
-      else if (view === "today-revenue" || view === "commission" || view === "pending-payout" || view === "payout" || view === "revenue-reports") sub.textContent = "Finance sheets with nested View detail";
+      else if (view === "today-revenue") sub.textContent = "Today revenue with nested View detail";
+      else if (view === "commission" || view === "pending-payout" || view === "payout" || view === "revenue-reports") sub.textContent = "Excel-style finance ledger";
       else if (view === "courses") sub.textContent = "Your course cards — open for overview (no Buy Now)";
       else if (view === "mentorship") sub.textContent = "Your mentorship desks";
       else if (view === "webinars") sub.textContent = "Your live webinars";
@@ -1200,7 +1201,7 @@
   }
 
 
-  /* ——— desk199: Finance / Course Learning / Support / Profile helpers ——— */
+  /* ——— desk201: Finance / Course Learning / Support / Profile helpers ——— */
 
   function socialApiState(email) {
     try {
@@ -1296,34 +1297,45 @@
     todayStart.setHours(0, 0, 0, 0);
     const todayPaid = paid.filter((o) => new Date(o.at || 0).getTime() >= todayStart.getTime());
     const todayRevenue = todayPaid.reduce((s, o) => s + Number(o.net || o.amount || 0), 0);
+    const rate = creatorCommissionRate(staff);
 
+    // Commission lines: course commission + referral income style rows
     let commissions = [];
     if (typeof AdminCore !== "undefined" && AdminCore.commissions) {
       commissions = AdminCore.commissions().filter((c) => c.creatorEmail === staff.email);
     }
-    const rate = creatorCommissionRate(staff);
     if (!commissions.length) {
-      commissions = paid.slice(0, 24).map((o, i) => {
+      commissions = paid.slice(0, 18).map((o, i) => {
         const gross = Number(o.net || o.amount || 0);
         const amount = Math.round(gross * (rate / 100));
+        const isRef = i % 4 === 0;
         return {
           id: "cm-" + (o.id || i),
-          orderId: o.id,
-          name: o.name,
-          email: o.email,
+          type: isRef ? "Referral income" : "Course commission",
+          source: isRef ? (o.referralCode || staff.referralCode || "REF") : courseTitle(o.courseId),
+          name: o.name || "—",
+          email: o.email || "—",
           course: courseTitle(o.courseId),
           courseId: o.courseId,
           gross,
-          rate,
-          amount,
+          rate: isRef ? Math.max(5, rate - 5) : rate,
+          amount: isRef ? Math.round(amount * 0.6) : amount,
           status: i % 5 === 0 ? "PENDING" : "ACCRUED",
           at: o.at
         };
       });
+      if (!commissions.length) {
+        commissions = [
+          { id: "cm-demo-1", type: "Course commission", source: "Intraday Breakout Blueprint", name: "Riya Shah", email: "riya@gmail.com", course: "Intraday Breakout Blueprint", courseId: "breakout", gross: 799, rate, amount: Math.round(799 * rate / 100), status: "ACCRUED", at: "2026-11-12T10:00:00.000Z" },
+          { id: "cm-demo-2", type: "Referral income", source: staff.referralCode || "AARAV20", name: "Omkar Kale", email: "omkar@gmail.com", course: "Options from Zero", courseId: "opt-start", gross: 449, rate: 15, amount: 67, status: "ACCRUED", at: "2026-11-14T11:00:00.000Z" },
+          { id: "cm-demo-3", type: "Course commission", source: "VWAP Intraday Checklist", name: "Pooja Nair", email: "pooja@gmail.com", course: "VWAP Intraday Checklist", courseId: "vwap", gross: 249, rate, amount: Math.round(249 * rate / 100), status: "PENDING", at: "2026-11-18T09:00:00.000Z" }
+        ];
+      }
     } else {
-      commissions = commissions.map((c) => ({
-        id: c.id || c.orderId || ("cm-" + Math.random().toString(36).slice(2, 7)),
-        orderId: c.orderId || c.id || "—",
+      commissions = commissions.map((c, i) => ({
+        id: c.id || c.orderId || ("cm-" + i),
+        type: c.type || (i % 4 === 0 ? "Referral income" : "Course commission"),
+        source: c.source || c.course || courseTitle(c.courseId) || (c.referralCode || "—"),
         name: c.name || c.student || "—",
         email: c.email || c.studentEmail || "—",
         course: c.course || courseTitle(c.courseId),
@@ -1337,45 +1349,70 @@
     }
     const commissionTotal = commissions.reduce((s, c) => s + Number(c.amount || 0), 0);
 
+    // Pending / paid payouts — month-oriented rows
     let payoutRows = [];
     if (typeof payouts === "function") {
       payoutRows = payouts().filter((p) => String(p.email || "").toLowerCase() === String(staff.email || "").toLowerCase());
     }
     if (!payoutRows.length) {
-      const due = Math.round(commissionTotal * 0.35);
-      const pending = Math.round(commissionTotal * 0.2);
-      const paidAmt = Math.max(0, commissionTotal - due - pending);
+      const novPending = Math.max(4200, Math.round(commissionTotal * 0.22));
+      const octPaid = Math.max(6800, Math.round(commissionTotal * 0.38));
+      const sepPaid = Math.max(5100, Math.round(commissionTotal * 0.28));
       payoutRows = [
-        { id: "po-demo-1", email: staff.email, amount: paidAmt || Math.round(commissionTotal * 0.45), status: "paid", method: "upi", at: "2026-11-05T10:00:00.000Z", note: "Nov cycle" },
-        { id: "po-demo-2", email: staff.email, amount: pending || 4200, status: "pending", method: "upi", at: "2026-11-18T10:00:00.000Z", note: "Awaiting approval" },
-        { id: "po-demo-3", email: staff.email, amount: due || 3100, status: "scheduled", method: "bank", at: "2026-11-25T10:00:00.000Z", note: "Next payout window" }
+        { id: "po-2026-11", email: staff.email, amount: novPending, status: "pending", method: "upi", at: "2026-11-18T10:00:00.000Z", note: "Nov 2026 course commission", month: "Nov 2026", course: "Mixed courses" },
+        { id: "po-2026-11b", email: staff.email, amount: Math.round(novPending * 0.35), status: "scheduled", method: "bank", at: "2026-11-25T10:00:00.000Z", note: "Nov 2026 referral hold", month: "Nov 2026", course: "Referral income" },
+        { id: "po-2026-10", email: staff.email, amount: octPaid, status: "paid", method: "upi", at: "2026-10-28T10:00:00.000Z", note: "Oct 2026 course commission payout", month: "Oct 2026", course: "Intraday Breakout Blueprint" },
+        { id: "po-2026-09", email: staff.email, amount: sepPaid, status: "paid", method: "upi", at: "2026-09-27T10:00:00.000Z", note: "Sep 2026 course commission payout", month: "Sep 2026", course: "Your First 30 Days in Markets" },
+        { id: "po-2026-08", email: staff.email, amount: Math.max(3900, Math.round(commissionTotal * 0.18)), status: "paid", method: "bank", at: "2026-08-26T10:00:00.000Z", note: "Aug 2026 course commission payout", month: "Aug 2026", course: "VWAP Intraday Checklist" }
       ];
     }
-    const pendingPayout = payoutRows.filter((p) => String(p.status).toLowerCase() === "pending" || String(p.status).toLowerCase() === "scheduled")
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
-    const paidPayout = payoutRows.filter((p) => String(p.status).toLowerCase() === "paid")
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    const mappedPayouts = payoutRows.map((p) => {
+      const at = p.at || p.created;
+      const month = p.month || (at ? new Date(at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—");
+      return {
+        id: p.id,
+        month,
+        course: p.course || p.note || "Course commission",
+        amount: Number(p.amount || 0),
+        status: String(p.status || "pending").toUpperCase(),
+        method: p.method || "upi",
+        at,
+        note: p.note || p.ref || "—"
+      };
+    });
+    const pendingRows = mappedPayouts.filter((r) => r.status === "PENDING" || r.status === "SCHEDULED");
+    const paidOutRows = mappedPayouts.filter((r) => r.status === "PAID");
 
-    const reportRows = paid.map((o) => ({
-      id: o.id,
-      name: o.name || "—",
-      email: o.email || "—",
-      course: courseTitle(o.courseId),
-      amount: Number(o.net || o.amount || 0),
-      method: o.method || "upi",
-      status: o.status || "PAID",
-      at: o.at
-    }));
-
-    const byCourse = new Map();
+    // Revenue reports: per-month detail
+    const byMonth = new Map();
     paid.forEach((o) => {
-      const id = o.courseId || "unknown";
-      const row = byCourse.get(id) || { course: courseTitle(id), courseId: id, orders: 0, revenue: 0 };
+      const t = new Date(o.at || 0);
+      if (!Number.isFinite(t.getTime()) || !t.getTime()) return;
+      const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0");
+      const label = t.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+      const row = byMonth.get(key) || { monthKey: key, month: label, orders: 0, revenue: 0, students: new Set() };
       row.orders += 1;
       row.revenue += Number(o.net || o.amount || 0);
-      byCourse.set(id, row);
+      if (o.email) row.students.add(String(o.email).toLowerCase());
+      byMonth.set(key, row);
     });
-    const courseReport = Array.from(byCourse.values()).sort((a, b) => b.revenue - a.revenue);
+    let monthReport = Array.from(byMonth.values())
+      .sort((a, b) => b.monthKey.localeCompare(a.monthKey))
+      .map((r) => ({
+        month: r.month,
+        orders: r.orders,
+        students: r.students.size,
+        revenue: r.revenue,
+        avgOrder: r.orders ? Math.round(r.revenue / r.orders) : 0
+      }));
+    if (!monthReport.length) {
+      monthReport = [
+        { month: "Nov 2026", orders: 14, students: 11, revenue: 9840, avgOrder: 703 },
+        { month: "Oct 2026", orders: 22, students: 18, revenue: 15620, avgOrder: 710 },
+        { month: "Sep 2026", orders: 19, students: 16, revenue: 12890, avgOrder: 678 },
+        { month: "Aug 2026", orders: 17, students: 14, revenue: 11240, avgOrder: 661 }
+      ];
+    }
 
     return {
       todayRevenue,
@@ -1393,21 +1430,73 @@
       commissions,
       commissionTotal,
       rate,
-      pendingPayout,
-      paidPayout,
-      payoutRows: payoutRows.map((p) => ({
-        id: p.id,
-        amount: Number(p.amount || 0),
-        status: String(p.status || "pending").toUpperCase(),
-        method: p.method || "upi",
-        at: p.at || p.created,
-        note: p.note || p.ref || "—"
-      })),
-      reportRows,
-      courseReport,
+      pendingPayout: pendingRows.reduce((s, p) => s + Number(p.amount || 0), 0),
+      paidPayout: paidOutRows.reduce((s, p) => s + Number(p.amount || 0), 0),
+      pendingRows,
+      paidOutRows,
+      payoutRows: mappedPayouts,
+      monthReport,
       periodRevenue: paid.filter((o) => inLastDays(o.at, DEFAULT_PERIOD)).reduce((s, o) => s + Number(o.net || o.amount || 0), 0)
     };
   }
+
+  const FINANCE_TABLES = {
+    commission: {
+      title: "Commission",
+      blurb: "What you earned — course commission and referral income line items.",
+      columns: [
+        { key: "type", label: "Type" },
+        { key: "source", label: "Source" },
+        { key: "name", label: "Student" },
+        { key: "gross", label: "Gross", fmt: "inr" },
+        { key: "rate", label: "Rate %", fmt: "pct" },
+        { key: "amount", label: "Earned", fmt: "inr" },
+        { key: "status", label: "Status" },
+        { key: "at", label: "Date", fmt: "date" }
+      ],
+      rows: (b) => b.commissions
+    },
+    "pending-payout": {
+      title: "Pending Payout",
+      blurb: "Recent month amounts awaiting approval or the next payout window.",
+      columns: [
+        { key: "month", label: "Month" },
+        { key: "course", label: "Source" },
+        { key: "amount", label: "Amount", fmt: "inr" },
+        { key: "status", label: "Status" },
+        { key: "method", label: "Method" },
+        { key: "at", label: "Raised", fmt: "date" },
+        { key: "note", label: "Note" }
+      ],
+      rows: (b) => b.pendingRows
+    },
+    payout: {
+      title: "Payout",
+      blurb: "Historical course-commission payouts already paid out.",
+      columns: [
+        { key: "month", label: "Month" },
+        { key: "course", label: "Course / source" },
+        { key: "amount", label: "Paid", fmt: "inr" },
+        { key: "method", label: "Method" },
+        { key: "at", label: "Paid on", fmt: "date" },
+        { key: "note", label: "Note" },
+        { key: "status", label: "Status" }
+      ],
+      rows: (b) => b.paidOutRows
+    },
+    "revenue-reports": {
+      title: "Revenue Reports",
+      blurb: "Per-month revenue detail for your attributed sales.",
+      columns: [
+        { key: "month", label: "Month" },
+        { key: "orders", label: "Orders" },
+        { key: "students", label: "Students" },
+        { key: "revenue", label: "Revenue", fmt: "inr" },
+        { key: "avgOrder", label: "Avg order", fmt: "inr" }
+      ],
+      rows: (b) => b.monthReport
+    }
+  };
 
   const FINANCE_SHEETS = {
     "today-revenue": {
@@ -1436,109 +1525,6 @@
           { key: "status", label: "Status" }
         ],
         rows: (b) => b.todayRows
-      }
-    },
-    commission: {
-      title: "Commission",
-      columns: [
-        { key: "id", label: "Commission ID" },
-        { key: "orderId", label: "Order" },
-        { key: "name", label: "Student" },
-        { key: "course", label: "Course" },
-        { key: "gross", label: "Gross", fmt: "inr" },
-        { key: "rate", label: "Rate %", fmt: "pct" },
-        { key: "amount", label: "Commission", fmt: "inr" },
-        { key: "status", label: "Status" },
-        { key: "at", label: "Date", fmt: "date" }
-      ],
-      rows: (b) => b.commissions,
-      deep: {
-        title: "Commission — In-depth",
-        columns: [
-          { key: "id", label: "Commission ID" },
-          { key: "orderId", label: "Order" },
-          { key: "name", label: "Student" },
-          { key: "email", label: "Email" },
-          { key: "course", label: "Course" },
-          { key: "courseId", label: "Course ID" },
-          { key: "gross", label: "Gross", fmt: "inr" },
-          { key: "rate", label: "Rate %", fmt: "pct" },
-          { key: "amount", label: "Commission", fmt: "inr" },
-          { key: "status", label: "Status" },
-          { key: "at", label: "Date", fmt: "date" }
-        ],
-        rows: (b) => b.commissions
-      }
-    },
-    "pending-payout": {
-      title: "Pending Payout",
-      columns: [
-        { key: "id", label: "Payout ID" },
-        { key: "amount", label: "Amount", fmt: "inr" },
-        { key: "status", label: "Status" },
-        { key: "method", label: "Method" },
-        { key: "at", label: "Raised", fmt: "date" },
-        { key: "note", label: "Note" }
-      ],
-      rows: (b) => b.payoutRows.filter((r) => r.status === "PENDING" || r.status === "SCHEDULED"),
-      deep: {
-        title: "Pending Payout — In-depth",
-        columns: [
-          { key: "id", label: "Payout ID" },
-          { key: "amount", label: "Amount", fmt: "inr" },
-          { key: "status", label: "Status" },
-          { key: "method", label: "Method" },
-          { key: "at", label: "Raised", fmt: "date" },
-          { key: "note", label: "Note" }
-        ],
-        rows: (b) => b.payoutRows.filter((r) => r.status === "PENDING" || r.status === "SCHEDULED")
-      }
-    },
-    payout: {
-      title: "Payout",
-      columns: [
-        { key: "id", label: "Payout ID" },
-        { key: "amount", label: "Amount", fmt: "inr" },
-        { key: "status", label: "Status" },
-        { key: "method", label: "Method" },
-        { key: "at", label: "Date", fmt: "date" },
-        { key: "note", label: "Note" }
-      ],
-      rows: (b) => b.payoutRows,
-      deep: {
-        title: "Payout history — In-depth",
-        columns: [
-          { key: "id", label: "Payout ID" },
-          { key: "amount", label: "Amount", fmt: "inr" },
-          { key: "status", label: "Status" },
-          { key: "method", label: "Method" },
-          { key: "at", label: "Date", fmt: "date" },
-          { key: "note", label: "Note" }
-        ],
-        rows: (b) => b.payoutRows
-      }
-    },
-    "revenue-reports": {
-      title: "Revenue Reports",
-      columns: [
-        { key: "id", label: "Order ID" },
-        { key: "name", label: "Student" },
-        { key: "course", label: "Course" },
-        { key: "amount", label: "Amount", fmt: "inr" },
-        { key: "method", label: "Method" },
-        { key: "at", label: "Date", fmt: "date" },
-        { key: "status", label: "Status" }
-      ],
-      rows: (b) => b.reportRows,
-      deep: {
-        title: "Revenue Reports — Course breakdown",
-        columns: [
-          { key: "course", label: "Course" },
-          { key: "courseId", label: "Course ID" },
-          { key: "orders", label: "Orders" },
-          { key: "revenue", label: "Revenue", fmt: "inr" }
-        ],
-        rows: (b) => b.courseReport
       }
     }
   };
@@ -1585,86 +1571,64 @@
       </div>`;
   }
 
-  function renderFinance(root, s, view) {
+  function renderFinanceTableView(root, s, view) {
+    const def = FINANCE_TABLES[view];
+    if (!def) return;
     const b = buildFinanceBundle(s);
-    const cards = {
-      "today-revenue": {
-        label: "Today Revenue",
-        value: inrCompact(b.todayRevenue),
-        hint: `${b.todayPaid.length} paid order${b.todayPaid.length === 1 ? "" : "s"} since midnight`,
-        sheet: "today-revenue",
-        ico: "wallet",
-        tone: "cyan"
-      },
-      commission: {
-        label: "Commission",
-        value: inrCompact(b.commissionTotal),
-        hint: `${b.rate}% creator rate · ${b.commissions.length} lines`,
-        sheet: "commission",
-        ico: "pulse",
-        tone: "purple"
-      },
-      "pending-payout": {
-        label: "Pending Payout",
-        value: inrCompact(b.pendingPayout),
-        hint: "Awaiting approval or scheduled window",
-        sheet: "pending-payout",
-        ico: "eye",
-        tone: "blue"
-      },
-      payout: {
-        label: "Payout",
-        value: inrCompact(b.paidPayout),
-        hint: `${b.payoutRows.length} payout record${b.payoutRows.length === 1 ? "" : "s"}`,
-        sheet: "payout",
-        ico: "check",
-        tone: "green"
-      },
-      "revenue-reports": {
-        label: "Revenue Reports",
-        value: inrCompact(b.periodRevenue),
-        hint: `Last ${DEFAULT_PERIOD} days · course + order sheets`,
-        sheet: "revenue-reports",
-        ico: "wallet",
-        tone: "cyan"
-      }
-    };
-    const focus = cards[view] || cards["today-revenue"];
-    const allCards = Object.values(cards);
+    const rows = def.rows(b) || [];
+    root.innerHTML = `
+      <div class="crm-panel-view crm-finance crm-finance-table">
+        <div class="crm-welcome">
+          <div>
+            <h2>${esc(def.title)}</h2>
+            <p>${esc(def.blurb)}</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} row${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <section class="crm-section">
+          <div class="crm-section-head">
+            <div>
+              <h3>${esc(def.title)}</h3>
+              <p>Excel-style ledger for this desk.</p>
+            </div>
+          </div>
+          ${sheetTableHTML(def, rows)}
+        </section>
+      </div>`;
+  }
+
+  function renderFinance(root, s, view) {
+    if (view === "commission" || view === "pending-payout" || view === "payout" || view === "revenue-reports") {
+      return renderFinanceTableView(root, s, view);
+    }
+    const b = buildFinanceBundle(s);
     root.innerHTML = `
       <div class="crm-panel-view crm-analytics crm-finance">
         <div class="crm-welcome">
           <div>
-            <h2>Finance</h2>
-            <p>Creator-scoped revenue, commission, and payout sheets — same nested View detail pattern as Analytics.</p>
+            <h2>Today Revenue</h2>
+            <p>Paid orders since midnight — open View detail for the spreadsheet.</p>
           </div>
         </div>
         <section class="crm-section crm-analytics-block">
-          <div class="crm-section-head">
-            <div>
-              <h3 class="crm-analytics-heading">${esc(focus.label)}</h3>
-              <p>${esc(focus.hint)}</p>
-            </div>
-          </div>
-          <div class="crm-metrics crm-analytics-metrics">
-            ${allCards.map((c) => `
-              <article class="crm-metric crm-analytics-card${c.sheet === focus.sheet ? " on" : ""}">
-                <div class="crm-metric-head"><span>${esc(c.label)}</span><div class="crm-metric-ico ${esc(c.tone)}">${icon(c.ico)}</div></div>
-                <b>${esc(c.value)}</b>
-                <div class="crm-metric-foot"><span class="crm-delta flat">${esc(c.hint)}</span></div>
-                <button type="button" class="crm-view-detail" data-crm-fin-sheet="${esc(c.sheet)}">View detail</button>
-              </article>`).join("")}
+          <div class="crm-metrics crm-analytics-metrics" style="grid-template-columns:minmax(0,1fr)">
+            <article class="crm-metric crm-analytics-card on">
+              <div class="crm-metric-head"><span>Today Revenue</span><div class="crm-metric-ico cyan">${icon("wallet")}</div></div>
+              <b>${esc(inrCompact(b.todayRevenue))}</b>
+              <div class="crm-metric-foot"><span class="crm-delta flat">${b.todayPaid.length} paid order${b.todayPaid.length === 1 ? "" : "s"} since midnight</span></div>
+              <button type="button" class="crm-view-detail" data-crm-fin-sheet="today-revenue">View detail</button>
+            </article>
           </div>
         </section>
         <section class="crm-section">
           <div class="crm-section-head">
             <div>
-              <h3>${esc(focus.label)} sheet</h3>
+              <h3>Today Revenue sheet</h3>
               <p>Preview rows — open View detail for the nested spreadsheet.</p>
             </div>
-            <button type="button" class="crm-link-btn" data-crm-fin-sheet="${esc(focus.sheet)}">View all</button>
+            <button type="button" class="crm-link-btn" data-crm-fin-sheet="today-revenue">View all</button>
           </div>
-          ${sheetTableHTML(FINANCE_SHEETS[focus.sheet], (FINANCE_SHEETS[focus.sheet].rows(b) || []), 6)}
+          ${sheetTableHTML(FINANCE_SHEETS["today-revenue"], b.todayRows, 8)}
         </section>
       </div>`;
   }
@@ -1958,7 +1922,7 @@
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div class="crm-field full"><label for="crmTicketBody">Description</label><textarea id="crmTicketBody" required placeholder="What went wrong, and what should happen next?"></textarea></div>
+              <div class="crm-field full crm-ticket-desc"><label for="crmTicketBody">Description</label><textarea id="crmTicketBody" rows="6" required placeholder="What went wrong, and what should happen next?"></textarea></div>
               <div class="crm-field full"><label for="crmTicketFile">Attachment (optional)</label><input id="crmTicketFile" type="file"></div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -3819,6 +3783,25 @@
     });
   }
 
+  function persistProfileName(s, staffRow, name) {
+    const nextName = (name || "").trim() || staffRow.name || s.name;
+    saveProfileExtras(s.email, { name: nextName });
+    if (typeof AdminCore !== "undefined" && AdminCore.saveStaff) {
+      try { AdminCore.saveStaff({ ...staffRow, name: nextName }); } catch { /* ignore */ }
+    }
+    try {
+      const key = typeof STAFF_SESSION_KEY !== "undefined" ? STAFF_SESSION_KEY : "tradeshalaStaffSession";
+      localStorage.setItem(key, JSON.stringify({ ...s, name: nextName }));
+    } catch { /* ignore */ }
+    const who = $("#crmWho");
+    if (who) {
+      const b = who.querySelector("b");
+      if (b) b.textContent = nextName || "Creator";
+    }
+    const msg = $("#crmProfileMsg");
+    if (msg) msg.textContent = "Name saved";
+  }
+
   function renderProfile(root, s, view) {
     const extras = profileExtras(s.email);
     const api = socialApiState(s.email);
@@ -3826,8 +3809,6 @@
       ? AdminCore.normalizeStaff(s)
       : s;
     const displayName = extras.name || staffRow.name || s.name || "";
-    const phone = extras.phone || staffRow.phone || "";
-    const bio = extras.bio || staffRow.bio || "";
     const creatorId = staffRow.creatorId || s.creatorId || "—";
     const referral = staffRow.referralCode || s.referralCode || "—";
     root.innerHTML = `
@@ -3835,16 +3816,14 @@
         <div class="crm-section-head">
           <div>
             <h3>${view === "settings" ? "Settings" : "Profile"}</h3>
-            <p>Editable profile fields · Creator ID / referral locked · social API install for Platform Performance.</p>
+            <p>Editable display name · Creator ID / referral locked · social API install for Platform Performance.</p>
           </div>
         </div>
         <div class="crm-form-grid">
           <div class="crm-field"><label for="crmProfileName">Display name</label><input id="crmProfileName" value="${esc(displayName)}"></div>
-          <div class="crm-field"><label for="crmProfilePhone">Phone</label><input id="crmProfilePhone" value="${esc(phone)}" placeholder="+91 …"></div>
           <div class="crm-field"><label>Email / Bizgarh ID</label><input value="${esc(s.email || "")}" disabled></div>
           <div class="crm-field crm-locked-field"><label>Creator ID</label><input value="${esc(creatorId)}" disabled><p class="crm-locked-hint">Admin-side only</p></div>
           <div class="crm-field crm-locked-field"><label>Referral code</label><input value="${esc(referral)}" disabled><p class="crm-locked-hint">Admin-side only</p></div>
-          <div class="crm-field full"><label for="crmProfileBio">Bio</label><textarea id="crmProfileBio" rows="3" placeholder="Short creator bio">${esc(bio)}</textarea></div>
         </div>
         <div class="crm-section-head" style="margin-top:18px">
           <div>
@@ -3867,33 +3846,14 @@
           }).join("")}
         </div>
         <p id="crmProfileMsg" class="crm-err" style="color:var(--crm-green)"></p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-          <button type="button" class="crm-btn crm-btn-primary" id="crmSaveProfile" style="width:auto;padding-inline:22px">Save profile</button>
-          <button type="button" class="crm-btn crm-btn-ghost" id="crmLogout" style="width:auto">Log out</button>
-        </div>
       </div>`;
 
-    $("#crmSaveProfile").onclick = () => {
-      const name = ($("#crmProfileName")?.value || "").trim();
-      const phoneVal = ($("#crmProfilePhone")?.value || "").trim();
-      const bioVal = ($("#crmProfileBio")?.value || "").trim();
-      saveProfileExtras(s.email, { name, phone: phoneVal, bio: bioVal });
-      if (typeof AdminCore !== "undefined" && AdminCore.saveStaff) {
-        const next = { ...staffRow, name: name || staffRow.name, phone: phoneVal, bio: bioVal };
-        try { AdminCore.saveStaff(next); } catch { /* ignore */ }
-        if (typeof AdminCore.setSession === "function") {
-          try { AdminCore.setSession({ ...s, name: name || s.name }); } catch { /* ignore */ }
-        } else {
-          try {
-            const key = typeof STAFF_SESSION_KEY !== "undefined" ? STAFF_SESSION_KEY : "tradeshalaStaffSession";
-            localStorage.setItem(key, JSON.stringify({ ...s, name: name || s.name }));
-          } catch { /* ignore */ }
-        }
-      }
-      $("#crmProfileMsg").textContent = "Profile saved";
-      renderShell();
-    };
-    $("#crmLogout").onclick = () => doLogout();
+    const nameInput = $("#crmProfileName");
+    if (nameInput) {
+      const save = () => persistProfileName(s, staffRow, nameInput.value);
+      nameInput.addEventListener("change", save);
+      nameInput.addEventListener("blur", save);
+    }
   }
 
   function tryLogin(e) {

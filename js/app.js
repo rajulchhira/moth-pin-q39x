@@ -7639,4 +7639,6 @@ async function startPublicBoot() {
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startPublicBoot);
 else setTimeout(startPublicBoot, 0);
-/* cache-bust desk199: Creator CRM finance/learning/support + pic4 mesh + profile API connect */
+/* cache-bust desk200: Creator CRM finance/learning/support + pic4 mesh + profile API connect */
+/* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
+/* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
