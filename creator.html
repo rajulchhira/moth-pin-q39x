@@ -13,22 +13,23 @@
         var t = localStorage.getItem("crmTheme") === "light" ? "light" : "dark";
         document.documentElement.setAttribute("data-crm-theme", t);
         document.documentElement.style.colorScheme = t;
-        document.documentElement.style.background = t === "light" ? "#ffffff" : "#0c1834";
+        document.documentElement.style.background = t === "light" ? "#f7fbff" : "#0c1834";
         var m = document.querySelector('meta[name="color-scheme"]');
         if (m) m.setAttribute("content", t);
       } catch (e) {}
     })();
   </script>
-  <script src="/js/seo.js?v=desk198" defer></script>
+  <script src="/js/seo.js?v=desk199" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/creator-crm.css?v=desk198">
+  <link rel="stylesheet" href="/css/creator-crm.css?v=desk199">
 </head>
 <body class="crm-body">
-  <!-- Real DOM dual-layer mesh (not body pseudos) — JS ensureCrmMesh() repairs if missing -->
+  <!-- Real DOM dual-layer mesh + silk wave overlay (pic4) — JS ensureCrmMesh() repairs if missing -->
   <div class="crm-mesh" id="crmMesh" aria-hidden="true">
     <div class="crm-mesh-layer crm-mesh-layer-a"></div>
     <div class="crm-mesh-layer crm-mesh-layer-b"></div>
+    <div class="crm-mesh-waves" aria-hidden="true"></div>
   </div>
   <div id="crmLogin" class="crm-login">
     <form class="crm-login-card" id="crmLoginForm" action="#" method="post" onsubmit="return false">
@@ -94,11 +95,11 @@
   <script>
     (function () {
       var files = [
-        "/js/app.js?v=desk198",
-        "/js/lms.js?v=desk198",
-        "/js/admin-core.js?v=desk198",
-        "/js/admin.js?v=desk198",
-        "/js/creator-crm.js?v=desk198"
+        "/js/app.js?v=desk199",
+        "/js/lms.js?v=desk199",
+        "/js/admin-core.js?v=desk199",
+        "/js/admin.js?v=desk199",
+        "/js/creator-crm.js?v=desk199"
       ];
       var i = 0;
       function add(src, done) {

@@ -1,8 +1,9 @@
-/* Creator CRM dashboard — desk198 students + desk197 caption + desk196 mesh + Studio */
+/* Creator CRM dashboard — desk199 finance/learning + pic4 mesh + Studio */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
   const SOCIAL_CACHE_KEY = "tradeshalaCreatorSocialCache";
+  const SOCIAL_API_KEY = "tradeshalaCreatorSocialApiV1";
   const THEME_KEY = "crmTheme";
   const ACCORDION_KEY = "crmAccordionOpen";
   const STUDENTS_DEMO_KEY = "crmStudentsDemoV1";
@@ -10,10 +11,14 @@
   const STUDIO_RECORDINGS_KEY = "crmStudioRecordingsV1";
   const STUDIO_QUEUE_KEY = "crmStudioEditingQueueV1";
   const STUDIO_LIBRARY_KEY = "crmStudioContentLibraryV1";
+  const STUDY_KEY = "crmStudyMaterialsV1";
+  const TICKETS_KEY = "crmCreatorTicketsV1";
+  const PROFILE_KEY = "crmCreatorProfileV1";
   const ACTIVE_DAYS = 14;
   const DEFAULT_PERIOD = 30;
   const EDIT_STATUSES = ["Under Review", "Editing", "Revision", "Completed"];
   const VIDEO_ACCEPT = "video/*,.mp4,.webm,.mov,.m4v,.avi,.mkv";
+  const STUDY_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.webp,.gif,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   /** @type {Map<string, { blob: Blob, url: string }>} */
   const studioBlobs = new Map();
 
@@ -543,7 +548,7 @@
     return `<div class="crm-dropzone" data-studio-drop="${esc(kind)}" tabindex="0" role="button" aria-label="${esc(hint)}">
       <input type="file" class="crm-drop-input" data-studio-file="${esc(kind)}" accept="${esc(accept)}" multiple hidden>
       <div class="crm-drop-visual">
-        <span class="crm-drop-ico">${icon(kind === "scripts" ? "file" : "clapper")}</span>
+        <span class="crm-drop-ico">${icon(kind === "recordings" ? "clapper" : "file")}</span>
         <strong>Drag &amp; drop files here</strong>
         <p>${esc(hint)}</p>
         <button type="button" class="crm-btn crm-btn-ghost crm-drop-browse" data-studio-browse="${esc(kind)}" style="width:auto;padding:8px 14px">Browse files</button>
@@ -555,7 +560,9 @@
     if (!rows.length) {
       const empty = kind === "scripts"
         ? "No scripts yet — the Bizgarh team will share files here."
-        : "No files yet — drop a video to get started.";
+        : kind === "study"
+          ? "No study materials yet — drop a PDF, DOC, or image to get started."
+          : "No files yet — drop a video to get started.";
       return `<div class="crm-file-empty">${empty}</div>`;
     }
     return `<ul class="crm-file-list">${rows.map((r) => {
@@ -731,6 +738,10 @@
       });
       writeStudioBucket(STUDIO_RECORDINGS_KEY, staff.email, rows);
       renderRecordings($("#crmView"), staff);
+      return;
+    }
+    if (kind === "study") {
+      addStudyFiles(files, staff);
     }
   }
 
@@ -764,6 +775,10 @@
         studioBlobs.delete(bid);
       });
       renderContentLibrary($("#crmView"), staff);
+      return;
+    }
+    if (kind === "study") {
+      deleteStudyItem(id, staff);
     }
   }
 
@@ -771,18 +786,14 @@
   function socialLinks(email) {
     try {
       const all = JSON.parse(localStorage.getItem(SOCIAL_KEY) || "{}");
-      const row = all[email] || {};
+      const row = all[email] || all[String(email || "").toLowerCase()] || {};
       return {
-        youtube: row.youtube || "https://www.youtube.com/@bizgarh",
-        instagram: row.instagram || "https://www.instagram.com/bizgarh",
-        facebook: row.facebook || "https://www.facebook.com/bizgarh"
+        youtube: row.youtube || "",
+        instagram: row.instagram || "",
+        facebook: row.facebook || ""
       };
     } catch {
-      return {
-        youtube: "https://www.youtube.com/@bizgarh",
-        instagram: "https://www.instagram.com/bizgarh",
-        facebook: "https://www.facebook.com/bizgarh"
-      };
+      return { youtube: "", instagram: "", facebook: "" };
     }
   }
 
@@ -876,6 +887,7 @@
 
     let layerA = mesh.querySelector(".crm-mesh-layer-a");
     let layerB = mesh.querySelector(".crm-mesh-layer-b");
+    let waves = mesh.querySelector(".crm-mesh-waves");
     if (!layerA) {
       layerA = document.createElement("div");
       layerA.className = "crm-mesh-layer crm-mesh-layer-a";
@@ -886,9 +898,15 @@
       layerB.className = "crm-mesh-layer crm-mesh-layer-b";
       mesh.appendChild(layerB);
     }
+    if (!waves) {
+      waves = document.createElement("div");
+      waves.className = "crm-mesh-waves";
+      waves.setAttribute("aria-hidden", "true");
+      mesh.appendChild(waves);
+    }
 
     // Keep backdrop base in sync with theme (FOUC + inline style)
-    const base = getTheme() === "light" ? "#ffffff" : "#0c1834";
+    const base = getTheme() === "light" ? "#f7fbff" : "#0c1834";
     document.documentElement.style.background = base;
     mesh.style.backgroundColor = base;
 
@@ -902,7 +920,7 @@
       // Force reflow so removing the class restarts CSS animations
       void mesh.offsetWidth;
       mesh.classList.remove("is-restarting");
-      [layerA, layerB].forEach((el) => {
+      [layerA, layerB, waves].forEach((el) => {
         if (!el) return;
         el.style.animationPlayState = "running";
       });
@@ -911,7 +929,7 @@
     if (restart) kick();
     else {
       // Ensure play-state even without a full restart
-      [layerA, layerB].forEach((el) => {
+      [layerA, layerB, waves].forEach((el) => {
         if (!el) return;
         el.style.animationPlayState = "running";
       });
@@ -926,7 +944,7 @@
     try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
     document.documentElement.setAttribute("data-crm-theme", next);
     document.documentElement.style.colorScheme = next;
-    document.documentElement.style.background = next === "light" ? "#ffffff" : "#0c1834";
+    document.documentElement.style.background = next === "light" ? "#f7fbff" : "#0c1834";
     const meta = document.querySelector('meta[name="color-scheme"]');
     if (meta) meta.setAttribute("content", next);
     $$(".crm-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
@@ -990,11 +1008,11 @@
         label: "Finance",
         icon: "wallet",
         items: [
-          { id: "revenue-orders", label: "Revenue & Orders", stub: true },
-          { id: "commissions", label: "Commissions", stub: true },
-          { id: "payouts", label: "Payouts", stub: true },
-          { id: "refunds", label: "Refunds", stub: true },
-          { id: "pending-payments", label: "Pending Payments", stub: true }
+          { id: "today-revenue", label: "Today Revenue" },
+          { id: "commission", label: "Commission" },
+          { id: "pending-payout", label: "Pending Payout" },
+          { id: "payout", label: "Payout" },
+          { id: "revenue-reports", label: "Revenue Reports" }
         ]
       },
       {
@@ -1002,12 +1020,10 @@
         label: "Courses & Learning",
         icon: "book",
         items: [
-          { id: "courses", label: "Courses", stub: true },
-          { id: "mentorship", label: "Mentorship", stub: true },
-          { id: "webinars", label: "Webinars", stub: true },
-          { id: "study-materials", label: "Study materials", stub: true },
-          { id: "assignments", label: "Assignments", stub: true },
-          { id: "classroom-lms", label: "Classroom / LMS", stub: true }
+          { id: "courses", label: "Courses" },
+          { id: "mentorship", label: "Mentorship" },
+          { id: "webinars", label: "Webinars" },
+          { id: "study-materials", label: "Study materials" }
         ]
       },
       {
@@ -1015,8 +1031,8 @@
         label: "Support",
         icon: "life",
         items: [
-          { id: "tickets", label: "Tickets", stub: true },
-          { id: "queries", label: "Queries", stub: true }
+          { id: "tickets", label: "Tickets" },
+          { id: "queries", label: "Queries" }
         ]
       },
       {
@@ -1075,6 +1091,11 @@
     if (!h || h === "settings" || h === "theme" || h === "logout") return "dashboard";
     // Review & Approval removed — flow lives in Editing Queue + Content Library
     if (h === "review-approval") return "editing-queue";
+    // desk199 renames / removals
+    if (h === "assignments" || h === "classroom-lms") return "courses";
+    if (h === "revenue-orders" || h === "refunds" || h === "pending-payments") return "today-revenue";
+    if (h === "commissions") return "commission";
+    if (h === "payouts") return "payout";
     return h;
   }
 
@@ -1148,12 +1169,19 @@
       if (view === "dashboard") sub.textContent = "Creator-scoped metrics for your classrooms";
       else if (view === "analytics") sub.textContent = "Student and revenue analytics with spreadsheet detail sheets";
       else if (view === "students") sub.textContent = "Full student roster — open any row for the complete profile";
-      else if (view === "profile") sub.textContent = "Account and social links for Platform Performance";
+      else if (view === "profile") sub.textContent = "Editable profile · locked ID/referral · social API connect";
       else if (view === "scripts") sub.textContent = "Scripts from the Bizgarh team — download or delete anytime";
       else if (view === "recording-submissions") sub.textContent = "Drop raw video takes for the editing desk";
       else if (view === "editing-queue") sub.textContent = "View status for each cut — team updates the queue";
       else if (view === "content-library") sub.textContent = "Approved videos, captions, and PDF attachments";
       else if (view === "review-approval") sub.textContent = "Covered by Editing Queue and Content Library";
+      else if (view === "today-revenue" || view === "commission" || view === "pending-payout" || view === "payout" || view === "revenue-reports") sub.textContent = "Finance sheets with nested View detail";
+      else if (view === "courses") sub.textContent = "Your course cards — open for overview (no Buy Now)";
+      else if (view === "mentorship") sub.textContent = "Your mentorship desks";
+      else if (view === "webinars") sub.textContent = "Your live webinars";
+      else if (view === "study-materials") sub.textContent = "Upload and manage study files";
+      else if (view === "tickets") sub.textContent = "Raise and track support tickets";
+      else if (view === "queries") sub.textContent = "Creator FAQs";
       else sub.textContent = "Creator CRM module";
     }
     const who = $("#crmWho");
@@ -1171,6 +1199,830 @@
     renderView(view);
   }
 
+
+  /* ——— desk199: Finance / Course Learning / Support / Profile helpers ——— */
+
+  function socialApiState(email) {
+    try {
+      const all = JSON.parse(localStorage.getItem(SOCIAL_API_KEY) || "{}");
+      const row = all[String(email || "").toLowerCase()] || {};
+      return {
+        youtube: !!row.youtube,
+        instagram: !!row.instagram,
+        facebook: !!row.facebook
+      };
+    } catch {
+      return { youtube: false, instagram: false, facebook: false };
+    }
+  }
+
+  function saveSocialApiState(email, next) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(SOCIAL_API_KEY) || "{}"); } catch { all = {}; }
+    all[String(email || "").toLowerCase()] = {
+      youtube: !!next.youtube,
+      instagram: !!next.instagram,
+      facebook: !!next.facebook
+    };
+    localStorage.setItem(SOCIAL_API_KEY, JSON.stringify(all));
+  }
+
+  function profileExtras(email) {
+    try {
+      const all = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}");
+      return all[String(email || "").toLowerCase()] || {};
+    } catch { return {}; }
+  }
+
+  function saveProfileExtras(email, next) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"); } catch { all = {}; }
+    all[String(email || "").toLowerCase()] = { ...(all[String(email || "").toLowerCase()] || {}), ...next };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(all));
+  }
+
+  function readStudyBucket(email) {
+    return readStudioBucket(STUDY_KEY, email);
+  }
+
+  function writeStudyBucket(email, rows) {
+    writeStudioBucket(STUDY_KEY, email, rows);
+  }
+
+  function seedStudyMaterials(email) {
+    const rows = [
+      { id: studioUid("study"), name: "Portfolio-Checklist.pdf", size: 842112, uploadedAt: "2026-11-12T10:00:00.000Z", demo: true },
+      { id: studioUid("study"), name: "SIP-Worksheet.xlsx", size: 256000, uploadedAt: "2026-11-14T12:30:00.000Z", demo: true },
+      { id: studioUid("study"), name: "Module-1-Slides.pptx", size: 1843200, uploadedAt: "2026-11-16T09:15:00.000Z", demo: true }
+    ];
+    writeStudyBucket(email, rows);
+    return rows;
+  }
+
+  function studyMaterials(email) {
+    const existing = readStudyBucket(email);
+    if (Array.isArray(existing)) return existing;
+    return seedStudyMaterials(email);
+  }
+
+  function readTickets(email) {
+    try {
+      const all = JSON.parse(localStorage.getItem(TICKETS_KEY) || "{}");
+      const rows = all[String(email || "").toLowerCase()];
+      return Array.isArray(rows) ? rows : [];
+    } catch { return []; }
+  }
+
+  function writeTickets(email, rows) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(TICKETS_KEY) || "{}"); } catch { all = {}; }
+    all[String(email || "").toLowerCase()] = rows;
+    localStorage.setItem(TICKETS_KEY, JSON.stringify(all));
+  }
+
+  function creatorCommissionRate(staff) {
+    if (typeof AdminCore !== "undefined" && AdminCore.normalizeStaff) {
+      const n = AdminCore.normalizeStaff(staff);
+      const r = Number(n?.commissionRate || n?.rate || 0);
+      if (r) return r;
+    }
+    return 20;
+  }
+
+  function buildFinanceBundle(staff) {
+    const orders = creatorOrders(staff).slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+    const paid = orders.filter((o) => String(o.status || "").toUpperCase() === "PAID");
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayPaid = paid.filter((o) => new Date(o.at || 0).getTime() >= todayStart.getTime());
+    const todayRevenue = todayPaid.reduce((s, o) => s + Number(o.net || o.amount || 0), 0);
+
+    let commissions = [];
+    if (typeof AdminCore !== "undefined" && AdminCore.commissions) {
+      commissions = AdminCore.commissions().filter((c) => c.creatorEmail === staff.email);
+    }
+    const rate = creatorCommissionRate(staff);
+    if (!commissions.length) {
+      commissions = paid.slice(0, 24).map((o, i) => {
+        const gross = Number(o.net || o.amount || 0);
+        const amount = Math.round(gross * (rate / 100));
+        return {
+          id: "cm-" + (o.id || i),
+          orderId: o.id,
+          name: o.name,
+          email: o.email,
+          course: courseTitle(o.courseId),
+          courseId: o.courseId,
+          gross,
+          rate,
+          amount,
+          status: i % 5 === 0 ? "PENDING" : "ACCRUED",
+          at: o.at
+        };
+      });
+    } else {
+      commissions = commissions.map((c) => ({
+        id: c.id || c.orderId || ("cm-" + Math.random().toString(36).slice(2, 7)),
+        orderId: c.orderId || c.id || "—",
+        name: c.name || c.student || "—",
+        email: c.email || c.studentEmail || "—",
+        course: c.course || courseTitle(c.courseId),
+        courseId: c.courseId || "",
+        gross: Number(c.gross || c.amount || 0),
+        rate: Number(c.rate || rate),
+        amount: Number(c.final || c.amount || 0),
+        status: c.status || "ACCRUED",
+        at: c.created || c.at
+      }));
+    }
+    const commissionTotal = commissions.reduce((s, c) => s + Number(c.amount || 0), 0);
+
+    let payoutRows = [];
+    if (typeof payouts === "function") {
+      payoutRows = payouts().filter((p) => String(p.email || "").toLowerCase() === String(staff.email || "").toLowerCase());
+    }
+    if (!payoutRows.length) {
+      const due = Math.round(commissionTotal * 0.35);
+      const pending = Math.round(commissionTotal * 0.2);
+      const paidAmt = Math.max(0, commissionTotal - due - pending);
+      payoutRows = [
+        { id: "po-demo-1", email: staff.email, amount: paidAmt || Math.round(commissionTotal * 0.45), status: "paid", method: "upi", at: "2026-11-05T10:00:00.000Z", note: "Nov cycle" },
+        { id: "po-demo-2", email: staff.email, amount: pending || 4200, status: "pending", method: "upi", at: "2026-11-18T10:00:00.000Z", note: "Awaiting approval" },
+        { id: "po-demo-3", email: staff.email, amount: due || 3100, status: "scheduled", method: "bank", at: "2026-11-25T10:00:00.000Z", note: "Next payout window" }
+      ];
+    }
+    const pendingPayout = payoutRows.filter((p) => String(p.status).toLowerCase() === "pending" || String(p.status).toLowerCase() === "scheduled")
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    const paidPayout = payoutRows.filter((p) => String(p.status).toLowerCase() === "paid")
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+    const reportRows = paid.map((o) => ({
+      id: o.id,
+      name: o.name || "—",
+      email: o.email || "—",
+      course: courseTitle(o.courseId),
+      amount: Number(o.net || o.amount || 0),
+      method: o.method || "upi",
+      status: o.status || "PAID",
+      at: o.at
+    }));
+
+    const byCourse = new Map();
+    paid.forEach((o) => {
+      const id = o.courseId || "unknown";
+      const row = byCourse.get(id) || { course: courseTitle(id), courseId: id, orders: 0, revenue: 0 };
+      row.orders += 1;
+      row.revenue += Number(o.net || o.amount || 0);
+      byCourse.set(id, row);
+    });
+    const courseReport = Array.from(byCourse.values()).sort((a, b) => b.revenue - a.revenue);
+
+    return {
+      todayRevenue,
+      todayPaid,
+      todayRows: todayPaid.map((o) => ({
+        id: o.id,
+        name: o.name || "—",
+        email: o.email || "—",
+        course: courseTitle(o.courseId),
+        amount: Number(o.net || o.amount || 0),
+        method: o.method || "upi",
+        at: o.at,
+        status: o.status || "PAID"
+      })),
+      commissions,
+      commissionTotal,
+      rate,
+      pendingPayout,
+      paidPayout,
+      payoutRows: payoutRows.map((p) => ({
+        id: p.id,
+        amount: Number(p.amount || 0),
+        status: String(p.status || "pending").toUpperCase(),
+        method: p.method || "upi",
+        at: p.at || p.created,
+        note: p.note || p.ref || "—"
+      })),
+      reportRows,
+      courseReport,
+      periodRevenue: paid.filter((o) => inLastDays(o.at, DEFAULT_PERIOD)).reduce((s, o) => s + Number(o.net || o.amount || 0), 0)
+    };
+  }
+
+  const FINANCE_SHEETS = {
+    "today-revenue": {
+      title: "Today Revenue",
+      columns: [
+        { key: "id", label: "Order ID" },
+        { key: "name", label: "Student" },
+        { key: "email", label: "Email" },
+        { key: "course", label: "Course" },
+        { key: "amount", label: "Amount", fmt: "inr" },
+        { key: "method", label: "Method" },
+        { key: "at", label: "Paid at", fmt: "date" },
+        { key: "status", label: "Status" }
+      ],
+      rows: (b) => b.todayRows,
+      deep: {
+        title: "Today Revenue — In-depth",
+        columns: [
+          { key: "id", label: "Order ID" },
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "course", label: "Course" },
+          { key: "amount", label: "Amount", fmt: "inr" },
+          { key: "method", label: "Method" },
+          { key: "at", label: "Paid at", fmt: "date" },
+          { key: "status", label: "Status" }
+        ],
+        rows: (b) => b.todayRows
+      }
+    },
+    commission: {
+      title: "Commission",
+      columns: [
+        { key: "id", label: "Commission ID" },
+        { key: "orderId", label: "Order" },
+        { key: "name", label: "Student" },
+        { key: "course", label: "Course" },
+        { key: "gross", label: "Gross", fmt: "inr" },
+        { key: "rate", label: "Rate %", fmt: "pct" },
+        { key: "amount", label: "Commission", fmt: "inr" },
+        { key: "status", label: "Status" },
+        { key: "at", label: "Date", fmt: "date" }
+      ],
+      rows: (b) => b.commissions,
+      deep: {
+        title: "Commission — In-depth",
+        columns: [
+          { key: "id", label: "Commission ID" },
+          { key: "orderId", label: "Order" },
+          { key: "name", label: "Student" },
+          { key: "email", label: "Email" },
+          { key: "course", label: "Course" },
+          { key: "courseId", label: "Course ID" },
+          { key: "gross", label: "Gross", fmt: "inr" },
+          { key: "rate", label: "Rate %", fmt: "pct" },
+          { key: "amount", label: "Commission", fmt: "inr" },
+          { key: "status", label: "Status" },
+          { key: "at", label: "Date", fmt: "date" }
+        ],
+        rows: (b) => b.commissions
+      }
+    },
+    "pending-payout": {
+      title: "Pending Payout",
+      columns: [
+        { key: "id", label: "Payout ID" },
+        { key: "amount", label: "Amount", fmt: "inr" },
+        { key: "status", label: "Status" },
+        { key: "method", label: "Method" },
+        { key: "at", label: "Raised", fmt: "date" },
+        { key: "note", label: "Note" }
+      ],
+      rows: (b) => b.payoutRows.filter((r) => r.status === "PENDING" || r.status === "SCHEDULED"),
+      deep: {
+        title: "Pending Payout — In-depth",
+        columns: [
+          { key: "id", label: "Payout ID" },
+          { key: "amount", label: "Amount", fmt: "inr" },
+          { key: "status", label: "Status" },
+          { key: "method", label: "Method" },
+          { key: "at", label: "Raised", fmt: "date" },
+          { key: "note", label: "Note" }
+        ],
+        rows: (b) => b.payoutRows.filter((r) => r.status === "PENDING" || r.status === "SCHEDULED")
+      }
+    },
+    payout: {
+      title: "Payout",
+      columns: [
+        { key: "id", label: "Payout ID" },
+        { key: "amount", label: "Amount", fmt: "inr" },
+        { key: "status", label: "Status" },
+        { key: "method", label: "Method" },
+        { key: "at", label: "Date", fmt: "date" },
+        { key: "note", label: "Note" }
+      ],
+      rows: (b) => b.payoutRows,
+      deep: {
+        title: "Payout history — In-depth",
+        columns: [
+          { key: "id", label: "Payout ID" },
+          { key: "amount", label: "Amount", fmt: "inr" },
+          { key: "status", label: "Status" },
+          { key: "method", label: "Method" },
+          { key: "at", label: "Date", fmt: "date" },
+          { key: "note", label: "Note" }
+        ],
+        rows: (b) => b.payoutRows
+      }
+    },
+    "revenue-reports": {
+      title: "Revenue Reports",
+      columns: [
+        { key: "id", label: "Order ID" },
+        { key: "name", label: "Student" },
+        { key: "course", label: "Course" },
+        { key: "amount", label: "Amount", fmt: "inr" },
+        { key: "method", label: "Method" },
+        { key: "at", label: "Date", fmt: "date" },
+        { key: "status", label: "Status" }
+      ],
+      rows: (b) => b.reportRows,
+      deep: {
+        title: "Revenue Reports — Course breakdown",
+        columns: [
+          { key: "course", label: "Course" },
+          { key: "courseId", label: "Course ID" },
+          { key: "orders", label: "Orders" },
+          { key: "revenue", label: "Revenue", fmt: "inr" }
+        ],
+        rows: (b) => b.courseReport
+      }
+    }
+  };
+
+  function openFinanceSheet(sheetId, staff, level) {
+    const def = FINANCE_SHEETS[sheetId];
+    if (!def) return;
+    const lvl = level === 2 ? 2 : 1;
+    const deep = lvl === 2 && def.deep ? def.deep : null;
+    const view = deep || def;
+    const bundle = buildFinanceBundle(staff);
+    const rows = (view.rows ? view.rows(bundle) : []) || [];
+    const subtitle = deep
+      ? `${rows.length} row${rows.length === 1 ? "" : "s"} · in-depth spreadsheet`
+      : `${rows.length} row${rows.length === 1 ? "" : "s"} · spreadsheet detail`;
+    const actions = deep
+      ? `<button type="button" class="crm-btn crm-btn-ghost" data-crm-fin-back="${esc(sheetId)}" style="width:auto;padding:6px 12px">Back</button>
+         <button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-close style="width:auto;padding:6px 12px">Close</button>`
+      : `<button type="button" class="crm-btn crm-btn-ghost" data-crm-fin-deep="${esc(sheetId)}" style="width:auto;padding:6px 12px">View detail</button>
+         <button type="button" class="crm-btn crm-btn-ghost" data-crm-sheet-close style="width:auto;padding:6px 12px">Close</button>`;
+    let overlay = $("#crmSheetOverlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "crmSheetOverlay";
+      overlay.className = "crm-sheet-overlay";
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeAnalyticsSheet();
+      });
+    }
+    overlay.dataset.sheetId = sheetId;
+    overlay.dataset.sheetLevel = String(lvl);
+    overlay.dataset.sheetKind = "finance";
+    overlay.innerHTML = `
+      <div class="crm-sheet-panel${deep ? " crm-sheet-panel-deep" : ""}" role="dialog" aria-modal="true" aria-label="${esc(view.title)}">
+        <header class="crm-sheet-head">
+          <div>
+            <h2>${esc(view.title)}</h2>
+            <p>${subtitle}</p>
+          </div>
+          <div class="crm-sheet-actions">${actions}</div>
+        </header>
+        ${sheetTableHTML(view, rows)}
+      </div>`;
+  }
+
+  function renderFinance(root, s, view) {
+    const b = buildFinanceBundle(s);
+    const cards = {
+      "today-revenue": {
+        label: "Today Revenue",
+        value: inrCompact(b.todayRevenue),
+        hint: `${b.todayPaid.length} paid order${b.todayPaid.length === 1 ? "" : "s"} since midnight`,
+        sheet: "today-revenue",
+        ico: "wallet",
+        tone: "cyan"
+      },
+      commission: {
+        label: "Commission",
+        value: inrCompact(b.commissionTotal),
+        hint: `${b.rate}% creator rate · ${b.commissions.length} lines`,
+        sheet: "commission",
+        ico: "pulse",
+        tone: "purple"
+      },
+      "pending-payout": {
+        label: "Pending Payout",
+        value: inrCompact(b.pendingPayout),
+        hint: "Awaiting approval or scheduled window",
+        sheet: "pending-payout",
+        ico: "eye",
+        tone: "blue"
+      },
+      payout: {
+        label: "Payout",
+        value: inrCompact(b.paidPayout),
+        hint: `${b.payoutRows.length} payout record${b.payoutRows.length === 1 ? "" : "s"}`,
+        sheet: "payout",
+        ico: "check",
+        tone: "green"
+      },
+      "revenue-reports": {
+        label: "Revenue Reports",
+        value: inrCompact(b.periodRevenue),
+        hint: `Last ${DEFAULT_PERIOD} days · course + order sheets`,
+        sheet: "revenue-reports",
+        ico: "wallet",
+        tone: "cyan"
+      }
+    };
+    const focus = cards[view] || cards["today-revenue"];
+    const allCards = Object.values(cards);
+    root.innerHTML = `
+      <div class="crm-panel-view crm-analytics crm-finance">
+        <div class="crm-welcome">
+          <div>
+            <h2>Finance</h2>
+            <p>Creator-scoped revenue, commission, and payout sheets — same nested View detail pattern as Analytics.</p>
+          </div>
+        </div>
+        <section class="crm-section crm-analytics-block">
+          <div class="crm-section-head">
+            <div>
+              <h3 class="crm-analytics-heading">${esc(focus.label)}</h3>
+              <p>${esc(focus.hint)}</p>
+            </div>
+          </div>
+          <div class="crm-metrics crm-analytics-metrics">
+            ${allCards.map((c) => `
+              <article class="crm-metric crm-analytics-card${c.sheet === focus.sheet ? " on" : ""}">
+                <div class="crm-metric-head"><span>${esc(c.label)}</span><div class="crm-metric-ico ${esc(c.tone)}">${icon(c.ico)}</div></div>
+                <b>${esc(c.value)}</b>
+                <div class="crm-metric-foot"><span class="crm-delta flat">${esc(c.hint)}</span></div>
+                <button type="button" class="crm-view-detail" data-crm-fin-sheet="${esc(c.sheet)}">View detail</button>
+              </article>`).join("")}
+          </div>
+        </section>
+        <section class="crm-section">
+          <div class="crm-section-head">
+            <div>
+              <h3>${esc(focus.label)} sheet</h3>
+              <p>Preview rows — open View detail for the nested spreadsheet.</p>
+            </div>
+            <button type="button" class="crm-link-btn" data-crm-fin-sheet="${esc(focus.sheet)}">View all</button>
+          </div>
+          ${sheetTableHTML(FINANCE_SHEETS[focus.sheet], (FINANCE_SHEETS[focus.sheet].rows(b) || []), 6)}
+        </section>
+      </div>`;
+  }
+
+  function ownedCatalogCourses(staff) {
+    const ids = new Set(ownedCourseIds(staff));
+    const all = typeof allCourses === "function" ? allCourses() : [];
+    return all.filter((c) => ids.has(c.id) || c.instructor === staff.name);
+  }
+
+  function ownedMentorships(staff) {
+    const list = typeof mentorCatalogAll === "function" ? mentorCatalogAll()
+      : (typeof MENTOR_PROGRAMS !== "undefined" ? MENTOR_PROGRAMS : []);
+    return list.filter((p) => !p.unpublished && p.by === staff.name);
+  }
+
+  function ownedWebinars(staff) {
+    const list = typeof allWebinars === "function" ? allWebinars()
+      : (typeof WEBINARS !== "undefined" ? WEBINARS : []);
+    return (Array.isArray(list) ? list : []).filter((w) => w.by === staff.name);
+  }
+
+  function savePct(price, old) {
+    const p = Number(price || 0);
+    const o = Number(old || 0);
+    if (!o || o <= p) return 0;
+    return Math.round(((o - p) / o) * 100);
+  }
+
+  function courseCoverArt(c) {
+    const covers = typeof COVERS === "object" ? COVERS : {};
+    return covers[c.cover] || { bg: "linear-gradient(135deg,#0f766e,#042f2e)", title: String(c.title || "COURSE").slice(0, 18).toUpperCase() };
+  }
+
+  function courseThumbBlock(c) {
+    const banner = typeof courseBannerOf === "function" ? courseBannerOf(c) : "";
+    const art = courseCoverArt(c);
+    const photo = typeof photoFor === "function" ? photoFor(c.instructor) : "/img/bizgarh-avatar.png";
+    if (banner) {
+      return `<div class="crm-course-thumb has-banner" style="background-image:url('${esc(banner)}')">
+        <span class="brand-badge">B</span>
+      </div>`;
+    }
+    return `<div class="crm-course-thumb" style="background:${esc(art.bg)}">
+      <div class="cover-copy">${art.title}</div>
+      <img class="person" src="${esc(photo)}" alt="">
+      <span class="brand-badge">B</span>
+    </div>`;
+  }
+
+  function courseCardHTML(c, kind) {
+    const price = Number(c.price || 0);
+    const old = Number(c.old || 0);
+    const pct = savePct(price, old);
+    const rating = c.rating || "4.8";
+    return `<button type="button" class="crm-course-card" data-crm-course-open="${esc(kind)}" data-id="${esc(c.id)}">
+      ${courseThumbBlock(c)}
+      <div class="crm-course-body">
+        <div class="crm-course-title-row">
+          <b>${esc(c.title)}</b>
+          <span class="crm-course-rating">★ ${esc(rating)}</span>
+        </div>
+        <div class="crm-course-price-row">
+          <span class="now">${esc(inrFull(price))}</span>
+          ${old ? `<span class="old">${esc(inrFull(old))}</span>` : ""}
+          ${pct ? `<span class="save">SAVE ${pct}%</span>` : ""}
+        </div>
+      </div>
+    </button>`;
+  }
+
+  function mentorshipAsCard(p) {
+    return {
+      id: p.id,
+      title: p.title,
+      instructor: p.by,
+      rating: "4.8",
+      price: p.price,
+      old: p.old,
+      hours: String(p.hours || p.weeks || "—"),
+      cover: "mp",
+      _kind: "mentorship",
+      _raw: p
+    };
+  }
+
+  function webinarAsCard(w) {
+    return {
+      id: w.id,
+      title: w.title,
+      instructor: w.by,
+      rating: "4.7",
+      price: w.free ? 0 : Number(w.price || 0),
+      old: 0,
+      hours: "1.0",
+      cover: "web",
+      _kind: "webinar",
+      _raw: w
+    };
+  }
+
+  function courseOverviewText(c) {
+    if (c._kind === "mentorship") {
+      return c._raw?.blurb || "Live multi-week mentorship desk with session recordings for enrolled learners.";
+    }
+    if (c._kind === "webinar") {
+      return `Live webinar with ${c.instructor}. ${c._raw?.when ? "Scheduled " + c._raw.when + "." : ""} Process-first session — not tips.`;
+    }
+    const hours = c.hours || "—";
+    const lessons = c.lessons || "—";
+    return `${c.title} is a recorded Bizgarh classroom (${hours} hrs · ${lessons} lessons). Teach process, risk, and journals — education only.`;
+  }
+
+  function openCoursePopup(item, kind) {
+    closeCoursePopup();
+    const level = kind === "mentorship" ? "Mentorship desk" : kind === "webinar" ? "Live webinar" : "All Levels";
+    const duration = kind === "webinar"
+      ? "Live session"
+      : kind === "mentorship"
+        ? `${item._raw?.weeks || "—"} weeks · ${item._raw?.sessions || "—"} sessions`
+        : `${item.hours || "—"} hrs of content`;
+    const langs = "English, Hindi";
+    const access = kind === "webinar" ? "Session + recording when uploaded" : kind === "mentorship" ? "Desk access while enrolled" : "1 Year Access";
+    const cert = kind === "course" ? "Earn a Certificate" : kind === "webinar" ? "Participation certificate" : "Desk completion badge";
+    const price = Number(item.price || 0);
+    const rating = item.rating || "4.8";
+    const overlay = document.createElement("div");
+    overlay.id = "crmCourseOverlay";
+    overlay.className = "crm-course-overlay";
+    overlay.innerHTML = `
+      <div class="crm-course-popup" role="dialog" aria-modal="true" aria-label="${esc(item.title)}">
+        <header class="crm-course-popup-head">
+          <h2>${esc(item.title)}</h2>
+          <button type="button" class="crm-btn crm-btn-ghost" data-crm-course-close style="width:auto;padding:6px 12px">Close</button>
+        </header>
+        <div class="crm-course-popup-grid">
+          <div class="crm-course-hero">
+            ${courseThumbBlock(item)}
+            <div class="crm-course-overview">
+              <h3>Course overview</h3>
+              <p>${esc(courseOverviewText(item))}</p>
+            </div>
+          </div>
+          <aside class="crm-course-side">
+            <ul>
+              <li><span class="ico">${icon("cap")}</span>${esc(level)}</li>
+              <li><span class="ico">${icon("pulse")}</span>${esc(duration)}</li>
+              <li><span class="ico">${icon("life")}</span>${esc(langs)}</li>
+              <li><span class="ico">${icon("eye")}</span>${esc(access)}</li>
+              <li><span class="ico">${icon("check")}</span>${esc(cert)}</li>
+            </ul>
+            <div class="crm-course-side-price">${price ? esc(inrFull(price)) : "Free"}</div>
+            <div class="crm-course-side-rating">★ ${esc(rating)}</div>
+          </aside>
+        </div>
+      </div>`;
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeCoursePopup();
+    });
+    document.body.appendChild(overlay);
+  }
+
+  function closeCoursePopup() {
+    $("#crmCourseOverlay")?.remove();
+  }
+
+  function renderCourses(root, s) {
+    const rows = ownedCatalogCourses(s);
+    root.innerHTML = `
+      <div class="crm-panel-view">
+        <div class="crm-welcome">
+          <div>
+            <h2>Courses</h2>
+            <p>Your published classrooms — open a card for overview and meta (no checkout).</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} course${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        ${rows.length ? `<div class="crm-course-grid">${rows.map((c) => courseCardHTML(c, "course")).join("")}</div>` : ""}
+      </div>`;
+  }
+
+  function renderMentorship(root, s) {
+    const rows = ownedMentorships(s).map(mentorshipAsCard);
+    root.innerHTML = `
+      <div class="crm-panel-view">
+        <div class="crm-welcome">
+          <div>
+            <h2>Mentorship</h2>
+            <p>Live desks attributed to you.</p>
+          </div>
+          ${rows.length ? `<span class="crm-studio-count">${rows.length}</span>` : ""}
+        </div>
+        ${rows.length ? `<div class="crm-course-grid">${rows.map((c) => courseCardHTML(c, "mentorship")).join("")}</div>` : ""}
+      </div>`;
+  }
+
+  function renderWebinars(root, s) {
+    const rows = ownedWebinars(s).map(webinarAsCard);
+    root.innerHTML = `
+      <div class="crm-panel-view">
+        <div class="crm-welcome">
+          <div>
+            <h2>Webinars</h2>
+            <p>Live sessions you host on Bizgarh.</p>
+          </div>
+          ${rows.length ? `<span class="crm-studio-count">${rows.length}</span>` : ""}
+        </div>
+        ${rows.length ? `<div class="crm-course-grid">${rows.map((c) => courseCardHTML(c, "webinar")).join("")}</div>` : ""}
+      </div>`;
+  }
+
+  function renderStudyMaterials(root, s) {
+    const rows = studyMaterials(s.email);
+    root.innerHTML = `<div class="crm-panel-view crm-studio">
+      <section class="crm-section">
+        <div class="crm-section-head">
+          <div>
+            <h3>Study materials</h3>
+            <p>Upload PDF, DOC, images, and other files for your learners — list stays on this desk.</p>
+          </div>
+          <span class="crm-studio-count">${rows.length} file${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        ${dropzoneHTML("study", STUDY_ACCEPT, "Accepts PDF, DOC, images, and other study files")}
+        <div class="crm-file-panel" id="crmStudyList">${fileListHTML("study", rows)}</div>
+      </section>
+    </div>`;
+  }
+
+  function addStudyFiles(fileList, staff) {
+    if (!staff || !fileList?.length) return;
+    const rows = studyMaterials(staff.email).slice();
+    Array.from(fileList).forEach((file) => {
+      const id = studioUid("study");
+      rememberBlob(id, file);
+      rows.unshift({
+        id,
+        name: file.name || "file",
+        size: Number(file.size || 0),
+        uploadedAt: new Date().toISOString(),
+        demo: false,
+        blobId: id
+      });
+    });
+    writeStudyBucket(staff.email, rows);
+    renderStudyMaterials($("#crmView"), staff);
+  }
+
+  function deleteStudyItem(id, staff) {
+    const next = studyMaterials(staff.email).filter((r) => r.id !== id);
+    writeStudyBucket(staff.email, next);
+    const prev = studioBlobs.get(id);
+    if (prev?.url) URL.revokeObjectURL(prev.url);
+    studioBlobs.delete(id);
+    renderStudyMaterials($("#crmView"), staff);
+  }
+
+  const CREATOR_FAQS = [
+    { q: "How do I see today's revenue?", a: "Open Finance → Today Revenue. View detail opens the nested spreadsheet of paid orders since midnight." },
+    { q: "When do payouts land?", a: "Pending Payout shows amounts awaiting approval or the next window. Paid rows appear under Payout once the desk marks them paid." },
+    { q: "How is commission calculated?", a: "Commission uses your creator rate on attributed paid orders. Open Finance → Commission for line-level detail." },
+    { q: "Where do I upload study PDFs?", a: "Courses & Learning → Study materials. Drag-drop PDF, DOC, images, or other files; Download / Delete from the list." },
+    { q: "Why is Mentorship empty?", a: "Mentorship and Webinar only list programs attributed to your creator name. If you have none, the section stays blank by design." },
+    { q: "How do Platform Performance counts work?", a: "Connect YouTube / Instagram / Facebook under Settings → Profile (API install). Until connected, dashboard counts stay offline." },
+    { q: "Can I edit my Creator ID or referral code?", a: "No. Those are admin-side only. You can edit display name and profile fields; ID and referral stay locked." },
+    { q: "How do I raise a support ticket?", a: "Support → Tickets. Submit subject, category, description, and an optional attachment. Your ticket list persists on this desk." },
+    { q: "Where did Assignments and Classroom go?", a: "Those CRM stubs were removed. Classroom delivery stays on the public Bizgarh site; Creator Studio handles scripts and recordings." },
+    { q: "Who do I contact for editing queue status?", a: "Editing Queue is updated by the Bizgarh team. Use Support → Tickets if a status looks stuck." }
+  ];
+
+  function renderTickets(root, s) {
+    const rows = readTickets(s.email);
+    root.innerHTML = `
+      <div class="crm-panel-view">
+        <section class="crm-section">
+          <div class="crm-section-head">
+            <div>
+              <h3>Tickets</h3>
+              <p>Raise a complaint or problem for the Bizgarh desk — submissions stay in your ticket list.</p>
+            </div>
+            <span class="crm-studio-count">${rows.length} ticket${rows.length === 1 ? "" : "s"}</span>
+          </div>
+          <form class="crm-ticket-form" id="crmTicketForm">
+            <div class="crm-form-grid">
+              <div class="crm-field"><label for="crmTicketSubject">Subject</label><input id="crmTicketSubject" required placeholder="Short title"></div>
+              <div class="crm-field"><label for="crmTicketCat">Category</label>
+                <select id="crmTicketCat">
+                  <option value="Payout">Payout</option>
+                  <option value="Content">Content / Studio</option>
+                  <option value="Students">Students</option>
+                  <option value="Platform">Platform / API</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="crm-field full"><label for="crmTicketBody">Description</label><textarea id="crmTicketBody" required placeholder="What went wrong, and what should happen next?"></textarea></div>
+              <div class="crm-field full"><label for="crmTicketFile">Attachment (optional)</label><input id="crmTicketFile" type="file"></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button type="submit" class="crm-btn crm-btn-primary" style="width:auto;padding-inline:22px">Submit ticket</button>
+              <span id="crmTicketMsg" class="crm-err" style="color:var(--crm-green)"></span>
+            </div>
+          </form>
+          <div class="crm-ticket-list">
+            ${rows.length ? rows.map((t) => `
+              <article class="crm-ticket-row">
+                <b>${esc(t.subject)}</b>
+                <span>${esc(t.category)} · ${esc(t.status)} · ${esc(fmtDate(t.at))}${t.fileName ? " · " + esc(t.fileName) : ""}</span>
+                <span>${esc(t.body)}</span>
+              </article>`).join("") : `<div class="crm-file-empty">No tickets yet — submit the form above.</div>`}
+          </div>
+        </section>
+      </div>`;
+    const form = $("#crmTicketForm");
+    if (form) {
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const subject = ($("#crmTicketSubject")?.value || "").trim();
+        const category = ($("#crmTicketCat")?.value || "Other").trim();
+        const body = ($("#crmTicketBody")?.value || "").trim();
+        const file = $("#crmTicketFile")?.files?.[0];
+        if (!subject || !body) return;
+        const next = readTickets(s.email).slice();
+        next.unshift({
+          id: studioUid("tkt"),
+          subject,
+          category,
+          body,
+          status: "OPEN",
+          at: new Date().toISOString(),
+          fileName: file ? file.name : ""
+        });
+        writeTickets(s.email, next);
+        renderTickets(root, s);
+      };
+    }
+  }
+
+  function renderQueries(root) {
+    root.innerHTML = `
+      <div class="crm-panel-view">
+        <section class="crm-section">
+          <div class="crm-section-head">
+            <div>
+              <h3>Queries</h3>
+              <p>Bizgarh creator FAQs — finance, content, platform connect, and desk workflow.</p>
+            </div>
+          </div>
+          <div class="crm-faq-list">
+            ${CREATOR_FAQS.map((f) => `
+              <details class="crm-faq-item">
+                <summary>${esc(f.q)}</summary>
+                <p>${esc(f.a)}</p>
+              </details>`).join("")}
+          </div>
+        </section>
+      </div>`;
+  }
+
+
   function renderView(view) {
     const root = $("#crmView");
     if (!root) return;
@@ -1187,6 +2039,15 @@
       location.hash = "editing-queue";
       return renderEditingQueue(root, s);
     }
+    if (view === "today-revenue" || view === "commission" || view === "pending-payout" || view === "payout" || view === "revenue-reports") {
+      return renderFinance(root, s, view);
+    }
+    if (view === "courses") return renderCourses(root, s);
+    if (view === "mentorship") return renderMentorship(root, s);
+    if (view === "webinars") return renderWebinars(root, s);
+    if (view === "study-materials") return renderStudyMaterials(root, s);
+    if (view === "tickets") return renderTickets(root, s);
+    if (view === "queries") return renderQueries(root);
     if (view !== "dashboard") {
       const label = findNavItem(view)?.label || "Section";
       root.innerHTML = `<div class="crm-panel-view crm-section"><div class="crm-stub">
@@ -1296,7 +2157,7 @@
               <h3>Platform Performance</h3>
               <p>Live reach for YouTube, Instagram, and Facebook · 24h delta when a prior snapshot exists.</p>
             </div>
-            <a href="#profile">Edit links</a>
+            <a href="#profile">API connect</a>
           </div>
           <div class="crm-platforms" id="crmPlatforms">${platformSkeleton()}</div>
         </section>
@@ -2870,132 +3731,167 @@
   }
 
   async function loadPlatforms(s) {
+    const api = socialApiState(s.email);
     const links = socialLinks(s.email);
     const cached = socialCache(s.email);
-    renderPlatformCards(cached, links);
+    const anyConnected = api.youtube || api.instagram || api.facebook;
+    if (!anyConnected) {
+      renderPlatformCards({
+        youtube: { ok: false, count: null, error: "not_connected" },
+        instagram: { ok: false, count: null, error: "not_connected" },
+        facebook: { ok: false, count: null, error: "not_connected" }
+      }, links, true, api);
+      return;
+    }
+    renderPlatformCards(cached, links, false, api);
 
+    const activeLinks = {
+      youtube: api.youtube ? (links.youtube || "connected") : "",
+      instagram: api.instagram ? (links.instagram || "connected") : "",
+      facebook: api.facebook ? (links.facebook || "connected") : ""
+    };
     try {
       const res = await fetch("/api/creator/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: s.email, links })
+        body: JSON.stringify({ email: s.email, links: activeLinks })
       });
       if (!res.ok) throw new Error("social_http_" + res.status);
       const data = await res.json();
       if (data && data.platforms) {
         saveSocialCache(s.email, data.platforms);
-        renderPlatformCards(data.platforms, links);
+        renderPlatformCards(data.platforms, links, false, api);
         return;
       }
     } catch {
       // Local static servers cannot run /api/creator/social — keep cache + clear status
     }
-    renderPlatformCards(Object.keys(cached).length ? cached : {
+    const fallback = Object.keys(cached).length ? cached : {
       youtube: { ok: false, count: null, error: "api_offline", hint: "Live counts need Cloudflare Pages /api/creator/social + YOUTUBE_API_KEY" },
       instagram: { ok: false, count: null, error: "api_offline", hint: "Live counts need deploy + optional META_APP_TOKEN" },
       facebook: { ok: false, count: null, error: "api_offline", hint: "Live counts need deploy + optional META_APP_TOKEN" }
-    }, links, true);
+    };
+    renderPlatformCards(fallback, links, true, api);
   }
 
-  function renderPlatformCards(platforms, links, offline) {
+  function renderPlatformCards(platforms, links, offline, apiState) {
     const root = $("#crmPlatforms");
     if (!root) return;
+    const api = apiState || socialApiState(session()?.email);
     ["youtube", "instagram", "facebook"].forEach((p) => {
       const el = root.querySelector(`[data-plat="${p}"]`);
       if (!el) return;
       const row = platforms[p] || {};
       const label = p === "youtube" ? "YouTube" : p === "instagram" ? "Instagram" : "Facebook";
-      const count = row.count != null ? fmtNum(row.count) : "—";
+      const connected = !!api[p];
+      const count = connected && row.count != null ? fmtNum(row.count) : "—";
       let meta = "";
-      if (row.deltaPct != null) {
+      if (!connected) {
+        meta = "Connect API in Profile";
+      } else if (row.deltaPct != null) {
         const up = row.deltaPct >= 0;
         meta = `${up ? "+" : ""}${row.deltaPct}% vs prior 24h snapshot`;
       } else if (row.note === "24h_delta_pending") {
         meta = "Snapshot saved · 24h delta pending";
-      } else if (row.error === "link_missing") {
-        meta = "Add link in Profile";
+      } else if (row.error === "not_connected" || row.error === "link_missing") {
+        meta = "Connect API in Profile";
       } else if (row.error === "missing_youtube_key" || row.error === "instagram_unavailable" || row.error === "facebook_unavailable" || row.error === "api_offline" || row.error) {
         if (row.count != null) {
           meta = row.stale || offline ? "Last known count · refresh on deploy" : (row.hint ? String(row.hint).slice(0, 72) : "Could not refresh");
         } else if (row.error === "missing_youtube_key") {
           meta = "Needs YOUTUBE_API_KEY in CF env";
         } else if (row.error === "api_offline") {
-          meta = "Live on Cloudflare Pages API";
+          meta = "Connected · live on Cloudflare Pages API";
         } else {
-          meta = row.hint ? String(row.hint).slice(0, 72) : "Could not refresh · check API keys / links";
+          meta = row.hint ? String(row.hint).slice(0, 72) : "Could not refresh · check API keys";
         }
       } else if (row.source) {
         meta = row.stale ? "Stale · last good count" : `Live · ${row.source.replace(/_/g, " ")}`;
-      } else if (!links[p]) {
-        meta = "Add link in Profile";
       } else {
-        meta = "Waiting for live count";
+        meta = "Connected · waiting for live count";
       }
       const b = el.querySelector("b");
       const m = el.querySelector(".crm-plat-meta");
-      if (b) b.textContent = count === "—" ? "—" : count + (p === "youtube" ? " subscribers" : " followers");
-      // Keep number prominent like mock — put unit in meta if long
       if (b && count !== "—") b.textContent = count;
+      else if (b) b.textContent = "—";
       if (m) m.textContent = (count !== "—" ? (p === "youtube" ? "Subscribers · " : "Followers · ") : "") + meta;
-      el.title = links[p] || label;
+      el.title = connected ? (links[p] || label + " connected") : "Not connected";
     });
   }
 
   function renderProfile(root, s, view) {
-    const links = socialLinks(s.email);
+    const extras = profileExtras(s.email);
+    const api = socialApiState(s.email);
+    const staffRow = (typeof AdminCore !== "undefined" && AdminCore.normalizeStaff)
+      ? AdminCore.normalizeStaff(s)
+      : s;
+    const displayName = extras.name || staffRow.name || s.name || "";
+    const phone = extras.phone || staffRow.phone || "";
+    const bio = extras.bio || staffRow.bio || "";
+    const creatorId = staffRow.creatorId || s.creatorId || "—";
+    const referral = staffRow.referralCode || s.referralCode || "—";
     root.innerHTML = `
       <div class="crm-panel-view crm-section">
         <div class="crm-section-head">
           <div>
             <h3>${view === "settings" ? "Settings" : "Profile"}</h3>
-            <p>Bizgarh creator ID and social links used for Platform Performance.</p>
+            <p>Editable profile fields · Creator ID / referral locked · social API install for Platform Performance.</p>
           </div>
         </div>
         <div class="crm-form-grid">
-          <div class="crm-field"><label>Name</label><input value="${esc(s.name || "")}" disabled></div>
+          <div class="crm-field"><label for="crmProfileName">Display name</label><input id="crmProfileName" value="${esc(displayName)}"></div>
+          <div class="crm-field"><label for="crmProfilePhone">Phone</label><input id="crmProfilePhone" value="${esc(phone)}" placeholder="+91 …"></div>
           <div class="crm-field"><label>Email / Bizgarh ID</label><input value="${esc(s.email || "")}" disabled></div>
-          <div class="crm-field"><label>Creator ID</label><input value="${esc(s.creatorId || "—")}" disabled></div>
-          <div class="crm-field"><label>Referral code</label><input value="${esc(s.referralCode || "—")}" disabled></div>
-          <div class="crm-field full"><label>YouTube channel URL</label><input id="crmYt" type="url" placeholder="https://www.youtube.com/@yourchannel" value="${esc(links.youtube)}"></div>
-          <div class="crm-field full"><label>Instagram profile URL</label><input id="crmIg" type="url" placeholder="https://www.instagram.com/yourhandle" value="${esc(links.instagram)}"></div>
-          <div class="crm-field full"><label>Facebook page URL</label><input id="crmFb" type="url" placeholder="https://www.facebook.com/yourpage" value="${esc(links.facebook)}"></div>
+          <div class="crm-field crm-locked-field"><label>Creator ID</label><input value="${esc(creatorId)}" disabled><p class="crm-locked-hint">Admin-side only</p></div>
+          <div class="crm-field crm-locked-field"><label>Referral code</label><input value="${esc(referral)}" disabled><p class="crm-locked-hint">Admin-side only</p></div>
+          <div class="crm-field full"><label for="crmProfileBio">Bio</label><textarea id="crmProfileBio" rows="3" placeholder="Short creator bio">${esc(bio)}</textarea></div>
+        </div>
+        <div class="crm-section-head" style="margin-top:18px">
+          <div>
+            <h3>Social API install</h3>
+            <p>Opt in to connect YouTube / Instagram / Facebook trackers. Platform Performance stays offline until connected.</p>
+          </div>
+        </div>
+        <div class="crm-api-grid" id="crmApiConnect">
+          ${["youtube", "instagram", "facebook"].map((p) => {
+            const label = p === "youtube" ? "YouTube tracker" : p === "instagram" ? "Instagram collect" : "Facebook collect";
+            const on = !!api[p];
+            return `<article class="crm-api-row" data-api-plat="${p}">
+              <div>
+                <strong>${label}</strong>
+                <span>${p === "youtube" ? "Subscriber counts via YouTube Data API" : "Follower counts via Meta graph when tokens exist"}</span>
+                <span class="crm-api-status${on ? " on" : ""}">${on ? "Connected" : "Not connected"}</span>
+              </div>
+              <button type="button" class="crm-btn ${on ? "crm-btn-ghost" : "crm-btn-primary"}" data-crm-api-toggle="${p}" style="width:auto;padding:8px 14px">${on ? "Disconnect" : "Install / Connect"}</button>
+            </article>`;
+          }).join("")}
         </div>
         <p id="crmProfileMsg" class="crm-err" style="color:var(--crm-green)"></p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-          <button type="button" class="crm-btn crm-btn-primary" id="crmSaveSocial" style="width:auto;padding-inline:22px">Save social links</button>
-          <button type="button" class="crm-btn crm-btn-ghost" id="crmRefreshSocial" style="width:auto">Refresh platform counts</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <button type="button" class="crm-btn crm-btn-primary" id="crmSaveProfile" style="width:auto;padding-inline:22px">Save profile</button>
           <button type="button" class="crm-btn crm-btn-ghost" id="crmLogout" style="width:auto">Log out</button>
         </div>
-        <p class="crm-login-hint" style="margin-top:16px">
-          Active students rule: lesson progress on your courses <em>or</em> enrollment in the last ${ACTIVE_DAYS} days.
-          Platform deltas compare against a snapshot at least 24 hours old (KV when available).
-        </p>
       </div>`;
 
-    $("#crmSaveSocial").onclick = async () => {
-      const next = {
-        youtube: ($("#crmYt").value || "").trim(),
-        instagram: ($("#crmIg").value || "").trim(),
-        facebook: ($("#crmFb").value || "").trim()
-      };
-      saveSocialLinks(s.email, next);
-      $("#crmProfileMsg").textContent = "Saved";
-      try {
-        const res = await fetch("/api/creator/social", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: s.email, links: next, force: true })
-        });
-        const data = await res.json();
-        if (data.platforms) saveSocialCache(s.email, data.platforms);
-        $("#crmProfileMsg").textContent = "Saved · platform refresh queued";
-      } catch {
-        $("#crmProfileMsg").textContent = "Saved locally · live refresh when API is reachable";
+    $("#crmSaveProfile").onclick = () => {
+      const name = ($("#crmProfileName")?.value || "").trim();
+      const phoneVal = ($("#crmProfilePhone")?.value || "").trim();
+      const bioVal = ($("#crmProfileBio")?.value || "").trim();
+      saveProfileExtras(s.email, { name, phone: phoneVal, bio: bioVal });
+      if (typeof AdminCore !== "undefined" && AdminCore.saveStaff) {
+        const next = { ...staffRow, name: name || staffRow.name, phone: phoneVal, bio: bioVal };
+        try { AdminCore.saveStaff(next); } catch { /* ignore */ }
+        if (typeof AdminCore.setSession === "function") {
+          try { AdminCore.setSession({ ...s, name: name || s.name }); } catch { /* ignore */ }
+        } else {
+          try {
+            const key = typeof STAFF_SESSION_KEY !== "undefined" ? STAFF_SESSION_KEY : "tradeshalaStaffSession";
+            localStorage.setItem(key, JSON.stringify({ ...s, name: name || s.name }));
+          } catch { /* ignore */ }
+        }
       }
-    };
-    $("#crmRefreshSocial").onclick = () => {
-      location.hash = "dashboard";
-      setTimeout(() => loadPlatforms(s), 50);
+      $("#crmProfileMsg").textContent = "Profile saved";
+      renderShell();
     };
     $("#crmLogout").onclick = () => doLogout();
   }
@@ -3217,6 +4113,74 @@
         openStudentProfile(s, studentOpen.getAttribute("data-crm-student"), "identity");
         return;
       }
+      const finSheet = t.closest("[data-crm-fin-sheet]");
+      if (finSheet) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        openFinanceSheet(finSheet.getAttribute("data-crm-fin-sheet"), s, 1);
+        return;
+      }
+      const finDeep = t.closest("[data-crm-fin-deep]");
+      if (finDeep) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        openFinanceSheet(finDeep.getAttribute("data-crm-fin-deep"), s, 2);
+        return;
+      }
+      const finBack = t.closest("[data-crm-fin-back]");
+      if (finBack) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        openFinanceSheet(finBack.getAttribute("data-crm-fin-back"), s, 1);
+        return;
+      }
+      const courseOpen = t.closest("[data-crm-course-open]");
+      if (courseOpen) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        const kind = courseOpen.getAttribute("data-crm-course-open");
+        const id = courseOpen.getAttribute("data-id");
+        let item = null;
+        if (kind === "course") item = ownedCatalogCourses(s).find((c) => c.id === id);
+        else if (kind === "mentorship") item = ownedMentorships(s).map(mentorshipAsCard).find((c) => c.id === id);
+        else if (kind === "webinar") item = ownedWebinars(s).map(webinarAsCard).find((c) => c.id === id);
+        if (item) openCoursePopup(item, kind === "course" ? "course" : kind);
+        return;
+      }
+      if (t.closest("[data-crm-course-close]")) {
+        e.preventDefault();
+        closeCoursePopup();
+        return;
+      }
+      const apiToggle = t.closest("[data-crm-api-toggle]");
+      if (apiToggle) {
+        e.preventDefault();
+        const s = session();
+        if (!s) return;
+        const plat = apiToggle.getAttribute("data-crm-api-toggle");
+        const api = socialApiState(s.email);
+        api[plat] = !api[plat];
+        saveSocialApiState(s.email, api);
+        // Keep a marker link so connected platforms are identifiable offline
+        const links = socialLinks(s.email);
+        if (api[plat] && !links[plat]) {
+          const defaults = {
+            youtube: "https://www.youtube.com/@bizgarh",
+            instagram: "https://www.instagram.com/bizgarh",
+            facebook: "https://www.facebook.com/bizgarh"
+          };
+          links[plat] = defaults[plat] || "connected";
+          saveSocialLinks(s.email, links);
+        }
+        renderProfile($("#crmView"), s, "profile");
+        const msg = $("#crmProfileMsg");
+        if (msg) msg.textContent = api[plat] ? (plat + " connected") : (plat + " disconnected");
+        return;
+      }
       const revMode = t.closest("[data-crm-rev-mode]");
       if (revMode) {
         e.preventDefault();
@@ -3254,7 +4218,7 @@
         if (!s) return;
         const kind = del.getAttribute("data-studio-del");
         const id = del.getAttribute("data-id");
-        if (!confirm("Delete this file from Creator Studio?")) return;
+        if (!confirm(kind === "study" ? "Delete this study material?" : "Delete this file from Creator Studio?")) return;
         deleteStudioItem(kind, id, s);
         return;
       }
@@ -3303,6 +4267,10 @@
 
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
+      if ($("#crmCourseOverlay")) {
+        closeCoursePopup();
+        return;
+      }
       if ($("#crmStudentOverlay")) {
         closeStudentProfile();
         return;
