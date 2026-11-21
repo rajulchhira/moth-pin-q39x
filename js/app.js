@@ -7635,73 +7635,135 @@ async function startPublicBoot() {
     document.getElementById("contactMsg").textContent = "Thanks. We’ll reply at your email within 1 working day.";
   });
 
-  document.getElementById("becomeCreatorForm")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const f = e.target;
-    const msg = document.getElementById("becomeCreatorMsg");
-    const fullName = String(f.fullName?.value || "").trim();
-    const mobile = String(f.mobile?.value || "").trim();
-    const email = String(f.email?.value || "").trim().toLowerCase();
-    const city = String(f.city?.value || "").trim();
-    const years = String(f.years?.value || "").trim();
-    const market = String(f.market?.value || "").trim();
-    const marketOther = String(f.marketOther?.value || "").trim();
-    const about = String(f.about?.value || "").trim();
-    if (!fullName || !mobile || !email || !city || !years || !market || !about) {
-      if (msg) msg.textContent = "Please fill every required field.";
-      toast("Please fill every required field.");
-      return;
+  (function bindBecomeCreatorForm() {
+    const form = document.getElementById("becomeCreatorForm");
+    if (!form) return;
+    const multi = document.getElementById("bcExpertiseMulti");
+    const trigger = document.getElementById("bcExpertiseTrigger");
+    const panel = document.getElementById("bcExpertisePanel");
+    const summary = document.getElementById("bcExpertiseSummary");
+    const otherWrap = document.getElementById("bcOtherWrap");
+    const otherInput = document.getElementById("bcMarketOther");
+
+    function selectedExpertise() {
+      return [...form.querySelectorAll('input[name="expertise"]:checked')].map((el) => el.value);
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      if (msg) msg.textContent = "Enter a valid email address.";
-      toast("Enter a valid email address.");
-      return;
+    function syncExpertiseUI() {
+      const selected = selectedExpertise();
+      const hasOther = selected.includes("Other");
+      if (summary) {
+        if (!selected.length) {
+          summary.textContent = "Select segments";
+          summary.classList.add("is-placeholder");
+        } else {
+          summary.textContent = selected.join(", ");
+          summary.classList.remove("is-placeholder");
+        }
+      }
+      if (otherWrap) {
+        otherWrap.hidden = !hasOther;
+        otherWrap.classList.toggle("hidden", !hasOther);
+      }
+      if (!hasOther && otherInput) otherInput.value = "";
     }
-    const digits = mobile.replace(/\D/g, "");
-    if (digits.length < 10) {
-      if (msg) msg.textContent = "Enter a valid mobile number.";
-      toast("Enter a valid mobile number.");
-      return;
+    function setMultiOpen(open) {
+      if (!multi || !trigger || !panel) return;
+      multi.classList.toggle("open", open);
+      trigger.setAttribute("aria-expanded", open ? "true" : "false");
+      panel.hidden = !open;
     }
-    const app = {
-      id: "ca-" + Date.now(),
-      fullName,
-      mobile: digits,
-      email,
-      city,
-      years,
-      market,
-      marketOther,
-      about,
-      status: "NEW",
-      source: "become-a-creator",
-      at: new Date().toISOString()
-    };
-    const apps = readList(CREATOR_APPS_KEY);
-    apps.unshift(app);
-    writeList(CREATOR_APPS_KEY, apps.slice(0, 500));
-    // Mirror into lead pipeline for Control desk when present
-    try {
-      const leads = readList(LEAD_STORE_KEY);
-      leads.unshift({
-        id: "ld-" + Date.now(),
-        name: fullName,
+
+    syncExpertiseUI();
+    trigger?.addEventListener("click", (e) => {
+      e.preventDefault();
+      setMultiOpen(!multi?.classList.contains("open"));
+    });
+    panel?.addEventListener("change", syncExpertiseUI);
+    panel?.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("click", (e) => {
+      if (!multi || multi.contains(e.target)) return;
+      setMultiOpen(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setMultiOpen(false);
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("becomeCreatorMsg");
+      const fullName = String(form.fullName?.value || "").trim();
+      const mobile = String(form.mobile?.value || "").trim();
+      const email = String(form.email?.value || "").trim().toLowerCase();
+      const city = String(form.city?.value || "").trim();
+      const years = String(form.years?.value || "").trim();
+      const expertise = selectedExpertise();
+      const hasOther = expertise.includes("Other");
+      const marketOther = String(form.marketOther?.value || "").trim();
+      const about = String(form.about?.value || "").trim();
+      if (!fullName || !mobile || !email || !city || !years || !expertise.length || !about) {
+        if (msg) msg.textContent = "Please fill every required field.";
+        toast("Please fill every required field.");
+        return;
+      }
+      if (hasOther && !marketOther) {
+        if (msg) msg.textContent = "Please specify the Other segment.";
+        toast("Please specify the Other segment.");
+        otherInput?.focus();
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (msg) msg.textContent = "Enter a valid email address.";
+        toast("Enter a valid email address.");
+        return;
+      }
+      const digits = mobile.replace(/\D/g, "");
+      if (digits.length < 10) {
+        if (msg) msg.textContent = "Enter a valid mobile number.";
+        toast("Enter a valid mobile number.");
+        return;
+      }
+      const segmentsLabel = expertise.join(", ") + (hasOther && marketOther ? ` (${marketOther})` : "");
+      const app = {
+        id: "ca-" + Date.now(),
+        fullName,
+        mobile: digits,
         email,
-        phone: digits,
-        source: "become-creator",
-        creatorEmail: "",
+        city,
+        years,
+        expertise,
+        marketOther: hasOther ? marketOther : "",
+        about,
         status: "NEW",
-        notes: `Creator application · ${years} yrs · ${market}${marketOther ? " · " + marketOther : ""} · ${city}\n\n${about}`,
-        followUp: "",
-        history: [{ at: new Date().toISOString(), note: "Submitted Become a Creator form" }],
+        source: "become-a-creator",
         at: new Date().toISOString()
-      });
-      writeList(LEAD_STORE_KEY, leads.slice(0, 1000));
-    } catch { /* ignore */ }
-    f.reset();
-    if (msg) msg.textContent = "Thanks — your creator application is in. We’ll email you within 2 working days.";
-    toast("Application submitted");
-  });
+      };
+      const apps = readList(CREATOR_APPS_KEY);
+      apps.unshift(app);
+      writeList(CREATOR_APPS_KEY, apps.slice(0, 500));
+      try {
+        const leads = readList(LEAD_STORE_KEY);
+        leads.unshift({
+          id: "ld-" + Date.now(),
+          name: fullName,
+          email,
+          phone: digits,
+          source: "become-creator",
+          creatorEmail: "",
+          status: "NEW",
+          notes: `Creator application · ${years} yrs · ${segmentsLabel} · ${city}\n\n${about}`,
+          followUp: "",
+          history: [{ at: new Date().toISOString(), note: "Submitted Become a Creator form" }],
+          at: new Date().toISOString()
+        });
+        writeList(LEAD_STORE_KEY, leads.slice(0, 1000));
+      } catch { /* ignore */ }
+      form.reset();
+      syncExpertiseUI();
+      setMultiOpen(false);
+      if (msg) msg.textContent = "Thanks — your creator application is in. We’ll email you within 2 working days.";
+      toast("Application submitted");
+    });
+  })();
 
   document.getElementById("callForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -7739,3 +7801,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk202: Creator CRM mesh motion + Public Site box + no demo login hint */
 /* cache-bust desk165: Become a Creator form + public demo learner seed */
+/* cache-bust desk166: Become a Creator segment multi-select + free years */
