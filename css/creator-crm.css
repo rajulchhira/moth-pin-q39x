@@ -1,4 +1,4 @@
-/* Creator CRM — desk199 finance/learning + pic4 pastel mesh + Studio + analytics */
+/* Creator CRM — desk200 finance/learning + pic4 pastel mesh + Studio + analytics */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
@@ -114,15 +114,14 @@ body.crm-body {
 }
 
 /*
- * Viewport-relative travel (vw/vh), not % of a 180vmax layer — % travel looked
- * almost static because the layer is huge. Faster cycles + denser blobs so
- * color drift is obvious on login and behind translucent desk panels.
+ * desk200: finer pastel grain + medium-speed drift (not big fast circles).
+ * Many small soft stops + gentle travel so the silk/contour feel stays calm.
  */
 .crm-mesh-layer {
   position: absolute;
-  inset: -45%;
-  width: 190%;
-  height: 190%;
+  inset: -30%;
+  width: 160%;
+  height: 160%;
   pointer-events: none;
   transform-origin: 50% 50%;
   backface-visibility: hidden;
@@ -130,25 +129,38 @@ body.crm-body {
 }
 
 .crm-mesh-layer-a {
-  /* Soft pastel blobs — pic4 pink/peach + cyan + mint */
+  /* Fine soft pastels — pic4 pink/peach + cyan + mint */
   background:
-    radial-gradient(circle 34vmax at 12% 18%, var(--crm-mesh-a), transparent 62%),
-    radial-gradient(circle 30vmax at 78% 12%, var(--crm-mesh-d), transparent 60%),
-    radial-gradient(circle 36vmax at 88% 78%, var(--crm-mesh-c), transparent 62%),
-    radial-gradient(circle 28vmax at 18% 82%, var(--crm-mesh-b), transparent 58%),
-    radial-gradient(circle 26vmax at 48% 48%, var(--crm-mesh-e), transparent 56%);
-  animation: crmMeshDrift 7s ease-in-out infinite alternate;
+    radial-gradient(circle 14vmax at 10% 16%, var(--crm-mesh-a), transparent 68%),
+    radial-gradient(circle 12vmax at 28% 22%, var(--crm-mesh-e), transparent 66%),
+    radial-gradient(circle 13vmax at 48% 12%, var(--crm-mesh-d), transparent 70%),
+    radial-gradient(circle 11vmax at 72% 18%, var(--crm-mesh-b), transparent 68%),
+    radial-gradient(circle 15vmax at 88% 28%, var(--crm-mesh-c), transparent 70%),
+    radial-gradient(circle 12vmax at 18% 48%, var(--crm-mesh-b), transparent 68%),
+    radial-gradient(circle 14vmax at 42% 52%, var(--crm-mesh-a), transparent 70%),
+    radial-gradient(circle 11vmax at 66% 46%, var(--crm-mesh-d), transparent 68%),
+    radial-gradient(circle 13vmax at 86% 58%, var(--crm-mesh-e), transparent 70%),
+    radial-gradient(circle 12vmax at 14% 78%, var(--crm-mesh-c), transparent 68%),
+    radial-gradient(circle 14vmax at 38% 84%, var(--crm-mesh-d), transparent 70%),
+    radial-gradient(circle 12vmax at 62% 76%, var(--crm-mesh-b), transparent 68%),
+    radial-gradient(circle 13vmax at 84% 88%, var(--crm-mesh-a), transparent 70%);
+  animation: crmMeshDrift 22s ease-in-out infinite alternate;
   animation-play-state: running;
+  opacity: 0.95;
 }
 
 .crm-mesh-layer-b {
-  opacity: 0.92;
+  opacity: 0.78;
   background:
-    radial-gradient(circle 36vmax at 68% 36%, var(--crm-mesh-b), transparent 60%),
-    radial-gradient(circle 30vmax at 24% 70%, var(--crm-mesh-c), transparent 58%),
-    radial-gradient(circle 28vmax at 42% 14%, var(--crm-mesh-a), transparent 56%),
-    radial-gradient(circle 32vmax at 90% 72%, var(--crm-mesh-d), transparent 60%);
-  animation: crmMeshDriftAlt 9s ease-in-out infinite alternate;
+    radial-gradient(circle 13vmax at 22% 30%, var(--crm-mesh-c), transparent 68%),
+    radial-gradient(circle 11vmax at 50% 26%, var(--crm-mesh-b), transparent 66%),
+    radial-gradient(circle 14vmax at 78% 38%, var(--crm-mesh-a), transparent 70%),
+    radial-gradient(circle 12vmax at 32% 58%, var(--crm-mesh-e), transparent 68%),
+    radial-gradient(circle 13vmax at 58% 62%, var(--crm-mesh-d), transparent 70%),
+    radial-gradient(circle 11vmax at 82% 70%, var(--crm-mesh-c), transparent 68%),
+    radial-gradient(circle 12vmax at 26% 86%, var(--crm-mesh-a), transparent 70%),
+    radial-gradient(circle 14vmax at 70% 88%, var(--crm-mesh-b), transparent 68%);
+  animation: crmMeshDriftAlt 28s ease-in-out infinite alternate;
   animation-play-state: running;
 }
 
@@ -165,7 +177,7 @@ body.crm-body {
   background-position: 55% 40%;
   background-repeat: no-repeat;
   mix-blend-mode: soft-light;
-  animation: crmMeshWaves 14s ease-in-out infinite alternate;
+  animation: crmMeshWaves 26s ease-in-out infinite alternate;
   will-change: transform, opacity;
 }
 html.crm-html[data-crm-theme="light"] .crm-mesh-waves {
@@ -175,9 +187,9 @@ html.crm-html[data-crm-theme="light"] .crm-mesh-waves {
 }
 
 @keyframes crmMeshWaves {
-  0% { transform: translate3d(-2%, 1%, 0) scale(1.02); opacity: 0.75; }
-  50% { transform: translate3d(3%, -2%, 0) scale(1.06); opacity: 0.95; }
-  100% { transform: translate3d(-1%, 3%, 0) scale(1.04); opacity: 0.85; }
+  0% { transform: translate3d(-1.2%, 0.6%, 0) scale(1.01); opacity: 0.72; }
+  50% { transform: translate3d(1.6%, -1%, 0) scale(1.03); opacity: 0.9; }
+  100% { transform: translate3d(-0.8%, 1.4%, 0) scale(1.02); opacity: 0.8; }
 }
 
 /* Force-restart hook toggled by ensureCrmMesh() */
@@ -201,34 +213,34 @@ html.crm-html[data-crm-theme="light"] .crm-mesh-waves {
 
 @keyframes crmMeshDrift {
   0% {
-    transform: translate3d(-40vw, -32vh, 0) rotate(0deg) scale(1);
+    transform: translate3d(-10vw, -8vh, 0) rotate(0deg) scale(1);
   }
   25% {
-    transform: translate3d(28vw, -14vh, 0) rotate(8deg) scale(1.2);
+    transform: translate3d(8vw, -4vh, 0) rotate(2deg) scale(1.04);
   }
   50% {
-    transform: translate3d(36vw, 30vh, 0) rotate(-6deg) scale(1.12);
+    transform: translate3d(10vw, 8vh, 0) rotate(-1.5deg) scale(1.03);
   }
   75% {
-    transform: translate3d(-18vw, 36vh, 0) rotate(7deg) scale(1.22);
+    transform: translate3d(-6vw, 10vh, 0) rotate(1.8deg) scale(1.05);
   }
   100% {
-    transform: translate3d(42vw, -28vh, 0) rotate(-9deg) scale(1.25);
+    transform: translate3d(12vw, -7vh, 0) rotate(-2deg) scale(1.04);
   }
 }
 
 @keyframes crmMeshDriftAlt {
   0% {
-    transform: translate3d(38vw, 28vh, 0) rotate(0deg) scale(1.15);
+    transform: translate3d(9vw, 7vh, 0) rotate(0deg) scale(1.03);
   }
   33% {
-    transform: translate3d(-34vw, 14vh, 0) rotate(-8deg) scale(1);
+    transform: translate3d(-8vw, 4vh, 0) rotate(-2deg) scale(1);
   }
   66% {
-    transform: translate3d(-40vw, -30vh, 0) rotate(7deg) scale(1.18);
+    transform: translate3d(-10vw, -8vh, 0) rotate(1.6deg) scale(1.04);
   }
   100% {
-    transform: translate3d(32vw, -36vh, 0) rotate(-7deg) scale(1.2);
+    transform: translate3d(7vw, -9vh, 0) rotate(-1.5deg) scale(1.02);
   }
 }
 
@@ -307,8 +319,11 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-waves {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.crm-field input {
+.crm-field input,
+.crm-field select,
+.crm-field textarea {
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   background: var(--crm-input-bg);
   border: 1px solid var(--crm-line);
@@ -318,7 +333,14 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-waves {
   font: inherit;
   font-weight: 600;
 }
-.crm-field input:focus {
+.crm-field textarea {
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.crm-field input:focus,
+.crm-field select:focus,
+.crm-field textarea:focus {
   outline: none;
   border-color: rgba(124, 58, 237, 0.65);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
@@ -1698,7 +1720,7 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   .crm-file-actions { justify-content: flex-start; }
 }
 
-/* ——— Finance / Course Learning / Support / Profile (desk199) ——— */
+/* ——— Finance / Course Learning / Support / Profile (desk200) ——— */
 .crm-course-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -1990,9 +2012,17 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   gap: 12px;
   margin-bottom: 16px;
 }
-.crm-ticket-form .crm-field textarea {
-  min-height: 110px;
+.crm-ticket-form .crm-ticket-desc {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.crm-ticket-form .crm-ticket-desc textarea,
+.crm-ticket-form .crm-field.full textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 160px;
   resize: vertical;
+  box-sizing: border-box;
 }
 .crm-ticket-list {
   display: grid;
