@@ -4,33 +4,87 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Become a Creator | Bizgarh</title>
-  <meta name="description" content="Creator onboarding for Bizgarh instructors — coming soon.">
+  <meta name="description" content="Apply to teach on Bizgarh — share your experience and join the creator desk.">
   <script src="/js/seo.js?v=seo4" defer></script>
   <script src="/js/boot.js?v=home7"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/style.css?v=desk43">
+  <link rel="stylesheet" href="/css/style.css?v=desk45">
 </head>
 <body>
   <div id="bgBoot" aria-busy="true" aria-label="Loading Bizgarh"></div>
   <div id="site-header"></div>
-  <main class="page">
+  <main class="page become-creator-page">
     <section class="page-hero">
       <div class="container" style="max-width:760px">
+        <p class="help-kicker">Creators</p>
         <h1>Become a Creator</h1>
-        <p class="muted" style="margin-top:10px">Coming soon — creator onboarding</p>
+        <p class="muted" style="margin-top:10px">Tell us about your market experience. The Bizgarh desk reviews applications and follows up by email.</p>
       </div>
     </section>
     <section class="section">
       <div class="container" style="max-width:760px">
-        <p>We are building the creator application flow. Check back soon, or write <a href="mailto:desk@bizgarh.com">desk@bizgarh.com</a> if you want to teach on Bizgarh.</p>
-        <p style="margin-top:14px">Already a Bizgarh creator? Open the <a href="/creator">Creator CRM</a>.</p>
-        <p style="margin-top:14px"><a href="/about">← About Bizgarh</a> · <a href="/instructors">Instructors</a></p>
+        <form class="form-card become-creator-form" id="becomeCreatorForm" novalidate>
+          <div class="become-creator-grid">
+            <div class="field">
+              <label for="bcFullName">Full Name</label>
+              <input id="bcFullName" name="fullName" type="text" autocomplete="name" required placeholder="Your full name">
+            </div>
+            <div class="field">
+              <label for="bcMobile">Mobile Number</label>
+              <input id="bcMobile" name="mobile" type="tel" autocomplete="tel" required inputmode="tel" placeholder="10-digit mobile">
+            </div>
+            <div class="field">
+              <label for="bcEmail">Email Address</label>
+              <input id="bcEmail" name="email" type="email" autocomplete="email" required placeholder="you@gmail.com">
+            </div>
+            <div class="field">
+              <label for="bcCity">City</label>
+              <input id="bcCity" name="city" type="text" autocomplete="address-level2" required placeholder="City">
+            </div>
+            <div class="field">
+              <label for="bcYears">Year of experience</label>
+              <select id="bcYears" name="years" required>
+                <option value="" disabled selected>Select years</option>
+                <option value="0-1">0–1 year</option>
+                <option value="1-3">1–3 years</option>
+                <option value="3-5">3–5 years</option>
+                <option value="5-10">5–10 years</option>
+                <option value="10+">10+ years</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="bcMarket">Kis market mai experience hai</label>
+              <select id="bcMarket" name="market" required>
+                <option value="" disabled selected>Select market</option>
+                <option value="stocks">Stocks / equity</option>
+                <option value="options">Options</option>
+                <option value="futures">Futures / index</option>
+                <option value="mutual-funds">Mutual funds / SIP</option>
+                <option value="crypto">Crypto</option>
+                <option value="mixed">Mixed markets</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="bcMarketOther">Market detail <span class="muted">(optional)</span></label>
+            <input id="bcMarketOther" name="marketOther" type="text" placeholder="e.g. Bank Nifty options, midcap swing…">
+          </div>
+          <div class="field">
+            <label for="bcAbout">About Yourself</label>
+            <textarea id="bcAbout" name="about" rows="5" required placeholder="Teaching style, audience, and why you want to create on Bizgarh"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-shine">Submit application</button>
+          <p class="msg" id="becomeCreatorMsg" role="status" aria-live="polite"></p>
+        </form>
+        <p class="muted" style="margin-top:18px">Already a Bizgarh creator? Open the <a href="/creator">Creator CRM</a>.</p>
+        <p class="muted" style="margin-top:8px"><a href="/about">← About Bizgarh</a> · <a href="/instructors">Instructors</a></p>
       </div>
     </section>
   </main>
   <div id="site-footer"></div>
-  <script src="/js/app.js?v=desk164" defer></script>
+  <script src="/js/app.js?v=desk165" defer></script>
   <script src="/js/lms.js" defer></script>
 </body>
 </html>

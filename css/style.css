@@ -8739,3 +8739,28 @@ body.live-room-page .live-meet-actions .btn-ghost {
   .ip-style-glow, .ip-style-mark, .ip-style-board::after { animation: none; }
   .ip-reveal { opacity: 1; transform: none; transition: none; }
 }
+
+
+/* ——— Become a Creator (desk165) ——— */
+.become-creator-page .page-hero { padding-bottom: 8px; }
+.become-creator-form {
+  max-width: 720px;
+  width: 100%;
+}
+.become-creator-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.become-creator-form .field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.become-creator-form .msg {
+  margin-top: 12px;
+  font-weight: 700;
+  color: var(--teal, #0f766e);
+}
+@media (max-width: 640px) {
+  .become-creator-grid { grid-template-columns: 1fr; }
+}

@@ -90,6 +90,8 @@ const STAFF_KEY = "tradeshalaStaff";
 const STAFF_SESSION_KEY = "tradeshalaStaffSession";
 const COURSE_OWNERS_KEY = "tradeshalaCourseOwners";
 const FOOTER_SOCIAL_KEY = "tradeshalaFooterSocial";
+const CREATOR_APPS_KEY = "tradeshalaCreatorApps";
+const LEAD_STORE_KEY = "tradeshalaLeads";
 const FOOTER_SOCIAL_DEFAULTS = {
   facebook: "https://www.facebook.com/bizgarh",
   instagram: "https://www.instagram.com/bizgarh",
@@ -7338,6 +7340,30 @@ async function renderCertificatePage() {
   bindFaqs(root);
 }
 
+/** Seed demo learners with a known password so public Login works after first visit. */
+function ensurePublicDemoUsers() {
+  const demo = [
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", password: "student123", created: "2026-08-12T10:00:00.000Z" },
+    { name: "Sneha Bansal", email: "sneha@gmail.com", password: "student123", created: "2026-08-18T10:00:00.000Z" },
+    { name: "Aditya Menon", email: "aditya@gmail.com", password: "student123", created: "2026-09-01T10:00:00.000Z" },
+    { name: "Kavya Iyer", email: "kavya@gmail.com", password: "student123", created: "2026-09-04T10:00:00.000Z" },
+    { name: "Harsh Patel", email: "harsh@gmail.com", password: "student123", created: "2026-09-08T10:00:00.000Z" }
+  ];
+  const users = readList(USERS_KEY);
+  let changed = false;
+  demo.forEach((u) => {
+    const i = users.findIndex((x) => String(x.email || "").toLowerCase() === u.email);
+    if (i < 0) {
+      users.push({ ...u, status: "active" });
+      changed = true;
+    } else if (!users[i].password) {
+      users[i] = { ...users[i], password: u.password, name: users[i].name || u.name };
+      changed = true;
+    }
+  });
+  if (changed) writeList(USERS_KEY, users);
+}
+
 async function startPublicBoot() {
   const adminPage = isAdminPage();
   if (!adminPage) pingCreatorDigest();
@@ -7355,6 +7381,7 @@ async function startPublicBoot() {
     }
   }
   if (typeof seedLms === "function") seedLms();
+  ensurePublicDemoUsers();
 
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");
@@ -7608,6 +7635,74 @@ async function startPublicBoot() {
     document.getElementById("contactMsg").textContent = "Thanks. We’ll reply at your email within 1 working day.";
   });
 
+  document.getElementById("becomeCreatorForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const msg = document.getElementById("becomeCreatorMsg");
+    const fullName = String(f.fullName?.value || "").trim();
+    const mobile = String(f.mobile?.value || "").trim();
+    const email = String(f.email?.value || "").trim().toLowerCase();
+    const city = String(f.city?.value || "").trim();
+    const years = String(f.years?.value || "").trim();
+    const market = String(f.market?.value || "").trim();
+    const marketOther = String(f.marketOther?.value || "").trim();
+    const about = String(f.about?.value || "").trim();
+    if (!fullName || !mobile || !email || !city || !years || !market || !about) {
+      if (msg) msg.textContent = "Please fill every required field.";
+      toast("Please fill every required field.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (msg) msg.textContent = "Enter a valid email address.";
+      toast("Enter a valid email address.");
+      return;
+    }
+    const digits = mobile.replace(/\D/g, "");
+    if (digits.length < 10) {
+      if (msg) msg.textContent = "Enter a valid mobile number.";
+      toast("Enter a valid mobile number.");
+      return;
+    }
+    const app = {
+      id: "ca-" + Date.now(),
+      fullName,
+      mobile: digits,
+      email,
+      city,
+      years,
+      market,
+      marketOther,
+      about,
+      status: "NEW",
+      source: "become-a-creator",
+      at: new Date().toISOString()
+    };
+    const apps = readList(CREATOR_APPS_KEY);
+    apps.unshift(app);
+    writeList(CREATOR_APPS_KEY, apps.slice(0, 500));
+    // Mirror into lead pipeline for Control desk when present
+    try {
+      const leads = readList(LEAD_STORE_KEY);
+      leads.unshift({
+        id: "ld-" + Date.now(),
+        name: fullName,
+        email,
+        phone: digits,
+        source: "become-creator",
+        creatorEmail: "",
+        status: "NEW",
+        notes: `Creator application · ${years} yrs · ${market}${marketOther ? " · " + marketOther : ""} · ${city}\n\n${about}`,
+        followUp: "",
+        history: [{ at: new Date().toISOString(), note: "Submitted Become a Creator form" }],
+        at: new Date().toISOString()
+      });
+      writeList(LEAD_STORE_KEY, leads.slice(0, 1000));
+    } catch { /* ignore */ }
+    f.reset();
+    if (msg) msg.textContent = "Thanks — your creator application is in. We’ll email you within 2 working days.";
+    toast("Application submitted");
+  });
+
   document.getElementById("callForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
@@ -7643,3 +7738,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk202: Creator CRM mesh motion + Public Site box + no demo login hint */
+/* cache-bust desk165: Become a Creator form + public demo learner seed */
