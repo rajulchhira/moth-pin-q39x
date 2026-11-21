@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk201 full-bleed mesh + finance/learning + pic4 mesh + Studio */
+/* Creator CRM dashboard — desk202 mesh motion + Public Site box */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -1091,7 +1091,7 @@
     if (!h || h === "settings" || h === "theme" || h === "logout") return "dashboard";
     // Review & Approval removed — flow lives in Editing Queue + Content Library
     if (h === "review-approval") return "editing-queue";
-    // desk201 renames / removals
+    // desk202 renames / removals
     if (h === "assignments" || h === "classroom-lms") return "courses";
     if (h === "revenue-orders" || h === "refunds" || h === "pending-payments") return "today-revenue";
     if (h === "commissions") return "commission";
@@ -1201,7 +1201,7 @@
   }
 
 
-  /* ——— desk201: Finance / Course Learning / Support / Profile helpers ——— */
+  /* ——— desk202: Finance / Course Learning / Support / Profile helpers ——— */
 
   function socialApiState(email) {
     try {
