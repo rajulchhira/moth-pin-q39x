@@ -1,4 +1,4 @@
-/* Creator CRM — desk201 full-bleed mesh + finance/learning + pic4 pastel mesh + Studio + analytics */
+/* Creator CRM — desk202 mesh motion + Public Site box + finance/learning */
 html.crm-html {
   /* Dark default: deep navy (blue-ish), not flat near-black */
   --crm-bg: #0f1c38;
@@ -112,18 +112,19 @@ body.crm-body {
 }
 
 /*
- * desk201: full-bleed pastel gradient mesh — NO circle / blob / spotlight.
+ * desk202: full-bleed pastel gradient mesh — NO circle / blob / spotlight.
  * Soft linear washes (cyan / lavender / peach / mint) + dense silk wave ribbons.
+ * Medium-speed visible drift (was too subtle / flat at desk201 timings).
  */
 .crm-mesh-layer {
   position: absolute;
-  inset: -18%;
-  width: 136%;
-  height: 136%;
+  inset: -22%;
+  width: 144%;
+  height: 144%;
   pointer-events: none;
   transform-origin: 50% 50%;
   backface-visibility: hidden;
-  will-change: transform, background-position;
+  will-change: transform, background-position, opacity;
   background-repeat: no-repeat;
 }
 
@@ -136,23 +137,23 @@ body.crm-body {
     linear-gradient(35deg, var(--crm-mesh-mint) 0%, transparent 46%),
     linear-gradient(180deg, var(--crm-mesh-lavender) 0%, transparent 38%),
     linear-gradient(90deg, var(--crm-mesh-cyan) 0%, transparent 34%);
-  background-size: 140% 140%, 145% 145%, 135% 140%, 140% 135%, 160% 120%, 120% 160%;
+  background-size: 155% 155%, 160% 160%, 150% 155%, 155% 150%, 175% 130%, 130% 175%;
   background-position: 0% 20%, 80% 10%, 90% 80%, 10% 90%, 40% 0%, 0% 50%;
-  animation: crmMeshDrift 24s ease-in-out infinite alternate;
+  animation: crmMeshDrift 14s ease-in-out infinite alternate;
   animation-play-state: running;
   opacity: 1;
 }
 
 .crm-mesh-layer-b {
-  opacity: 0.85;
+  opacity: 0.9;
   background-image:
     linear-gradient(155deg, transparent 30%, var(--crm-mesh-peach) 58%, transparent 82%),
     linear-gradient(65deg, transparent 28%, var(--crm-mesh-mint) 55%, transparent 78%),
     linear-gradient(250deg, transparent 32%, var(--crm-mesh-lavender) 60%, transparent 84%),
     linear-gradient(20deg, transparent 35%, var(--crm-mesh-cyan) 62%, transparent 88%);
-  background-size: 150% 140%, 140% 150%, 145% 140%, 140% 145%;
+  background-size: 165% 155%, 155% 165%, 160% 155%, 155% 160%;
   background-position: 30% 40%, 60% 30%, 40% 70%, 70% 60%;
-  animation: crmMeshDriftAlt 30s ease-in-out infinite alternate;
+  animation: crmMeshDriftAlt 18s ease-in-out infinite alternate;
   animation-play-state: running;
 }
 
@@ -169,8 +170,8 @@ body.crm-body {
   background-position: 50% 45%;
   background-repeat: no-repeat;
   mix-blend-mode: soft-light;
-  animation: crmMeshWaves 28s ease-in-out infinite alternate;
-  will-change: transform, opacity;
+  animation: crmMeshWaves 16s ease-in-out infinite alternate;
+  will-change: transform, opacity, background-position;
 }
 html.crm-html[data-crm-theme="light"] .crm-mesh-waves {
   opacity: 1;
@@ -179,9 +180,21 @@ html.crm-html[data-crm-theme="light"] .crm-mesh-waves {
 }
 
 @keyframes crmMeshWaves {
-  0% { transform: translate3d(-1%, 0.5%, 0) scale(1.01); opacity: 0.78; }
-  50% { transform: translate3d(1.4%, -0.8%, 0) scale(1.025); opacity: 0.95; }
-  100% { transform: translate3d(-0.6%, 1.1%, 0) scale(1.015); opacity: 0.85; }
+  0% {
+    transform: translate3d(-3.5%, 2%, 0) scale(1.02) rotate(-0.6deg);
+    background-position: 42% 48%;
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate3d(4%, -2.5%, 0) scale(1.06) rotate(0.5deg);
+    background-position: 58% 40%;
+    opacity: 0.98;
+  }
+  100% {
+    transform: translate3d(-2%, 3%, 0) scale(1.04) rotate(-0.35deg);
+    background-position: 48% 58%;
+    opacity: 0.82;
+  }
 }
 
 /* Force-restart hook toggled by ensureCrmMesh() */
@@ -205,31 +218,37 @@ html.crm-html[data-crm-theme="light"] .crm-mesh-waves {
 
 @keyframes crmMeshDrift {
   0% {
-    transform: translate3d(-3vw, -2vh, 0) scale(1);
+    transform: translate3d(-7vw, -5vh, 0) scale(1);
     background-position: 0% 20%, 80% 10%, 90% 80%, 10% 90%, 40% 0%, 0% 50%;
+    opacity: 0.92;
   }
   50% {
-    transform: translate3d(2.5vw, 2vh, 0) scale(1.03);
-    background-position: 18% 28%, 62% 18%, 78% 68%, 22% 78%, 52% 8%, 8% 42%;
+    transform: translate3d(6vw, 4.5vh, 0) scale(1.08);
+    background-position: 28% 35%, 52% 22%, 68% 62%, 28% 72%, 58% 12%, 14% 40%;
+    opacity: 1;
   }
   100% {
-    transform: translate3d(3.5vw, -1.5vh, 0) scale(1.02);
-    background-position: 28% 12%, 55% 30%, 70% 88%, 18% 70%, 60% 5%, 12% 58%;
+    transform: translate3d(7.5vw, -4vh, 0) scale(1.05);
+    background-position: 40% 8%, 42% 38%, 60% 92%, 22% 65%, 68% 4%, 18% 62%;
+    opacity: 0.95;
   }
 }
 
 @keyframes crmMeshDriftAlt {
   0% {
-    transform: translate3d(2.5vw, 2vh, 0) scale(1.02);
+    transform: translate3d(5.5vw, 4vh, 0) scale(1.04);
     background-position: 30% 40%, 60% 30%, 40% 70%, 70% 60%;
+    opacity: 0.82;
   }
   50% {
-    transform: translate3d(-2vw, -1.5vh, 0) scale(1);
-    background-position: 42% 52%, 48% 38%, 55% 58%, 58% 48%;
+    transform: translate3d(-5vw, -3.5vh, 0) scale(1);
+    background-position: 48% 58%, 42% 42%, 58% 52%, 52% 44%;
+    opacity: 0.95;
   }
   100% {
-    transform: translate3d(-3vw, 2.5vh, 0) scale(1.025);
-    background-position: 55% 35%, 40% 55%, 62% 45%, 45% 70%;
+    transform: translate3d(-6.5vw, 5vh, 0) scale(1.06);
+    background-position: 62% 28%, 35% 62%, 68% 40%, 38% 78%;
+    opacity: 0.88;
   }
 }
 
@@ -368,11 +387,9 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-waves {
   border: 1px solid var(--crm-line);
 }
 .crm-btn-ghost:hover { color: var(--crm-ink); border-color: rgba(167, 139, 250, 0.4); }
+/* login demo hint removed (desk202) — keep code style unused */
 .crm-login-hint {
-  margin-top: 14px;
-  font-size: 0.82rem;
-  color: var(--crm-soft);
-  line-height: 1.4;
+  display: none;
 }
 .crm-login-hint code {
   background: rgba(124, 58, 237, 0.15);
@@ -393,17 +410,18 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-waves {
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 18px 12px;
+  padding: 16px 12px 14px;
   box-sizing: border-box;
   background: var(--crm-side-bg);
   border-right: 1px solid var(--crm-line);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   backdrop-filter: blur(10px) saturate(1.1);
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
   overflow: hidden;
   z-index: 2;
+  min-width: 0;
 }
 .crm-side-brand {
   display: flex;
@@ -607,10 +625,63 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-waves {
   height: 30px;
 }
 .crm-theme-panel .crm-theme-opt { font-size: 0.62rem; }
+/* Public Site footer — contained box inside sidebar (no clip / overflow) */
 .crm-side-foot {
-  padding: 8px;
-  border-top: 1px solid var(--crm-line);
   flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 2px 2px;
+  border-top: 1px solid var(--crm-line);
+  margin-top: 2px;
+}
+.crm-side-foot-box {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--crm-line);
+  border-radius: 14px;
+  background: var(--crm-panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+.crm-side-foot-label {
+  padding: 2px 6px 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--crm-muted);
+  line-height: 1.2;
+}
+.crm-side-foot-link {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--crm-line);
+  background: transparent;
+  color: var(--crm-sub-ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.86rem;
+  text-decoration: none;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crm-side-foot-link:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--crm-ink);
+  border-color: rgba(167, 139, 250, 0.35);
 }
 .crm-main {
   min-width: 0;
@@ -1709,7 +1780,7 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   .crm-file-actions { justify-content: flex-start; }
 }
 
-/* ——— Finance / Course Learning / Support / Profile (desk201) ——— */
+/* ——— Finance / Course Learning / Support / Profile (desk202) ——— */
 .crm-course-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
