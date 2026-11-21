@@ -90,6 +90,8 @@ const STAFF_KEY = "tradeshalaStaff";
 const STAFF_SESSION_KEY = "tradeshalaStaffSession";
 const COURSE_OWNERS_KEY = "tradeshalaCourseOwners";
 const FOOTER_SOCIAL_KEY = "tradeshalaFooterSocial";
+const CREATOR_APPS_KEY = "tradeshalaCreatorApps";
+const LEAD_STORE_KEY = "tradeshalaLeads";
 const FOOTER_SOCIAL_DEFAULTS = {
   facebook: "https://www.facebook.com/bizgarh",
   instagram: "https://www.instagram.com/bizgarh",
@@ -7338,6 +7340,30 @@ async function renderCertificatePage() {
   bindFaqs(root);
 }
 
+/** Seed demo learners with a known password so public Login works after first visit. */
+function ensurePublicDemoUsers() {
+  const demo = [
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", password: "student123", created: "2026-08-12T10:00:00.000Z" },
+    { name: "Sneha Bansal", email: "sneha@gmail.com", password: "student123", created: "2026-08-18T10:00:00.000Z" },
+    { name: "Aditya Menon", email: "aditya@gmail.com", password: "student123", created: "2026-09-01T10:00:00.000Z" },
+    { name: "Kavya Iyer", email: "kavya@gmail.com", password: "student123", created: "2026-09-04T10:00:00.000Z" },
+    { name: "Harsh Patel", email: "harsh@gmail.com", password: "student123", created: "2026-09-08T10:00:00.000Z" }
+  ];
+  const users = readList(USERS_KEY);
+  let changed = false;
+  demo.forEach((u) => {
+    const i = users.findIndex((x) => String(x.email || "").toLowerCase() === u.email);
+    if (i < 0) {
+      users.push({ ...u, status: "active" });
+      changed = true;
+    } else if (!users[i].password) {
+      users[i] = { ...users[i], password: u.password, name: users[i].name || u.name };
+      changed = true;
+    }
+  });
+  if (changed) writeList(USERS_KEY, users);
+}
+
 async function startPublicBoot() {
   const adminPage = isAdminPage();
   if (!adminPage) pingCreatorDigest();
@@ -7355,6 +7381,7 @@ async function startPublicBoot() {
     }
   }
   if (typeof seedLms === "function") seedLms();
+  ensurePublicDemoUsers();
 
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");
@@ -7608,6 +7635,136 @@ async function startPublicBoot() {
     document.getElementById("contactMsg").textContent = "Thanks. We’ll reply at your email within 1 working day.";
   });
 
+  (function bindBecomeCreatorForm() {
+    const form = document.getElementById("becomeCreatorForm");
+    if (!form) return;
+    const multi = document.getElementById("bcExpertiseMulti");
+    const trigger = document.getElementById("bcExpertiseTrigger");
+    const panel = document.getElementById("bcExpertisePanel");
+    const summary = document.getElementById("bcExpertiseSummary");
+    const otherWrap = document.getElementById("bcOtherWrap");
+    const otherInput = document.getElementById("bcMarketOther");
+
+    function selectedExpertise() {
+      return [...form.querySelectorAll('input[name="expertise"]:checked')].map((el) => el.value);
+    }
+    function syncExpertiseUI() {
+      const selected = selectedExpertise();
+      const hasOther = selected.includes("Other");
+      if (summary) {
+        if (!selected.length) {
+          summary.textContent = "Select segments";
+          summary.classList.add("is-placeholder");
+        } else {
+          summary.textContent = selected.join(", ");
+          summary.classList.remove("is-placeholder");
+        }
+      }
+      if (otherWrap) {
+        otherWrap.hidden = !hasOther;
+        otherWrap.classList.toggle("hidden", !hasOther);
+      }
+      if (!hasOther && otherInput) otherInput.value = "";
+    }
+    function setMultiOpen(open) {
+      if (!multi || !trigger || !panel) return;
+      multi.classList.toggle("open", open);
+      trigger.setAttribute("aria-expanded", open ? "true" : "false");
+      panel.hidden = !open;
+    }
+
+    syncExpertiseUI();
+    trigger?.addEventListener("click", (e) => {
+      e.preventDefault();
+      setMultiOpen(!multi?.classList.contains("open"));
+    });
+    panel?.addEventListener("change", syncExpertiseUI);
+    panel?.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("click", (e) => {
+      if (!multi || multi.contains(e.target)) return;
+      setMultiOpen(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setMultiOpen(false);
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("becomeCreatorMsg");
+      const fullName = String(form.fullName?.value || "").trim();
+      const mobile = String(form.mobile?.value || "").trim();
+      const email = String(form.email?.value || "").trim().toLowerCase();
+      const city = String(form.city?.value || "").trim();
+      const years = String(form.years?.value || "").trim();
+      const expertise = selectedExpertise();
+      const hasOther = expertise.includes("Other");
+      const marketOther = String(form.marketOther?.value || "").trim();
+      const about = String(form.about?.value || "").trim();
+      if (!fullName || !mobile || !email || !city || !years || !expertise.length || !about) {
+        if (msg) msg.textContent = "Please fill every required field.";
+        toast("Please fill every required field.");
+        return;
+      }
+      if (hasOther && !marketOther) {
+        if (msg) msg.textContent = "Please specify the Other segment.";
+        toast("Please specify the Other segment.");
+        otherInput?.focus();
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (msg) msg.textContent = "Enter a valid email address.";
+        toast("Enter a valid email address.");
+        return;
+      }
+      const digits = mobile.replace(/\D/g, "");
+      if (digits.length < 10) {
+        if (msg) msg.textContent = "Enter a valid mobile number.";
+        toast("Enter a valid mobile number.");
+        return;
+      }
+      const segmentsLabel = expertise.join(", ") + (hasOther && marketOther ? ` (${marketOther})` : "");
+      const app = {
+        id: "ca-" + Date.now(),
+        fullName,
+        mobile: digits,
+        email,
+        city,
+        years,
+        expertise,
+        marketOther: hasOther ? marketOther : "",
+        about,
+        status: "NEW",
+        source: "become-a-creator",
+        at: new Date().toISOString()
+      };
+      const apps = readList(CREATOR_APPS_KEY);
+      apps.unshift(app);
+      writeList(CREATOR_APPS_KEY, apps.slice(0, 500));
+      try {
+        const leads = readList(LEAD_STORE_KEY);
+        leads.unshift({
+          id: "ld-" + Date.now(),
+          name: fullName,
+          email,
+          phone: digits,
+          source: "become-creator",
+          creatorEmail: "",
+          status: "NEW",
+          notes: `Creator application · ${years} yrs · ${segmentsLabel} · ${city}\n\n${about}`,
+          followUp: "",
+          history: [{ at: new Date().toISOString(), note: "Submitted Become a Creator form" }],
+          at: new Date().toISOString()
+        });
+        writeList(LEAD_STORE_KEY, leads.slice(0, 1000));
+      } catch { /* ignore */ }
+      form.reset();
+      syncExpertiseUI();
+      setMultiOpen(false);
+      if (msg) msg.textContent = "Thanks — your creator application is in. We’ll email you within 2 working days.";
+      toast("Application submitted");
+    });
+  })();
+
   document.getElementById("callForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
@@ -7643,3 +7800,5 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk202: Creator CRM mesh motion + Public Site box + no demo login hint */
+/* cache-bust desk165: Become a Creator form + public demo learner seed */
+/* cache-bust desk166: Become a Creator segment multi-select + free years */

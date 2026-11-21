@@ -4,14 +4,16 @@ function seedAdminDemo() {
   if (localStorage.getItem("tradeshalaAdminSeeded")) return;
   const users = readList(USERS_KEY);
   const demo = [
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", created: "2026-08-12T10:00:00.000Z" },
-    { name: "Sneha Bansal", email: "sneha@gmail.com", created: "2026-08-18T10:00:00.000Z" },
-    { name: "Aditya Menon", email: "aditya@gmail.com", created: "2026-09-01T10:00:00.000Z" },
-    { name: "Kavya Iyer", email: "kavya@gmail.com", created: "2026-09-04T10:00:00.000Z" },
-    { name: "Harsh Patel", email: "harsh@gmail.com", created: "2026-09-08T10:00:00.000Z" }
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", password: "student123", created: "2026-08-12T10:00:00.000Z" },
+    { name: "Sneha Bansal", email: "sneha@gmail.com", password: "student123", created: "2026-08-18T10:00:00.000Z" },
+    { name: "Aditya Menon", email: "aditya@gmail.com", password: "student123", created: "2026-09-01T10:00:00.000Z" },
+    { name: "Kavya Iyer", email: "kavya@gmail.com", password: "student123", created: "2026-09-04T10:00:00.000Z" },
+    { name: "Harsh Patel", email: "harsh@gmail.com", password: "student123", created: "2026-09-08T10:00:00.000Z" }
   ];
   demo.forEach((u) => {
-    if (!users.some((x) => x.email === u.email)) users.push(u);
+    const i = users.findIndex((x) => x.email === u.email);
+    if (i < 0) users.push(u);
+    else if (!users[i].password) users[i] = { ...users[i], password: u.password };
   });
   writeList(USERS_KEY, users);
 

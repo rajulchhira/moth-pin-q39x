@@ -4,33 +4,87 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Become a Creator | Bizgarh</title>
-  <meta name="description" content="Creator onboarding for Bizgarh instructors — coming soon.">
+  <meta name="description" content="Apply to teach on Bizgarh — share your experience and join the creator desk.">
   <script src="/js/seo.js?v=seo4" defer></script>
   <script src="/js/boot.js?v=home7"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/style.css?v=desk43">
+  <link rel="stylesheet" href="/css/style.css?v=desk46">
 </head>
 <body>
   <div id="bgBoot" aria-busy="true" aria-label="Loading Bizgarh"></div>
   <div id="site-header"></div>
-  <main class="page">
+  <main class="page become-creator-page">
     <section class="page-hero">
       <div class="container" style="max-width:760px">
+        <p class="help-kicker">Creators</p>
         <h1>Become a Creator</h1>
-        <p class="muted" style="margin-top:10px">Coming soon — creator onboarding</p>
+        <p class="muted" style="margin-top:10px">Tell us about your market experience. The Bizgarh desk reviews applications and follows up by email.</p>
       </div>
     </section>
     <section class="section">
       <div class="container" style="max-width:760px">
-        <p>We are building the creator application flow. Check back soon, or write <a href="mailto:desk@bizgarh.com">desk@bizgarh.com</a> if you want to teach on Bizgarh.</p>
-        <p style="margin-top:14px">Already a Bizgarh creator? Open the <a href="/creator">Creator CRM</a>.</p>
-        <p style="margin-top:14px"><a href="/about">← About Bizgarh</a> · <a href="/instructors">Instructors</a></p>
+        <form class="form-card become-creator-form" id="becomeCreatorForm" novalidate>
+          <div class="become-creator-grid">
+            <div class="field">
+              <label for="bcFullName">Full Name</label>
+              <input id="bcFullName" name="fullName" type="text" autocomplete="name" required placeholder="Your full name">
+            </div>
+            <div class="field">
+              <label for="bcMobile">Mobile Number</label>
+              <input id="bcMobile" name="mobile" type="tel" autocomplete="tel" required inputmode="tel" placeholder="10-digit mobile">
+            </div>
+            <div class="field">
+              <label for="bcEmail">Email Address</label>
+              <input id="bcEmail" name="email" type="email" autocomplete="email" required placeholder="you@gmail.com">
+            </div>
+            <div class="field">
+              <label for="bcCity">City</label>
+              <input id="bcCity" name="city" type="text" autocomplete="address-level2" required placeholder="City">
+            </div>
+            <div class="field">
+              <label for="bcYears">Year of experience</label>
+              <input id="bcYears" name="years" type="text" inputmode="numeric" required placeholder="e.g. 5" autocomplete="off">
+            </div>
+            <div class="field bc-expertise-field">
+              <span class="bc-field-label" id="bcExpertiseLabel">Segment of Expertise</span>
+              <div class="bc-multi" id="bcExpertiseMulti" data-bc-multi>
+                <button type="button" class="bc-multi-trigger" id="bcExpertiseTrigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="bcExpertiseLabel">
+                  <span class="bc-multi-summary" id="bcExpertiseSummary">Select segments</span>
+                  <span class="bc-multi-caret" aria-hidden="true"></span>
+                </button>
+                <div class="bc-multi-panel" id="bcExpertisePanel" role="listbox" aria-multiselectable="true" hidden>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Equity"> Equity</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Futures &amp; Options"> Futures &amp; Options</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Commodity"> Commodity</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Currency"> Currency</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Forex"> Forex</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Crypto"> Crypto</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Mutual Funds"> Mutual Funds</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="ETFs"> ETFs</label>
+                  <label class="bc-multi-option"><input type="checkbox" name="expertise" value="Other" data-bc-other> Other</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="field bc-other-wrap hidden" id="bcOtherWrap" hidden>
+            <label for="bcMarketOther">Specify other</label>
+            <input id="bcMarketOther" name="marketOther" type="text" placeholder="Specify other segment" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="bcAbout">About Yourself</label>
+            <textarea id="bcAbout" name="about" rows="5" required placeholder="Teaching style, audience, and why you want to create on Bizgarh"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-shine">Submit application</button>
+          <p class="msg" id="becomeCreatorMsg" role="status" aria-live="polite"></p>
+        </form>
+        <p class="muted" style="margin-top:18px">Already a Bizgarh creator? Open the <a href="/creator">Creator CRM</a>.</p>
+        <p class="muted" style="margin-top:8px"><a href="/about">← About Bizgarh</a> · <a href="/instructors">Instructors</a></p>
       </div>
     </section>
   </main>
   <div id="site-footer"></div>
-  <script src="/js/app.js?v=desk164" defer></script>
+  <script src="/js/app.js?v=desk166" defer></script>
   <script src="/js/lms.js" defer></script>
 </body>
 </html>
