@@ -8954,15 +8954,15 @@ body.live-room-page .live-meet-actions .btn-ghost {
 .mnav-auth .acct-theme-label { padding-left: 0; }
 .mnav-auth .acct-theme-row { padding-left: 0; }
 
-/* Site-wide dark theme (desk173 — softened charcoal / light black) */
+/* Site-wide dark theme (desk175 — lighter soft charcoal / light black) */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #1c1f26;
-  --ink: #eef2f7;
-  --muted: #a8b4c4;
-  --line: #3a4150;
-  --teal-soft: #2c2950;
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  --bg: #2b2f38;
+  --ink: #ffffff;
+  --muted: #b4becc;
+  --line: #4a5160;
+  --teal-soft: #35306a;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
   background: var(--bg);
 }
 html[data-theme="dark"] body,
@@ -8971,7 +8971,7 @@ html[data-theme="dark"] .ld-body {
   color: var(--ink);
 }
 html[data-theme="dark"] #bgWait {
-  background: rgba(28, 31, 38, 0.9);
+  background: rgba(43, 47, 56, 0.9);
 }
 html[data-theme="dark"] .header,
 html[data-theme="dark"] .search-wrap,
@@ -8997,15 +8997,15 @@ html[data-theme="dark"] .card,
 html[data-theme="dark"] .ld-card,
 html[data-theme="dark"] .sheet,
 html[data-theme="dark"] .ld-acct {
-  background: #262a33;
+  background: #363b46;
   border-color: var(--line);
   color: var(--ink);
 }
 html[data-theme="dark"] .header {
-  background: #22262e;
+  background: #323740;
 }
 html[data-theme="dark"] .footer {
-  background: #181b22;
+  background: #252930;
   color: var(--ink);
 }
 html[data-theme="dark"] .acct-menu a,
@@ -9015,74 +9015,74 @@ html[data-theme="dark"] .acct-theme-label {
 }
 html[data-theme="dark"] .acct-menu a:hover,
 html[data-theme="dark"] .acct-menu > button:hover {
-  background: #323844;
+  background: #454b58;
   color: #a5b4fc;
 }
 html[data-theme="dark"] .acct-menu a svg,
 html[data-theme="dark"] .acct-menu > button svg,
 html[data-theme="dark"] .acct-theme-label svg {
-  color: #a8b4c4;
+  color: #b4becc;
 }
 html[data-theme="dark"] .site-theme-toggle {
-  background: #1a1d24;
-  box-shadow: inset 0 0 0 1px rgba(168, 180, 196, 0.28);
-  color: #a8b4c4;
+  background: #282c35;
+  box-shadow: inset 0 0 0 1px rgba(180, 190, 204, 0.3);
+  color: #b4becc;
 }
 html[data-theme="dark"] .site-theme-toggle .site-theme-opt {
-  color: #a8b4c4;
+  color: #b4becc;
 }
 html[data-theme="dark"] .site-theme-toggle[data-theme="light"] .site-theme-opt[data-val="light"],
 html[data-theme="dark"] .site-theme-toggle[data-theme="dark"] .site-theme-opt[data-val="dark"] {
-  color: #1c1f26;
+  color: #2b2f38;
 }
 html[data-theme="dark"] .btn-ghost {
-  color: #d5dde8;
+  color: #e2e8f0;
 }
 html[data-theme="dark"] .muted,
 html[data-theme="dark"] .help-kicker {
   color: var(--muted);
 }
 html[data-theme="dark"] .field > label {
-  color: #d5dde8;
+  color: #e2e8f0;
 }
 html[data-theme="dark"] .field input:not([type="radio"]):not([type="checkbox"]),
 html[data-theme="dark"] .field textarea,
 html[data-theme="dark"] .field select {
-  background: #1e222a;
+  background: #30353f;
   color: var(--ink);
   border-color: var(--line);
 }
 html[data-theme="dark"] .field input:disabled {
   opacity: 0.72;
-  color: #a8b4c4;
+  color: #b4becc;
 }
 html[data-theme="dark"] .radios,
 html[data-theme="dark"] .radios label,
 html[data-theme="dark"] .ld-acct .radios label,
 html[data-theme="dark"] .field .radios label {
-  color: #eef2f7;
+  color: #ffffff;
 }
 html[data-theme="dark"] .ld-acct {
-  background: #262a33;
+  background: #363b46;
   border-color: var(--line);
 }
 html[data-theme="dark"] .ld-acct nav {
   border-right-color: var(--line);
-  background: #22262e;
+  background: #323740;
 }
 html[data-theme="dark"] .ld-acct nav a {
-  color: #a8b4c4;
+  color: #b4becc;
 }
 html[data-theme="dark"] .ld-acct nav a.on {
-  background: #2c2950;
+  background: #35306a;
   color: #c7d2fe;
 }
 html[data-theme="dark"] .ld-acct section {
-  background: #262a33;
+  background: #363b46;
   color: var(--ink);
 }
 html[data-theme="dark"] .ld-acct h2 {
-  color: #8b97a8;
+  color: #9aa6b8;
 }
 html[data-theme="dark"] .ld-acct .form-card {
   background: transparent;
@@ -9090,15 +9090,15 @@ html[data-theme="dark"] .ld-acct .form-card {
   box-shadow: none;
 }
 html[data-theme="dark"] .ld-empty {
-  color: #a8b4c4;
+  color: #b4becc;
 }
 html[data-theme="dark"] .ld-welcome p,
 html[data-theme="dark"] .ld-resume .ld-from,
 html[data-theme="dark"] .ld-meter b {
-  color: #a8b4c4;
+  color: #b4becc;
 }
 html[data-theme="dark"] .overlay {
-  background: rgba(12, 14, 18, 0.6);
+  background: rgba(18, 20, 24, 0.55);
 }
 html[data-theme="dark"] .hdr-avatar {
   background: #3b368c;
@@ -9107,6 +9107,23 @@ html[data-theme="dark"] .hdr-avatar {
 html[data-theme="dark"] .nav-link,
 html[data-theme="dark"] .logo {
   color: var(--ink);
+}
+/* Hard-coded light-theme ink → white under dark (wordmark, welcome, page headings) */
+html[data-theme="dark"] .logo-word,
+html[data-theme="dark"] .ld-welcome h1,
+html[data-theme="dark"] .ld-title,
+html[data-theme="dark"] .ld-sess-empty h3,
+html[data-theme="dark"] .ld-tabs button.on,
+html[data-theme="dark"] .ld-row-h h2,
+html[data-theme="dark"] .ld-quick h3,
+html[data-theme="dark"] .ld-resume h3,
+html[data-theme="dark"] .course-sec-head h2,
+html[data-theme="dark"] .course-title,
+html[data-theme="dark"] .price,
+html[data-theme="dark"] .wb-price b,
+html[data-theme="dark"] .mp-stick-in b,
+html[data-theme="dark"] .trust-item b {
+  color: #fff;
 }
 html[data-theme="dark"] .page-hero,
 html[data-theme="dark"] .section,
@@ -9310,19 +9327,19 @@ html[data-theme="dark"] .purchase-chev { border-color: #64748b; }
   .profile-dp-btn { min-height: 104px; border-radius: 14px; }
 }
 html[data-theme="dark"] .profile-dp-btn {
-  background: #1a1d24;
-  border-color: #3a4150;
-  color: #a8b4c4;
+  background: #282c35;
+  border-color: #4a5160;
+  color: #b4becc;
 }
 html[data-theme="dark"] .profile-dp-btn:hover {
-  background: #2c2950;
+  background: #35306a;
   border-color: #818cf8;
   color: #c7d2fe;
 }
 html[data-theme="dark"] .profile-dp-btn.has-photo {
-  border-color: #3a4150;
-  background: #15181f;
+  border-color: #4a5160;
+  background: #22262e;
 }
 html[data-theme="dark"] .hdr-avatar.has-photo {
-  background: #323844;
+  background: #454b58;
 }
