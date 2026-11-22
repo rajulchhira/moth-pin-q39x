@@ -257,7 +257,7 @@ html.bg-waiting { overflow: hidden; }
 @media (hover: hover) and (pointer: fine) {
   .acct-wrap:hover .acct-menu { display: grid; gap: 2px; }
 }
-.acct-menu a, .acct-menu button {
+.acct-menu a, .acct-menu > button {
   display: block;
   width: 100%;
   text-align: left;
@@ -271,7 +271,7 @@ html.bg-waiting { overflow: hidden; }
   border-radius: 12px;
   cursor: pointer;
 }
-.acct-menu a:hover, .acct-menu button:hover { background: #eef2ff; color: var(--teal); }
+.acct-menu a:hover, .acct-menu > button:hover { background: #eef2ff; color: var(--teal); }
 .btn {
   display: inline-flex;
   align-items: center;
@@ -2477,7 +2477,7 @@ body.nav-dim::before {
 }
 .modal h3 { font-size: 22px; font-weight: 650; }
 .field { margin: 12px 0; }
-.field label { display: block; font-size: 13px; font-weight: 650; margin-bottom: 6px; color: #5b6a66; }
+.field > label { display: block; font-size: 13px; font-weight: 650; margin-bottom: 6px; color: #5b6a66; }
 .field input, .field textarea, .field select {
   width: 100%;
   border: 1px solid var(--line);
@@ -6582,8 +6582,8 @@ body.live-room-page .live-meet-actions .btn-ghost {
 @media (prefers-reduced-motion: reduce) {
   .note-dot, .note-wrap.is-ring .note-btn svg, .note-wrap.open .note-panel, .note-item { animation: none !important; }
 }
-.acct-menu a, .acct-menu button { display: flex; align-items: center; gap: 10px; }
-.acct-menu svg { width: 16px; height: 16px; flex: 0 0 16px; color: #64748b; }
+.acct-menu a, .acct-menu > button { display: flex; align-items: center; gap: 10px; }
+.acct-menu a svg, .acct-menu > button svg { width: 16px; height: 16px; flex: 0 0 16px; color: #64748b; }
 .ld-body { background: #f6f7fb; }
 .ld-page { min-height: 0; padding: 28px 0 28px; }
 .ld {
@@ -8853,7 +8853,7 @@ body.live-room-page .live-meet-actions .btn-ghost {
   .become-creator-grid { grid-template-columns: 1fr; }
 }
 
-/* ——— Profile menu Theme Light/Dark (desk169) ——— */
+/* ——— Profile menu Theme Light/Dark (desk170) ——— */
 .acct-theme {
   display: grid;
   gap: 6px;
@@ -8885,20 +8885,21 @@ body.live-room-page .live-meet-actions .btn-ghost {
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
   position: relative;
-  width: 100%;
-  max-width: 168px;
-  height: 30px;
-  padding: 2px;
+  width: 148px;
+  max-width: 100%;
+  height: 28px;
+  padding: 3px;
   margin: 0;
   border: 0;
   border-radius: 999px;
   background: #e2e8f0;
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
   cursor: pointer;
   user-select: none;
   box-sizing: border-box;
   font: inherit;
   color: #64748b;
+  overflow: hidden;
 }
 .site-theme-toggle .site-theme-opt {
   position: relative;
@@ -8906,7 +8907,7 @@ body.live-room-page .live-meet-actions .btn-ghost {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -8919,13 +8920,13 @@ body.live-room-page .live-meet-actions .btn-ghost {
 }
 .site-theme-toggle .site-theme-knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: calc(50% - 2px);
-  height: calc(100% - 4px);
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16);
   transition: transform 0.2s ease;
   z-index: 0;
   pointer-events: none;
@@ -8952,8 +8953,9 @@ html[data-theme="dark"] {
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
   background: var(--bg);
 }
-html[data-theme="dark"] body {
-  background: var(--bg);
+html[data-theme="dark"] body,
+html[data-theme="dark"] .ld-body {
+  background: var(--bg) !important;
   color: var(--ink);
 }
 html[data-theme="dark"] #bgWait {
@@ -8975,12 +8977,14 @@ html[data-theme="dark"] .course-card,
 html[data-theme="dark"] .grid-card,
 html[data-theme="dark"] .cat-card,
 html[data-theme="dark"] .review-card,
+html[data-theme="dark"] .info-card,
 html[data-theme="dark"] .mentor-card,
 html[data-theme="dark"] .web-card,
 html[data-theme="dark"] .panel,
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .ld-card,
-html[data-theme="dark"] .sheet {
+html[data-theme="dark"] .sheet,
+html[data-theme="dark"] .ld-acct {
   background: #111827;
   border-color: var(--line);
   color: var(--ink);
@@ -8993,21 +8997,23 @@ html[data-theme="dark"] .footer {
   color: var(--ink);
 }
 html[data-theme="dark"] .acct-menu a,
-html[data-theme="dark"] .acct-menu button,
+html[data-theme="dark"] .acct-menu > button,
 html[data-theme="dark"] .acct-theme-label {
   color: var(--ink);
 }
 html[data-theme="dark"] .acct-menu a:hover,
-html[data-theme="dark"] .acct-menu button:hover {
+html[data-theme="dark"] .acct-menu > button:hover {
   background: #1e293b;
   color: #a5b4fc;
 }
-html[data-theme="dark"] .acct-menu svg,
+html[data-theme="dark"] .acct-menu a svg,
+html[data-theme="dark"] .acct-menu > button svg,
 html[data-theme="dark"] .acct-theme-label svg {
   color: #94a3b8;
 }
 html[data-theme="dark"] .site-theme-toggle {
-  background: #1e293b;
+  background: #0f172a;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
   color: #94a3b8;
 }
 html[data-theme="dark"] .site-theme-toggle .site-theme-opt {
@@ -9024,15 +9030,60 @@ html[data-theme="dark"] .muted,
 html[data-theme="dark"] .help-kicker {
   color: var(--muted);
 }
-html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field > label {
+  color: #cbd5e1;
+}
+html[data-theme="dark"] .field input:not([type="radio"]):not([type="checkbox"]),
 html[data-theme="dark"] .field textarea,
-html[data-theme="dark"] .field select,
-html[data-theme="dark"] input,
-html[data-theme="dark"] textarea,
-html[data-theme="dark"] select {
+html[data-theme="dark"] .field select {
   background: #0b1220;
   color: var(--ink);
   border-color: var(--line);
+}
+html[data-theme="dark"] .field input:disabled {
+  opacity: 0.72;
+  color: #94a3b8;
+}
+html[data-theme="dark"] .radios,
+html[data-theme="dark"] .radios label,
+html[data-theme="dark"] .ld-acct .radios label,
+html[data-theme="dark"] .field .radios label {
+  color: #e8eef7;
+}
+html[data-theme="dark"] .ld-acct {
+  background: #111827;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .ld-acct nav {
+  border-right-color: var(--line);
+  background: #0f172a;
+}
+html[data-theme="dark"] .ld-acct nav a {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .ld-acct nav a.on {
+  background: #1e1b4b;
+  color: #c7d2fe;
+}
+html[data-theme="dark"] .ld-acct section {
+  background: #111827;
+  color: var(--ink);
+}
+html[data-theme="dark"] .ld-acct h2 {
+  color: #64748b;
+}
+html[data-theme="dark"] .ld-acct .form-card {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+}
+html[data-theme="dark"] .ld-empty {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .ld-welcome p,
+html[data-theme="dark"] .ld-resume .ld-from,
+html[data-theme="dark"] .ld-meter b {
+  color: #94a3b8;
 }
 html[data-theme="dark"] .overlay {
   background: rgba(2, 6, 23, 0.72);
@@ -9047,8 +9098,40 @@ html[data-theme="dark"] .logo {
 }
 html[data-theme="dark"] .page-hero,
 html[data-theme="dark"] .section,
-html[data-theme="dark"] .ld-page,
-html[data-theme="dark"] .ld-body {
+html[data-theme="dark"] .ld-page {
   background: transparent;
   color: var(--ink);
+}
+
+/* Light theme — keep account/profile readable (no hybrid dark fields) */
+html[data-theme="light"] .ld-acct,
+html:not([data-theme="dark"]) .ld-acct {
+  background: #fff;
+  border-color: #eef0f4;
+  color: #0f172a;
+}
+html[data-theme="light"] .ld-acct .form-card,
+html:not([data-theme="dark"]) .ld-acct .form-card {
+  background: transparent;
+  color: #0f172a;
+}
+html[data-theme="light"] .ld-acct .field > label,
+html:not([data-theme="dark"]) .ld-acct .field > label {
+  color: #5b6a66;
+}
+html[data-theme="light"] .ld-acct .field input:not([type="radio"]):not([type="checkbox"]),
+html[data-theme="light"] .ld-acct .field textarea,
+html[data-theme="light"] .ld-acct .field select,
+html:not([data-theme="dark"]) .ld-acct .field input:not([type="radio"]):not([type="checkbox"]),
+html:not([data-theme="dark"]) .ld-acct .field textarea,
+html:not([data-theme="dark"]) .ld-acct .field select {
+  background: #fff;
+  color: #0f172a;
+  border-color: var(--line);
+}
+html[data-theme="light"] .ld-acct .radios,
+html[data-theme="light"] .ld-acct .radios label,
+html:not([data-theme="dark"]) .ld-acct .radios,
+html:not([data-theme="dark"]) .ld-acct .radios label {
+  color: #0f172a;
 }
