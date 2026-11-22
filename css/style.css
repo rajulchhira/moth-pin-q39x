@@ -9115,7 +9115,6 @@ html[data-theme="dark"] .ld-title,
 html[data-theme="dark"] .ld-sess-empty h3,
 html[data-theme="dark"] .ld-tabs button.on,
 html[data-theme="dark"] .ld-row-h h2,
-html[data-theme="dark"] .ld-quick h3,
 html[data-theme="dark"] .ld-resume h3,
 html[data-theme="dark"] .course-sec-head h2,
 html[data-theme="dark"] .course-title,
@@ -9124,6 +9123,17 @@ html[data-theme="dark"] .wb-price b,
 html[data-theme="dark"] .mp-stick-in b,
 html[data-theme="dark"] .trust-item b {
   color: #fff;
+}
+/* Light cards that stay pale under dark — keep dark ink (do not inherit --ink white) */
+html[data-theme="dark"] .ld-promo,
+html[data-theme="dark"] .ld-promo h3,
+html[data-theme="dark"] .ld-quick,
+html[data-theme="dark"] .ld-quick h3,
+html[data-theme="dark"] .ld-cat,
+html[data-theme="dark"] .ld-ex a,
+html[data-theme="dark"] .ld-ghost,
+html[data-theme="dark"] .ld-ghost:hover {
+  color: #111827;
 }
 html[data-theme="dark"] .page-hero,
 html[data-theme="dark"] .section,
