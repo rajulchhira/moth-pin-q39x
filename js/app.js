@@ -1623,6 +1623,99 @@ function userInitials(name) {
   const b = parts.length > 1 ? (parts[parts.length - 1][0] || "") : (parts[0][1] || "");
   return (a + b).toUpperCase();
 }
+
+function learnerPhotoUrl(userOrEmail) {
+  const email = typeof userOrEmail === "string"
+    ? userOrEmail
+    : (userOrEmail && userOrEmail.email) || "";
+  const session = getUser();
+  if (session && session.photo) {
+    if (!email || String(session.email || "").toLowerCase() === String(email).toLowerCase()) {
+      return String(session.photo);
+    }
+  }
+  const row = email && typeof findStudent === "function" ? findStudent(email) : null;
+  return String((row && (row.profile?.photo || row.photo)) || "");
+}
+
+function saveLearnerPhoto(dataUrl) {
+  const user = getUser();
+  if (!user || !dataUrl) return false;
+  const row = (typeof findStudent === "function" ? findStudent(user.email) : null) || user;
+  const profile = { ...(row.profile || {}), photo: dataUrl };
+  upsertUser({ ...row, email: user.email, name: row.name || user.name, profile });
+  setUser({ ...user, photo: dataUrl });
+  return true;
+}
+
+function readProfilePhotoFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      reject(new Error("Pick an image file"));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      reject(new Error("Image is too large (max 8 MB)"));
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 320;
+      let w = img.naturalWidth || img.width || 1;
+      let h = img.naturalHeight || img.height || 1;
+      const scale = Math.min(1, max / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      let out = canvas.toDataURL("image/jpeg", 0.82);
+      if (out.length > 180000) out = canvas.toDataURL("image/jpeg", 0.7);
+      resolve(out);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read image"));
+    };
+    img.src = url;
+  });
+}
+
+function paintHeaderAvatar() {
+  const btn = document.querySelector(".hdr-avatar.acct-btn");
+  if (!btn) return;
+  const user = getUser();
+  if (!user) return;
+  const photo = learnerPhotoUrl(user);
+  const first = escapeHtml(String(user.name || "").split(" ")[0] || "Account");
+  btn.setAttribute("aria-label", first);
+  if (photo) {
+    btn.classList.add("has-photo");
+    btn.innerHTML = `<img src="${escapeHtml(photo)}" alt="">`;
+  } else {
+    btn.classList.remove("has-photo");
+    btn.textContent = userInitials(user.name);
+  }
+}
+
+function profileDpButtonHTML(photo) {
+  if (photo) {
+    return `<button type="button" class="profile-dp-btn has-photo" id="profileDpBtn" aria-label="Change profile photo">
+      <img src="${escapeHtml(photo)}" alt="">
+      <span class="profile-dp-change">Change</span>
+    </button>`;
+  }
+  return `<button type="button" class="profile-dp-btn" id="profileDpBtn" aria-label="Upload profile photo">
+    <span class="profile-dp-ph" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="12" cy="12" r="3.2"/><path d="M8 5l1.2-1.5h5.6L16 5"/></svg>
+      <span>Add photo</span>
+    </span>
+  </button>`;
+}
 function makeOtp() { return String(Math.floor(100000 + Math.random() * 900000)); }
 function saveOtp(email, purpose) {
   const code = makeOtp();
@@ -3632,6 +3725,11 @@ function headerAuthHTML(place) {
   const first = escapeHtml(user.name.split(" ")[0]);
   const role = staffAccessRole(user.email);
   const initials = escapeHtml(userInitials(user.name));
+  const photo = learnerPhotoUrl(user);
+  const avatarInner = photo
+    ? `<img src="${escapeHtml(photo)}" alt="">`
+    : initials;
+  const avatarClass = photo ? "hdr-avatar acct-btn has-photo" : "hdr-avatar acct-btn";
   if (place === "mobile") {
     return `<a class="btn btn-ghost" href="/dashboard">My Dashboard</a>
       <a class="btn btn-primary" href="/learning">My Learning</a>
@@ -3643,7 +3741,7 @@ function headerAuthHTML(place) {
   return `<a class="btn btn-ghost hdr-learn" href="/learning">My Learning</a>
     ${noteBellHTML()}
     <div class="acct-wrap">
-      <button class="hdr-avatar acct-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="${first}">${initials}</button>
+      <button class="${avatarClass}" type="button" aria-haspopup="true" aria-expanded="false" aria-label="${first}">${avatarInner}</button>
       <div class="acct-menu" role="menu">
         <a href="/dashboard">${iconSvg("chart")} My Dashboard</a>
         <a href="/learning">${iconSvg("play")} My Learning</a>
@@ -4071,7 +4169,13 @@ function bindChrome() {
       toast("This account is blocked");
       return;
     }
-    setUser({ name: match.name, email: match.email, password: match.password || password, referredBy: match.referredBy });
+    setUser({
+      name: match.name,
+      email: match.email,
+      password: match.password || password,
+      referredBy: match.referredBy,
+      photo: match.profile?.photo || match.photo || ""
+    });
     upsertUser(match);
     closeModals();
     toast("Logged in");
@@ -6103,11 +6207,20 @@ function renderAccountPage() {
     closed: tickets.filter((t) => t.status === "CLOSED" || t.status === "RESOLVED")
   };
   const genderVal = p.gender === "Prefer not to say" ? "" : (p.gender || "");
+  const dpPhoto = learnerPhotoUrl(row.email || user.email) || p.photo || "";
   const panes = {
     edit: `<h2>Account info</h2>
       <form id="profileForm" class="form-card" style="max-width:none;box-shadow:none;border:0;padding:0">
-        <div class="field"><label>Name</label><input name="name" required value="${escapeHtml(row.name || "")}"></div>
-        <div class="field"><label>Phone number</label><input name="phone" value="${escapeHtml(p.phone || "")}"></div>
+        <div class="profile-top">
+          <div class="profile-top-fields">
+            <div class="field"><label>Name</label><input name="name" required value="${escapeHtml(row.name || "")}"></div>
+            <div class="field"><label>Phone number</label><input name="phone" value="${escapeHtml(p.phone || "")}"></div>
+          </div>
+          <div class="profile-dp">
+            <input type="file" id="profileDpInput" accept="image/*" hidden>
+            ${profileDpButtonHTML(dpPhoto)}
+          </div>
+        </div>
         <div class="field"><label>Email ID</label><input name="email" value="${escapeHtml(row.email || "")}" disabled></div>
         <div class="field"><label>Gender</label><div class="radios">
           ${["Male", "Female"].map((g) => `<label><input type="radio" name="gender" value="${g}" ${genderVal === g ? "checked" : ""}> ${g}</label>`).join("")}
@@ -6158,6 +6271,7 @@ function renderAccountPage() {
     e.preventDefault();
     const f = e.target;
     const pickedGender = f.gender?.value || "";
+    const keptPhoto = learnerPhotoUrl(row.email || user.email) || p.photo || "";
     const profile = {
       phone: f.phone.value.trim(),
       gender: pickedGender === "Prefer not to say" ? "" : (pickedGender || (genderVal || "")),
@@ -6165,7 +6279,8 @@ function renderAccountPage() {
       country: f.country.value.trim(),
       state: f.state.value.trim(),
       city: f.city.value.trim(),
-      pin: f.pin.value.trim()
+      pin: f.pin.value.trim(),
+      photo: keptPhoto
     };
     const next = { ...row, name: f.name.value.trim(), profile };
     upsertUser(next);
@@ -6178,9 +6293,31 @@ function renderAccountPage() {
       if (list[idx].profile.gender === "Prefer not to say") list[idx].profile.gender = "";
       writeList(USERS_KEY, list);
     }
-    setUser({ ...getUser(), name: next.name });
+    setUser({ ...getUser(), name: next.name, photo: keptPhoto || "" });
     toast("Profile saved");
+    paintHeaderAvatar();
     renderAccountPage();
+  });
+  const dpBtn = document.getElementById("profileDpBtn");
+  const dpInput = document.getElementById("profileDpInput");
+  dpBtn?.addEventListener("click", () => dpInput?.click());
+  dpInput?.addEventListener("change", async () => {
+    const file = dpInput.files && dpInput.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await readProfilePhotoFile(file);
+      if (!saveLearnerPhoto(dataUrl)) {
+        toast("Could not save photo");
+        return;
+      }
+      paintHeaderAvatar();
+      toast("Photo updated");
+      renderAccountPage();
+    } catch (err) {
+      toast((err && err.message) || "Could not upload photo");
+    } finally {
+      dpInput.value = "";
+    }
   });
   root.querySelectorAll("[data-tk]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -7996,3 +8133,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk169: Profile menu Theme Light/Dark switch */
 /* cache-bust desk170: Fix theme toggle size + account light/dark surfaces */
 /* cache-bust desk171: Edit Profile trim + My Purchases expandable detail */
+/* cache-bust desk172: Edit Profile DP upload + header avatar photo */
