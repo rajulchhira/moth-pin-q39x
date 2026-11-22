@@ -936,8 +936,7 @@ body.nav-dim::before {
 }
 .ld-body .slide-fade,
 .ld-home .slide-fade { --fade-bg: #f6f7fb; }
-.slide-fade::before,
-.slide-fade::after,
+/* Edge fades on course carousels / press only — never on review slides */
 .carousel::before,
 .carousel::after,
 .press-marquee::before,
@@ -952,30 +951,29 @@ body.nav-dim::before {
   opacity: 1;
   transition: opacity .35s ease;
 }
-.slide-fade::before,
 .carousel::before,
 .press-marquee::before {
   left: 0;
   background: linear-gradient(90deg, var(--fade-bg, #fff) 0%, rgba(255,255,255,0) 100%);
 }
-.slide-fade::after,
 .carousel::after,
 .press-marquee::after {
   right: 0;
   background: linear-gradient(270deg, var(--fade-bg, #fff) 0%, rgba(255,255,255,0) 100%);
 }
-.ld-body .slide-fade::before,
-.ld-home .slide-fade::before {
-  background: linear-gradient(90deg, #f6f7fb 0%, rgba(246,247,251,0) 100%);
-}
-.ld-body .slide-fade::after,
-.ld-home .slide-fade::after {
-  background: linear-gradient(270deg, #f6f7fb 0%, rgba(246,247,251,0) 100%);
-}
-.slide-fade.is-start::before,
 .carousel.is-start::before { opacity: 0; }
-.slide-fade.is-end::after,
 .carousel.is-end::after { opacity: 0; }
+/* Review slide left/right: no white blur / glow / edge fade */
+.slide-fade.ld-rev-fade::before,
+.slide-fade.ld-rev-fade::after,
+.slide-fade:has(.review-marquee)::before,
+.slide-fade:has(.review-marquee)::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  width: 0 !important;
+  opacity: 0 !important;
+}
 .track {
   display: flex;
   gap: 16px;
@@ -2161,7 +2159,9 @@ body.nav-dim::before {
   display: grid;
   gap: 16px;
   overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  /* no edge mask/fade — white blur looked bad on review slides */
+  mask-image: none;
+  -webkit-mask-image: none;
 }
 .review-row { overflow: hidden; }
 .review-track {
@@ -8954,15 +8954,15 @@ body.live-room-page .live-meet-actions .btn-ghost {
 .mnav-auth .acct-theme-label { padding-left: 0; }
 .mnav-auth .acct-theme-row { padding-left: 0; }
 
-/* Site-wide dark theme (desk173 — softened charcoal / light black) */
+/* Site-wide dark theme (desk176 — light grey / light black charcoal) */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #1c1f26;
-  --ink: #eef2f7;
-  --muted: #a8b4c4;
-  --line: #3a4150;
-  --teal-soft: #2c2950;
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  --bg: #3e434e;
+  --ink: #ffffff;
+  --muted: #c5ccd8;
+  --line: #5c6372;
+  --teal-soft: #3f3a78;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
   background: var(--bg);
 }
 html[data-theme="dark"] body,
@@ -8971,7 +8971,7 @@ html[data-theme="dark"] .ld-body {
   color: var(--ink);
 }
 html[data-theme="dark"] #bgWait {
-  background: rgba(28, 31, 38, 0.9);
+  background: rgba(62, 67, 78, 0.9);
 }
 html[data-theme="dark"] .header,
 html[data-theme="dark"] .search-wrap,
@@ -8997,15 +8997,15 @@ html[data-theme="dark"] .card,
 html[data-theme="dark"] .ld-card,
 html[data-theme="dark"] .sheet,
 html[data-theme="dark"] .ld-acct {
-  background: #262a33;
+  background: #4c525e;
   border-color: var(--line);
   color: var(--ink);
 }
 html[data-theme="dark"] .header {
-  background: #22262e;
+  background: #474d59;
 }
 html[data-theme="dark"] .footer {
-  background: #181b22;
+  background: #343944;
   color: var(--ink);
 }
 html[data-theme="dark"] .acct-menu a,
@@ -9015,74 +9015,77 @@ html[data-theme="dark"] .acct-theme-label {
 }
 html[data-theme="dark"] .acct-menu a:hover,
 html[data-theme="dark"] .acct-menu > button:hover {
-  background: #323844;
+  background: #5a6170;
   color: #a5b4fc;
 }
 html[data-theme="dark"] .acct-menu a svg,
 html[data-theme="dark"] .acct-menu > button svg,
 html[data-theme="dark"] .acct-theme-label svg {
-  color: #a8b4c4;
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .site-theme-toggle {
-  background: #1a1d24;
-  box-shadow: inset 0 0 0 1px rgba(168, 180, 196, 0.28);
-  color: #a8b4c4;
+  background: #383d48;
+  box-shadow: inset 0 0 0 1px rgba(197, 204, 216, 0.32);
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .site-theme-toggle .site-theme-opt {
-  color: #a8b4c4;
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .site-theme-toggle[data-theme="light"] .site-theme-opt[data-val="light"],
 html[data-theme="dark"] .site-theme-toggle[data-theme="dark"] .site-theme-opt[data-val="dark"] {
-  color: #1c1f26;
+  color: #3e434e;
 }
 html[data-theme="dark"] .btn-ghost {
-  color: #d5dde8;
+  color: #f1f5f9;
 }
 html[data-theme="dark"] .muted,
-html[data-theme="dark"] .help-kicker {
+html[data-theme="dark"] .help-kicker,
+html[data-theme="dark"] .meta,
+html[data-theme="dark"] .ld-crumb,
+html[data-theme="dark"] .ld-crumb a {
   color: var(--muted);
 }
 html[data-theme="dark"] .field > label {
-  color: #d5dde8;
+  color: #e8edf5;
 }
 html[data-theme="dark"] .field input:not([type="radio"]):not([type="checkbox"]),
 html[data-theme="dark"] .field textarea,
 html[data-theme="dark"] .field select {
-  background: #1e222a;
+  background: #454b57;
   color: var(--ink);
   border-color: var(--line);
 }
 html[data-theme="dark"] .field input:disabled {
   opacity: 0.72;
-  color: #a8b4c4;
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .radios,
 html[data-theme="dark"] .radios label,
 html[data-theme="dark"] .ld-acct .radios label,
 html[data-theme="dark"] .field .radios label {
-  color: #eef2f7;
+  color: #ffffff;
 }
 html[data-theme="dark"] .ld-acct {
-  background: #262a33;
+  background: #4c525e;
   border-color: var(--line);
 }
 html[data-theme="dark"] .ld-acct nav {
   border-right-color: var(--line);
-  background: #22262e;
+  background: #474d59;
 }
 html[data-theme="dark"] .ld-acct nav a {
-  color: #a8b4c4;
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .ld-acct nav a.on {
-  background: #2c2950;
+  background: #3f3a78;
   color: #c7d2fe;
 }
 html[data-theme="dark"] .ld-acct section {
-  background: #262a33;
+  background: #4c525e;
   color: var(--ink);
 }
 html[data-theme="dark"] .ld-acct h2 {
-  color: #8b97a8;
+  color: #a8b2c2;
 }
 html[data-theme="dark"] .ld-acct .form-card {
   background: transparent;
@@ -9090,15 +9093,15 @@ html[data-theme="dark"] .ld-acct .form-card {
   box-shadow: none;
 }
 html[data-theme="dark"] .ld-empty {
-  color: #a8b4c4;
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .ld-welcome p,
 html[data-theme="dark"] .ld-resume .ld-from,
 html[data-theme="dark"] .ld-meter b {
-  color: #a8b4c4;
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .overlay {
-  background: rgba(12, 14, 18, 0.6);
+  background: rgba(24, 26, 32, 0.5);
 }
 html[data-theme="dark"] .hdr-avatar {
   background: #3b368c;
@@ -9108,11 +9111,142 @@ html[data-theme="dark"] .nav-link,
 html[data-theme="dark"] .logo {
   color: var(--ink);
 }
+/* Hard-coded light-theme ink → white/light under dark (full public audit) */
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] .logo-word,
+html[data-theme="dark"] .ld-welcome h1,
+html[data-theme="dark"] .ld-title,
+html[data-theme="dark"] .ld-sess-empty h3,
+html[data-theme="dark"] .ld-tabs button,
+html[data-theme="dark"] .ld-tabs button.on,
+html[data-theme="dark"] .ld-row-h h2,
+html[data-theme="dark"] .ld-resume h3,
+html[data-theme="dark"] .course-sec-head h2,
+html[data-theme="dark"] .course-title,
+html[data-theme="dark"] .price,
+html[data-theme="dark"] .wb-price b,
+html[data-theme="dark"] .mp-stick-in b,
+html[data-theme="dark"] .trust-item b,
+html[data-theme="dark"] .hero h1,
+html[data-theme="dark"] .le-word,
+html[data-theme="dark"] .le-flip,
+html[data-theme="dark"] .le-flip b,
+html[data-theme="dark"] .explore-head h2,
+html[data-theme="dark"] .explore-tile strong,
+html[data-theme="dark"] .ex-cta,
+html[data-theme="dark"] .t-live .ex-cta,
+html[data-theme="dark"] .t-mentor .ex-cta,
+html[data-theme="dark"] .t-one .ex-cta,
+html[data-theme="dark"] #workingTraders ul.tr-metrics b,
+html[data-theme="dark"] .reviewer strong,
+html[data-theme="dark"] .review-card p,
+html[data-theme="dark"] .review-card,
+html[data-theme="dark"] .quote,
+html[data-theme="dark"] .cat-card strong,
+html[data-theme="dark"] .cat-card p,
+html[data-theme="dark"] .info-card,
+html[data-theme="dark"] .info-card strong,
+html[data-theme="dark"] .info-card p,
+html[data-theme="dark"] .empty h3,
+html[data-theme="dark"] .empty p,
+html[data-theme="dark"] .mobile-nav > a,
+html[data-theme="dark"] .mobile-nav button,
+html[data-theme="dark"] .mega-left strong,
+html[data-theme="dark"] .mega-web-meta b,
+html[data-theme="dark"] .dropdown a,
+html[data-theme="dark"] .search-item,
+html[data-theme="dark"] .search-item b,
+html[data-theme="dark"] .note-item,
+html[data-theme="dark"] .note-item b,
+html[data-theme="dark"] .footer,
+html[data-theme="dark"] .footer a,
+html[data-theme="dark"] .ft-col h4,
+html[data-theme="dark"] .ft-col a,
+html[data-theme="dark"] .ft-brand p,
+html[data-theme="dark"] .footer-brand p,
+html[data-theme="dark"] .help-q,
+html[data-theme="dark"] .faq-q,
+html[data-theme="dark"] .faq-a,
+html[data-theme="dark"] .faq-item,
+html[data-theme="dark"] .auth-sbtn,
+html[data-theme="dark"] .gmail-code,
+html[data-theme="dark"] .cover-copy,
+html[data-theme="dark"] .cover-copy h3,
+html[data-theme="dark"] .purchase-detail-grid dd,
+html[data-theme="dark"] .purchase-row-head,
+html[data-theme="dark"] .ld-sess h3,
+html[data-theme="dark"] .ld-sess p,
+html[data-theme="dark"] .ld-web strong,
+html[data-theme="dark"] .chip,
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .page-hero h1,
+html[data-theme="dark"] .page-hero p,
+html[data-theme="dark"] .section p,
+html[data-theme="dark"] .wb-title,
+html[data-theme="dark"] .wb-meta,
+html[data-theme="dark"] .cd-crumb,
+html[data-theme="dark"] .cd-crumb b,
+html[data-theme="dark"] .cd-title,
+html[data-theme="dark"] .cd-sec-h,
+html[data-theme="dark"] .press-logo span,
+html[data-theme="dark"] .ip-list-copy strong,
+html[data-theme="dark"] .ip-tabs button.on,
+html[data-theme="dark"] .ip-guide-stars {
+  color: #fff;
+}
+html[data-theme="dark"] .ld-tabs button {
+  color: #c5ccd8;
+}
+html[data-theme="dark"] .ld-tabs button.on {
+  color: #fff;
+}
+/* Light cards / controls that stay pale under dark — keep dark ink */
+html[data-theme="dark"] .ld-promo,
+html[data-theme="dark"] .ld-promo h3,
+html[data-theme="dark"] .ld-promo p,
+html[data-theme="dark"] .ld-quick,
+html[data-theme="dark"] .ld-quick h3,
+html[data-theme="dark"] .ld-quick a,
+html[data-theme="dark"] .ld-cat,
+html[data-theme="dark"] .ld-cat strong,
+html[data-theme="dark"] .ld-ex a,
+html[data-theme="dark"] .ld-ex a strong,
+html[data-theme="dark"] .ld-ghost,
+html[data-theme="dark"] .ld-ghost:hover,
+html[data-theme="dark"] .ld-play,
+html[data-theme="dark"] .search-wrap input,
+html[data-theme="dark"] .arrow,
+html[data-theme="dark"] .tr-arrow {
+  color: #111827;
+}
 html[data-theme="dark"] .page-hero,
 html[data-theme="dark"] .section,
-html[data-theme="dark"] .ld-page {
+html[data-theme="dark"] .ld-page,
+html[data-theme="dark"] .hero,
+html[data-theme="dark"] main {
   background: transparent;
   color: var(--ink);
+}
+/* Kill white edge fades under dark (looks like white blur on charcoal) */
+html[data-theme="dark"] .carousel::before,
+html[data-theme="dark"] .carousel::after,
+html[data-theme="dark"] .press-marquee::before,
+html[data-theme="dark"] .press-marquee::after,
+html[data-theme="dark"] .slide-fade::before,
+html[data-theme="dark"] .slide-fade::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+}
+html[data-theme="dark"] .review-marquee,
+html[data-theme="dark"] .press-marquee {
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
 }
 
 /* Light theme — keep account/profile readable (no hybrid dark fields) */
@@ -9310,19 +9444,19 @@ html[data-theme="dark"] .purchase-chev { border-color: #64748b; }
   .profile-dp-btn { min-height: 104px; border-radius: 14px; }
 }
 html[data-theme="dark"] .profile-dp-btn {
-  background: #1a1d24;
-  border-color: #3a4150;
-  color: #a8b4c4;
+  background: #383d48;
+  border-color: #5c6372;
+  color: #c5ccd8;
 }
 html[data-theme="dark"] .profile-dp-btn:hover {
-  background: #2c2950;
+  background: #3f3a78;
   border-color: #818cf8;
   color: #c7d2fe;
 }
 html[data-theme="dark"] .profile-dp-btn.has-photo {
-  border-color: #3a4150;
-  background: #15181f;
+  border-color: #5c6372;
+  background: #343944;
 }
 html[data-theme="dark"] .hdr-avatar.has-photo {
-  background: #323844;
+  background: #5a6170;
 }
