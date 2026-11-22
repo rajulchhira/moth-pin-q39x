@@ -7803,3 +7803,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk165: Become a Creator form + public demo learner seed */
 /* cache-bust desk167: Become a Creator segment multi-select + free years */
 /* cache-bust desk167: CF edge purge after desk166 app.js poison on www */
+/* cache-bust desk168: Remove Become a Creator → Creator CRM teaser */
