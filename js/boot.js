@@ -1,5 +1,12 @@
 (function () {
   try {
+    var siteTheme = localStorage.getItem("bizgarhTheme");
+    var theme = siteTheme === "dark" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
+  } catch (e) { /* keep default light */ }
+
+  try {
     if (location.hostname === "bizgarh.com") {
       location.replace("https://www.bizgarh.com" + location.pathname + location.search + location.hash);
       return;
