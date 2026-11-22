@@ -9135,3 +9135,77 @@ html:not([data-theme="dark"]) .ld-acct .radios,
 html:not([data-theme="dark"]) .ld-acct .radios label {
   color: #0f172a;
 }
+
+/* My Purchases expandable detail */
+.purchase-row {
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+.purchase-row-head {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 16px 18px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.purchase-row-head:hover { background: rgba(79, 70, 229, 0.04); }
+.purchase-row-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.purchase-row-head .muted { margin: 6px 0 0; }
+.purchase-chev {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #94a3b8;
+  border-bottom: 2px solid #94a3b8;
+  transform: rotate(45deg);
+  transition: transform .18s ease;
+  flex: 0 0 auto;
+}
+.purchase-row.is-open .purchase-chev { transform: rotate(225deg); }
+.purchase-detail {
+  padding: 0 18px 16px;
+  border-top: 1px solid #f1f5f9;
+}
+.purchase-detail[hidden] { display: none; }
+.purchase-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 18px;
+  margin: 14px 0 12px;
+}
+.purchase-detail-grid dt {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin: 0 0 4px;
+}
+.purchase-detail-grid dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+  word-break: break-word;
+}
+.purchase-open-link {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 14px;
+  color: #4f46e5;
+  text-decoration: none;
+}
+.purchase-open-link:hover { text-decoration: underline; }
+html[data-theme="dark"] .purchase-row-head:hover { background: rgba(255, 255, 255, 0.04); }
+html[data-theme="dark"] .purchase-detail { border-top-color: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .purchase-detail-grid dd { color: #e2e8f0; }
+html[data-theme="dark"] .purchase-chev { border-color: #64748b; }
