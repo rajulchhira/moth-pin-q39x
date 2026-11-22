@@ -9310,19 +9310,19 @@ html[data-theme="dark"] .purchase-chev { border-color: #64748b; }
   .profile-dp-btn { min-height: 104px; border-radius: 14px; }
 }
 html[data-theme="dark"] .profile-dp-btn {
-  background: #0f172a;
-  border-color: #334155;
-  color: #94a3b8;
+  background: #1a1d24;
+  border-color: #3a4150;
+  color: #a8b4c4;
 }
 html[data-theme="dark"] .profile-dp-btn:hover {
-  background: #1e1b4b;
+  background: #2c2950;
   border-color: #818cf8;
   color: #c7d2fe;
 }
 html[data-theme="dark"] .profile-dp-btn.has-photo {
-  border-color: #334155;
-  background: #020617;
+  border-color: #3a4150;
+  background: #15181f;
 }
 html[data-theme="dark"] .hdr-avatar.has-photo {
-  background: #1e293b;
+  background: #323844;
 }
