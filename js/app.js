@@ -1141,9 +1141,42 @@ function iconSvg(name) {
     bell: '<path d="M6.4 16h11.2"/><path d="M7 16v-5.1a5 5 0 0 1 10 0V16"/><path d="M10.2 16.2a1.8 1.8 0 0 0 3.6 0"/><path d="M12 4.2V6"/>',
     file: '<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/>',
     building: '<rect x="5" y="4" width="14" height="16" rx="1.5"/><path d="M9 8h.01M12 8h.01M15 8h.01M9 12h.01M12 12h.01M15 12h.01M9 20v-3h6v3"/>',
-    star: '<path d="m12 3.6 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.5.9-5.4L4.2 9.3l5.4-.8Z"/>'
+    star: '<path d="m12 3.6 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.5.9-5.4L4.2 9.3l5.4-.8Z"/>',
+    moon: '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5 7.5 7.5 0 1 0 19 14.5Z"/>'
   };
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.chart}</svg>`;
+}
+
+const SITE_THEME_KEY = "bizgarhTheme";
+function getSiteTheme() {
+  try {
+    return localStorage.getItem(SITE_THEME_KEY) === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+function applySiteTheme(theme) {
+  const next = theme === "dark" ? "dark" : "light";
+  try { localStorage.setItem(SITE_THEME_KEY, next); } catch { /* ignore */ }
+  document.documentElement.setAttribute("data-theme", next);
+  document.documentElement.style.colorScheme = next;
+  document.querySelectorAll(".site-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
+  const meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) meta.setAttribute("content", next);
+}
+function siteThemeToggleHTML() {
+  const t = getSiteTheme();
+  return `<button type="button" class="site-theme-toggle" data-theme="${t}" aria-label="Theme Light or Dark" title="Switch theme">
+    <span class="site-theme-knob" aria-hidden="true"></span>
+    <span class="site-theme-opt" data-val="light">Light</span>
+    <span class="site-theme-opt" data-val="dark">Dark</span>
+  </button>`;
+}
+function siteThemeMenuHTML() {
+  return `<div class="acct-theme" role="none">
+    <div class="acct-theme-label">${iconSvg("moon")} Theme</div>
+    <div class="acct-theme-row">${siteThemeToggleHTML()}</div>
+  </div>`;
 }
 
 const CATEGORIES = [
@@ -3604,6 +3637,7 @@ function headerAuthHTML(place) {
       <a class="btn btn-primary" href="/learning">My Learning</a>
       <a class="btn btn-ghost" href="/account">My Profile</a>
       ${role ? `<a class="btn btn-primary js-open-admin" href="/control">Admin panel</a>` : ""}
+      ${siteThemeMenuHTML()}
       <button class="btn btn-ghost js-logout" type="button">Logout</button>`;
   }
   return `<a class="btn btn-ghost hdr-learn" href="/learning">My Learning</a>
@@ -3616,6 +3650,7 @@ function headerAuthHTML(place) {
         <a href="/account">${iconSvg("users")} My Profile</a>
         ${role ? `<a class="js-open-admin" href="/control">${iconSvg("lock")} Admin panel</a>` : ""}
         <a href="/contact">${iconSvg("headset")} Help</a>
+        ${siteThemeMenuHTML()}
         <button type="button" class="js-logout">${iconSvg("share")} Logout</button>
       </div>
     </div>`;
@@ -3822,6 +3857,7 @@ function bindChromeOnce(el, type, fn, opts) {
 }
 
 function bindChrome() {
+  applySiteTheme(getSiteTheme());
   bindChromeOnce(document.getElementById("menuToggle"), "click", () => {
     setMobileNav(!document.getElementById("mobileNav")?.classList.contains("open"));
   });
@@ -3933,6 +3969,18 @@ function bindChrome() {
     if (noteItem) {
       const id = noteItem.getAttribute("data-note-id");
       notesSave(notesAll().map((n) => n.id === id ? { ...n, read: true } : n));
+    }
+    const themeBtn = e.target.closest(".site-theme-toggle");
+    if (themeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const opt = e.target.closest(".site-theme-opt");
+      let next = getSiteTheme() === "light" ? "dark" : "light";
+      if (opt) next = opt.getAttribute("data-val") || next;
+      else if (themeBtn.getAttribute("data-theme") === "light") next = "dark";
+      else next = "light";
+      applySiteTheme(next);
+      return;
     }
     const acctBtn = e.target.closest(".acct-btn");
     if (acctBtn) {
@@ -7804,3 +7852,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk167: Become a Creator segment multi-select + free years */
 /* cache-bust desk167: CF edge purge after desk166 app.js poison on www */
 /* cache-bust desk168: Remove Become a Creator → Creator CRM teaser */
+/* cache-bust desk169: Profile menu Theme Light/Dark switch */
