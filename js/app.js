@@ -6093,7 +6093,8 @@ function renderAccountPage() {
   const hash = (location.hash || "#edit").replace("#", "") || "edit";
   const mine = ownedCourses(user.email);
   const certRows = mine.filter((x) => x.stats.cert || (typeof certFor === "function" && certFor(user.email, x.c.id)));
-  const buys = readList(ALL_ENROLL_KEY).filter((e) => e.email === user.email);
+  const purchaseRows = purchaseRowsFor(user.email);
+  const openPurchase = root.dataset.purchaseOpen || "";
   const tickets = readList(TICKETS_KEY).filter((t) => t.email === user.email);
   const tkTab = root.dataset.tk || "open";
   const tkMap = {
@@ -6101,6 +6102,7 @@ function renderAccountPage() {
     progress: tickets.filter((t) => t.status === "PENDING" || t.status === "IN_PROGRESS"),
     closed: tickets.filter((t) => t.status === "CLOSED" || t.status === "RESOLVED")
   };
+  const genderVal = p.gender === "Prefer not to say" ? "" : (p.gender || "");
   const panes = {
     edit: `<h2>Account info</h2>
       <form id="profileForm" class="form-card" style="max-width:none;box-shadow:none;border:0;padding:0">
@@ -6108,15 +6110,9 @@ function renderAccountPage() {
         <div class="field"><label>Phone number</label><input name="phone" value="${escapeHtml(p.phone || "")}"></div>
         <div class="field"><label>Email ID</label><input name="email" value="${escapeHtml(row.email || "")}" disabled></div>
         <div class="field"><label>Gender</label><div class="radios">
-          ${["Male", "Female", "Prefer not to say"].map((g) => `<label><input type="radio" name="gender" value="${g}" ${p.gender === g ? "checked" : ""}> ${g}</label>`).join("")}
+          ${["Male", "Female"].map((g) => `<label><input type="radio" name="gender" value="${g}" ${genderVal === g ? "checked" : ""}> ${g}</label>`).join("")}
         </div></div>
         <div class="field"><label>Date of birth</label><input name="dob" type="date" value="${escapeHtml(p.dob || "")}"></div>
-        <div class="field"><label>Interested in</label><div class="radios">
-          ${["Trading", "Investing", "Both"].map((g) => `<label><input type="radio" name="interest" value="${g}" ${p.interest === g ? "checked" : ""}> ${g}</label>`).join("")}
-        </div></div>
-        <div class="field"><label>Experience in the market</label><div class="radios">
-          ${["0-1 year", "1-3 years", "3+ years"].map((g) => `<label><input type="radio" name="marketExp" value="${g}" ${p.marketExp === g ? "checked" : ""}> ${g}</label>`).join("")}
-        </div></div>
         <div class="field"><label>Country</label><input name="country" value="${escapeHtml(p.country || "India")}"></div>
         <div class="field"><label>State</label><input name="state" value="${escapeHtml(p.state || "")}"></div>
         <div class="field"><label>City</label><input name="city" value="${escapeHtml(p.city || "")}"></div>
@@ -6124,9 +6120,17 @@ function renderAccountPage() {
         <button class="btn btn-primary btn-block">Save changes</button>
       </form>`,
     certs: `<h2>My certificates</h2>${certRows.length ? certRows.map((x) => `<div class="info-card" style="margin-bottom:12px"><strong>${escapeHtml(x.c.title)}</strong><div class="cert-mini-links" style="margin-top:8px"><a href="/certificate?course=${x.c.id}">View certificate</a> <button type="button" class="btn btn-primary" data-cert-download="${x.c.id}">Download</button></div></div>`).join("") : `<div class="ld-empty"><p>Finish a classroom to earn a certificate.</p><a class="btn btn-primary" href="/learning">My Learning</a></div>`}`,
-    purchases: `<h2>My purchases</h2>${buys.length || mine.length ? (buys.length ? buys : mine.map((x) => ({ courseId: x.c.id, at: "" }))).map((b) => {
-      const c = allCourses().find((x) => x.id === b.courseId);
-      return `<div class="info-card" style="margin-bottom:12px"><strong>${escapeHtml(c?.title || b.courseId)}</strong><p class="muted">${c ? "₹" + Number(c.price).toLocaleString("en-IN") : ""}${b.at ? " · " + new Date(b.at).toLocaleDateString("en-IN") : ""}</p><a href="/course?id=${encodeURIComponent(b.courseId)}">Open classroom</a></div>`;
+    purchases: `<h2>My purchases</h2>${purchaseRows.length ? purchaseRows.map((b) => {
+      const open = openPurchase === b.key;
+      const summaryAmt = Number.isFinite(b.amount) && b.amount ? "₹" + Number(b.amount).toLocaleString("en-IN") : "";
+      const summaryDate = b.at ? new Date(b.at).toLocaleDateString("en-IN") : "";
+      return `<div class="info-card purchase-row${open ? " is-open" : ""}" style="margin-bottom:12px" data-purchase-key="${escapeHtml(b.key)}">
+        <button type="button" class="purchase-row-head" data-purchase-toggle="${escapeHtml(b.key)}" aria-expanded="${open ? "true" : "false"}">
+          <span class="purchase-row-title"><strong>${escapeHtml(b.title)}</strong><span class="purchase-chev" aria-hidden="true"></span></span>
+          <p class="muted">${escapeHtml([summaryAmt, summaryDate].filter(Boolean).join(" · "))}</p>
+        </button>
+        <div class="purchase-detail"${open ? "" : " hidden"}>${purchaseDetailHTML(b)}</div>
+      </div>`;
     }).join("") : `<div class="ld-empty"><p>No purchases yet.</p><a class="btn btn-primary" href="/courses">Browse courses</a></div>`}`,
     tickets: `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
         <div class="tk-tabs">
@@ -6153,12 +6157,11 @@ function renderAccountPage() {
   document.getElementById("profileForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
+    const pickedGender = f.gender?.value || "";
     const profile = {
       phone: f.phone.value.trim(),
-      gender: (f.gender?.value || p.gender || ""),
+      gender: pickedGender === "Prefer not to say" ? "" : (pickedGender || (genderVal || "")),
       dob: f.dob.value,
-      interest: f.interest?.value || p.interest || "",
-      marketExp: f.marketExp?.value || p.marketExp || "",
       country: f.country.value.trim(),
       state: f.state.value.trim(),
       city: f.city.value.trim(),
@@ -6166,6 +6169,15 @@ function renderAccountPage() {
     };
     const next = { ...row, name: f.name.value.trim(), profile };
     upsertUser(next);
+    // Drop retired profile fields so they cannot linger via upsert merge.
+    const list = readList(USERS_KEY);
+    const idx = list.findIndex((u) => String(u.email || "").toLowerCase() === String(next.email || "").toLowerCase());
+    if (idx >= 0 && list[idx].profile) {
+      delete list[idx].profile.interest;
+      delete list[idx].profile.marketExp;
+      if (list[idx].profile.gender === "Prefer not to say") list[idx].profile.gender = "";
+      writeList(USERS_KEY, list);
+    }
     setUser({ ...getUser(), name: next.name });
     toast("Profile saved");
     renderAccountPage();
@@ -6173,6 +6185,15 @@ function renderAccountPage() {
   root.querySelectorAll("[data-tk]").forEach((btn) => {
     btn.addEventListener("click", () => {
       root.dataset.tk = btn.dataset.tk;
+      renderAccountPage();
+    });
+  });
+  root.querySelectorAll(".purchase-row").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      const key = card.dataset.purchaseKey || "";
+      if (!key) return;
+      root.dataset.purchaseOpen = root.dataset.purchaseOpen === key ? "" : key;
       renderAccountPage();
     });
   });
@@ -7410,6 +7431,126 @@ function ensurePublicDemoUsers() {
     }
   });
   if (changed) writeList(USERS_KEY, users);
+  ensurePublicDemoPurchases();
+}
+
+/** Seed a few enroll + order rows so My Purchases has detail for demo students. */
+function ensurePublicDemoPurchases() {
+  if (localStorage.getItem("tradeshalaPublicPurchaseSeed")) return;
+  const demoEn = [
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "breakout", at: "2026-08-12T11:00:00.000Z", tx: "TXNDEMOBREAK01", orderId: "ord-demo-breakout", method: "upi" },
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "opt-start", at: "2026-08-13T11:00:00.000Z", tx: "TXNDEMOOPTST02", orderId: "ord-demo-opt-start", method: "upi" },
+    { name: "Sneha Bansal", email: "sneha@gmail.com", courseId: "hindi-ta", at: "2026-08-18T12:00:00.000Z", tx: "TXNDEMOHINDITA", orderId: "ord-demo-hindi-ta", method: "card" },
+    { name: "Kavya Iyer", email: "kavya@gmail.com", courseId: "income", at: "2026-09-04T14:00:00.000Z", tx: "TXNDEMOINCOME1", orderId: "ord-demo-income", method: "upi" }
+  ];
+  const enrolls = readList(ALL_ENROLL_KEY);
+  let enChanged = false;
+  demoEn.forEach((e) => {
+    if (!enrolls.some((x) => x.email === e.email && x.courseId === e.courseId)) {
+      enrolls.push({ name: e.name, email: e.email, courseId: e.courseId, at: e.at });
+      enChanged = true;
+    }
+  });
+  if (enChanged) writeList(ALL_ENROLL_KEY, enrolls);
+
+  let orders = [];
+  let pays = [];
+  try { orders = JSON.parse(localStorage.getItem("tradeshalaOrders") || "[]"); } catch { orders = []; }
+  try { pays = JSON.parse(localStorage.getItem("tradeshalaPayments") || "[]"); } catch { pays = []; }
+  let commerceChanged = false;
+  demoEn.forEach((e) => {
+    if (orders.some((o) => o.email === e.email && o.courseId === e.courseId)) return;
+    const course = typeof allCourses === "function" ? allCourses().find((c) => c.id === e.courseId) : null;
+    const price = Number(course?.price || 0);
+    orders.push({
+      id: e.orderId,
+      email: e.email,
+      name: e.name,
+      courseId: e.courseId,
+      amount: price,
+      discount: 0,
+      tax: 0,
+      net: price,
+      status: "PAID",
+      coupon: "",
+      tx: e.tx,
+      method: e.method,
+      at: e.at
+    });
+    pays.push({
+      id: "pay-" + e.orderId,
+      orderId: e.orderId,
+      email: e.email,
+      amount: price,
+      status: "SUCCESS",
+      method: e.method,
+      tx: e.tx,
+      at: e.at
+    });
+    commerceChanged = true;
+  });
+  if (commerceChanged) {
+    localStorage.setItem("tradeshalaOrders", JSON.stringify(orders));
+    localStorage.setItem("tradeshalaPayments", JSON.stringify(pays));
+  }
+  localStorage.setItem("tradeshalaPublicPurchaseSeed", "1");
+}
+
+function readCommerceList(key) {
+  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
+}
+
+function purchaseRowsFor(email) {
+  const mail = String(email || "").toLowerCase();
+  const buys = readList(ALL_ENROLL_KEY).filter((e) => String(e.email || "").toLowerCase() === mail);
+  const mine = typeof ownedCourses === "function" ? ownedCourses(email) : [];
+  const base = buys.length
+    ? buys
+    : mine.map((x) => ({ courseId: x.c.id, at: "", email, name: "" }));
+  const orders = readCommerceList("tradeshalaOrders");
+  const pays = readCommerceList("tradeshalaPayments");
+  return base.map((b, i) => {
+    const c = allCourses().find((x) => x.id === b.courseId);
+    const order = orders.find((o) => String(o.email || "").toLowerCase() === mail && o.courseId === b.courseId && String(o.status || "").toUpperCase() !== "REFUNDED")
+      || orders.find((o) => String(o.email || "").toLowerCase() === mail && o.courseId === b.courseId);
+    const pay = order
+      ? pays.find((p) => p.orderId === order.id)
+      : null;
+    const amount = order
+      ? Number(order.net != null ? order.net : order.amount || 0)
+      : Number(c?.price || 0);
+    const at = order?.at || b.at || "";
+    const tx = order?.tx || pay?.tx || "";
+    const method = pay?.method || order?.method || "";
+    const status = order?.status || (at || amount ? "PAID" : "—");
+    return {
+      key: (b.courseId || "row") + "|" + (at || i),
+      courseId: b.courseId,
+      title: c?.title || b.courseId,
+      amount,
+      at,
+      tx,
+      orderId: order?.id || "",
+      status,
+      method: method ? String(method).toUpperCase() : ""
+    };
+  });
+}
+
+function purchaseDetailHTML(row) {
+  const when = row.at ? new Date(row.at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
+  const amt = Number.isFinite(row.amount) ? "₹" + Number(row.amount).toLocaleString("en-IN") : "—";
+  const core = [
+    ["Item", row.title || "—"],
+    ["Transaction ID", row.tx || "—"],
+    ["Date of purchase", when],
+    ["Amount", amt],
+    ["Status", row.status || "—"]
+  ];
+  if (row.orderId) core.splice(2, 0, ["Order ID", row.orderId]);
+  if (row.method) core.push(["Payment method", row.method]);
+  return `<dl class="purchase-detail-grid">${core.map(([k, v]) => `<div><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v))}</dd></div>`).join("")}</dl>
+    <a class="purchase-open-link" href="/course?id=${encodeURIComponent(row.courseId)}">Open classroom ›</a>`;
 }
 
 async function startPublicBoot() {
@@ -7854,3 +7995,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk168: Remove Become a Creator → Creator CRM teaser */
 /* cache-bust desk169: Profile menu Theme Light/Dark switch */
 /* cache-bust desk170: Fix theme toggle size + account light/dark surfaces */
+/* cache-bust desk171: Edit Profile trim + My Purchases expandable detail */
