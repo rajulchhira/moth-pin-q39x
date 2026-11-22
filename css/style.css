@@ -6431,14 +6431,6 @@ body.live-room-page .live-meet-actions .btn-ghost {
   body.live-room-page .live-meet-copy span { display: none; }
 }
 
-.hdr-learn {
-  border: 1.5px solid #c7d2fe !important;
-  color: #4f46e5 !important;
-  border-radius: 999px !important;
-  padding: 8px 16px !important;
-  font-weight: 800 !important;
-}
-.hdr-learn:hover { background: #eef2ff !important; }
 .hdr-avatar {
   width: 40px;
   height: 40px;
@@ -7171,7 +7163,6 @@ body.live-room-page .live-meet-actions .btn-ghost {
 @media (max-width: 980px) {
   .header-actions { display: none !important; }
   .header-actions:has(.hdr-avatar) { display: flex !important; gap: 8px; margin-left: auto; }
-  .hdr-learn { display: none !important; }
   .menu-toggle { margin-left: 8px; }
   .ld {
     width: min(1120px, calc(100% - 28px));
@@ -8865,96 +8856,7 @@ body.live-room-page .live-meet-actions .btn-ghost {
   .become-creator-grid { grid-template-columns: 1fr; }
 }
 
-/* ——— Profile menu Theme Light/Dark (desk170) ——— */
-.acct-theme {
-  display: grid;
-  gap: 6px;
-  padding: 6px 4px 8px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  margin: 4px 0;
-}
-.acct-theme-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 12px 0;
-  font-weight: 700;
-  font-size: 14px;
-  color: #0f172a;
-}
-.acct-theme-label svg {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  color: #64748b;
-}
-.acct-theme-row {
-  padding: 2px 12px 4px;
-}
-.site-theme-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: stretch;
-  position: relative;
-  width: 148px;
-  max-width: 100%;
-  height: 28px;
-  padding: 3px;
-  margin: 0;
-  border: 0;
-  border-radius: 999px;
-  background: #e2e8f0;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-  cursor: pointer;
-  user-select: none;
-  box-sizing: border-box;
-  font: inherit;
-  color: #64748b;
-  overflow: hidden;
-}
-.site-theme-toggle .site-theme-opt {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  color: #64748b;
-  pointer-events: auto;
-}
-.site-theme-toggle[data-theme="light"] .site-theme-opt[data-val="light"],
-.site-theme-toggle[data-theme="dark"] .site-theme-opt[data-val="dark"] {
-  color: #0f172a;
-}
-.site-theme-toggle .site-theme-knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: calc(50% - 3px);
-  height: calc(100% - 6px);
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16);
-  transition: transform 0.2s ease;
-  z-index: 0;
-  pointer-events: none;
-}
-.site-theme-toggle[data-theme="dark"] .site-theme-knob {
-  transform: translateX(100%);
-}
-.mnav-auth .acct-theme {
-  border: 0;
-  margin: 8px 0;
-  padding: 0;
-}
-.mnav-auth .acct-theme-label { padding-left: 0; }
-.mnav-auth .acct-theme-row { padding-left: 0; }
-
-/* Site-wide dark theme (desk176 — light grey / light black charcoal) */
+/* Site-wide dark theme retained but unused — public site is light-only (desk178) */
 html[data-theme="dark"] {
   color-scheme: dark;
   --bg: #3e434e;
@@ -9009,8 +8911,7 @@ html[data-theme="dark"] .footer {
   color: var(--ink);
 }
 html[data-theme="dark"] .acct-menu a,
-html[data-theme="dark"] .acct-menu > button,
-html[data-theme="dark"] .acct-theme-label {
+html[data-theme="dark"] .acct-menu > button {
   color: var(--ink);
 }
 html[data-theme="dark"] .acct-menu a:hover,
@@ -9019,21 +8920,8 @@ html[data-theme="dark"] .acct-menu > button:hover {
   color: #a5b4fc;
 }
 html[data-theme="dark"] .acct-menu a svg,
-html[data-theme="dark"] .acct-menu > button svg,
-html[data-theme="dark"] .acct-theme-label svg {
+html[data-theme="dark"] .acct-menu > button svg {
   color: #c5ccd8;
-}
-html[data-theme="dark"] .site-theme-toggle {
-  background: #383d48;
-  box-shadow: inset 0 0 0 1px rgba(197, 204, 216, 0.32);
-  color: #c5ccd8;
-}
-html[data-theme="dark"] .site-theme-toggle .site-theme-opt {
-  color: #c5ccd8;
-}
-html[data-theme="dark"] .site-theme-toggle[data-theme="light"] .site-theme-opt[data-val="light"],
-html[data-theme="dark"] .site-theme-toggle[data-theme="dark"] .site-theme-opt[data-val="dark"] {
-  color: #3e434e;
 }
 html[data-theme="dark"] .btn-ghost {
   color: #f1f5f9;
