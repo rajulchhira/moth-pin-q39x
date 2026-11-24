@@ -1,7 +1,7 @@
 name: bizgarh_mobile
 description: Bizgarh native mobile app — stock market courses, mentorship, and learning.
 publish_to: "none"
-version: 1.1.6+8
+version: 1.1.7+9
 
 environment:
   sdk: ^3.5.4
@@ -22,7 +22,7 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: assets/bizgarh-launcher-icon.png
-  adaptive_icon_background: "#7C3AED"
+  adaptive_icon_background: "#000000"
   adaptive_icon_foreground: assets/bizgarh-launcher-adaptive-fg.png
   adaptive_icon_foreground_inset: 0
 
@@ -37,6 +37,7 @@ flutter:
     - assets/bizgarh-launcher-white-badge.png
     - assets/bizgarh-launcher-white-mark.png
     - assets/bizgarh-launcher-original-logo.png
+    - assets/bizgarh-launcher-true-original.png
     - assets/bizgarh-mark.svg
     - assets/fonts/
     - assets/mentors/
