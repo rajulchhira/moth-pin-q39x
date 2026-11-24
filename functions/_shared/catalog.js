@@ -6,6 +6,8 @@
 export const CATALOG_KV_KEY = "catalog:courses:v1";
 /** Shared public instructor faces — control Staff writes; /instructors reads. */
 export const INSTRUCTORS_KV_KEY = "catalog:instructors:v1";
+/** Shared control staff / sub-admin roster — /control is source of truth. */
+export const STAFF_KV_KEY = "catalog:staff:v1";
 
 export function salesKv(env) {
   return env && (env.SALES || env.SALES_KV || null);
@@ -341,5 +343,101 @@ export async function writeInstructorsDoc(env, body, actorEmail) {
     throw err;
   }
   await kv.put(INSTRUCTORS_KV_KEY, payload);
+  return doc;
+}
+
+export function emptyStaffDoc() {
+  return {
+    version: 1,
+    updatedAt: null,
+    updatedBy: "",
+    staff: [],
+    grantedEmails: []
+  };
+}
+
+/** Drop oversized inline photos so staff KV stays under the write budget. */
+function sanitizeStaffRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+  const email = String(row.email || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) return null;
+  const out = { ...row, email };
+  if (typeof out.photo === "string" && out.photo.startsWith("data:") && out.photo.length > INLINE_MEDIA_MAX) {
+    out.photo = "";
+    out.photoInlineDropped = true;
+  }
+  return out;
+}
+
+/** Public-safe projection — no passwords. */
+export function staffPublicRoster(staff) {
+  return asArray(staff).map((row) => {
+    if (!row || typeof row !== "object") return null;
+    const email = String(row.email || "").trim().toLowerCase();
+    if (!email) return null;
+    return {
+      email,
+      name: String(row.name || ""),
+      role: String(row.role || "subadmin"),
+      status: String(row.status || "active"),
+      googleAuth: !!row.googleAuth,
+      creatorEnabled: !!row.creatorEnabled,
+      photo: typeof row.photo === "string" && !row.photo.startsWith("data:") ? row.photo : "",
+      referralCode: String(row.referralCode || ""),
+      creatorId: String(row.creatorId || "")
+    };
+  }).filter(Boolean);
+}
+
+export function normalizeStaffDoc(body, actorEmail) {
+  const src = body && typeof body === "object" ? body : {};
+  const staff = asArray(src.staff).map(sanitizeStaffRow).filter(Boolean);
+  const grantedEmails = Array.from(new Set(
+    asArray(src.grantedEmails)
+      .map((e) => String(e || "").trim().toLowerCase())
+      .filter((e) => e.includes("@"))
+  ));
+  return {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: String(actorEmail || "").trim().toLowerCase(),
+    staff,
+    grantedEmails
+  };
+}
+
+export async function readStaffDoc(env) {
+  const kv = salesKv(env);
+  if (!kv) return { ok: false, missing: "kv", doc: emptyStaffDoc() };
+  try {
+    const raw = await kv.get(STAFF_KV_KEY);
+    if (!raw) return { ok: true, missing: "empty", doc: emptyStaffDoc() };
+    const parsed = JSON.parse(raw);
+    const doc = normalizeStaffDoc(parsed, parsed?.updatedBy || "");
+    if (parsed?.updatedAt) doc.updatedAt = parsed.updatedAt;
+    if (parsed?.updatedBy) doc.updatedBy = String(parsed.updatedBy);
+    return { ok: true, missing: null, doc };
+  } catch (err) {
+    return { ok: false, missing: "parse", error: String(err?.message || err), doc: emptyStaffDoc() };
+  }
+}
+
+export async function writeStaffDoc(env, body, actorEmail) {
+  const kv = salesKv(env);
+  if (!kv) {
+    const err = new Error("SALES KV binding missing");
+    err.status = 503;
+    err.code = "kv_missing";
+    throw err;
+  }
+  const doc = normalizeStaffDoc(body, actorEmail);
+  const payload = JSON.stringify(doc);
+  if (payload.length > 20 * 1024 * 1024) {
+    const err = new Error("Staff payload too large");
+    err.status = 413;
+    err.code = "payload_too_large";
+    throw err;
+  }
+  await kv.put(STAFF_KV_KEY, payload);
   return doc;
 }
