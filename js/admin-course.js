@@ -38,7 +38,18 @@ const CourseAdmin = {
   },
 
   byId(id) {
-    return this.catalog().find((c) => c.id === id) || allCourses().find((c) => c.id === id) || COURSES.find((c) => c.id === id) || null;
+    const fromCatalog = this.catalog().find((c) => c.id === id);
+    if (fromCatalog) return fromCatalog;
+    // Raw extras (incl. keep-title drafts while seed is soft-deleted) before public filters.
+    try {
+      const raw = typeof extraCourses === "function" ? extraCourses().find((c) => c.id === id) : null;
+      if (raw && !raw.deleted) return raw;
+    } catch { /* ignore */ }
+    try {
+      const fromAll = typeof allCourses === "function" ? allCourses().find((c) => c.id === id) : null;
+      if (fromAll) return fromAll;
+    } catch { /* ignore */ }
+    return (typeof COURSES !== "undefined" ? COURSES.find((c) => c.id === id) : null) || null;
   },
 
   formatLabel(c) {
@@ -1199,8 +1210,29 @@ const CourseAdmin = {
   createCourse(form) {
     AdminCore.assert("courses", "create");
     const s = AdminCore.session();
-    const id = "c-" + Date.now();
     const title = form.title.value.trim();
+    if (!title) {
+      toast("Enter a course name");
+      return;
+    }
+    // Keep-course titles must not create shadow extras (#157 glitch): restore or open seed.
+    const keepSeed = typeof findKeepSeedCourse === "function" ? findKeepSeedCourse(title) : null;
+    if (keepSeed) {
+      const deleted = typeof isSeedCourseDeleted === "function" && isSeedCourseDeleted(keepSeed.id);
+      const hidden = typeof hiddenCourseIds === "function" && hiddenCourseIds().includes(keepSeed.id);
+      if (deleted || hidden) {
+        if (typeof restoreKeepSeedCourse === "function") restoreKeepSeedCourse(keepSeed, s);
+        else applyCoursePatch(keepSeed.id, { deleted: false, unpublished: true, status: "unlisted" });
+        AdminCore.audit("course_restore", keepSeed.id, "", title);
+        toast("Restored the existing course as a draft.");
+      } else {
+        toast("That course already exists — opening it.");
+      }
+      document.getElementById("cbCreateModal")?.classList.add("hidden");
+      this.openBuilder(keepSeed.id, "setup");
+      return;
+    }
+    const id = "c-" + Date.now();
     const extra = extraCourses();
     extra.push({
       id,
@@ -1232,6 +1264,7 @@ const CourseAdmin = {
     if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
     AdminCore.audit("course_create", id, "", title);
     toast("Draft ready. Add the details.");
+    document.getElementById("cbCreateModal")?.classList.add("hidden");
     this.openBuilder(id, "setup");
   },
 
@@ -1263,3 +1296,4 @@ const CourseAdmin = {
 };
 
 /* cache-bust desk6: catalog() merges shared KV course edits */
+/* cache-bust desk7: createCourse restores soft-deleted keep seed; byId reads raw extras */

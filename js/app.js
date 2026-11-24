@@ -2015,12 +2015,12 @@ function mergedHiddenCourseIds() {
 
 function remoteExtraCourses() {
   const seedIds = seedCourseIds();
-  const seedTitles = seedCourseTitleKeys();
   return (getRemoteCatalog().extras || []).filter((c) => {
     if (!c || c.deleted) return false;
     if (isRetiredPublicCourseId(c.id)) return false;
     if (seedIds.has(c.id)) return false;
-    if (isPublicKeepCourse(c) && seedTitles.has(courseTitleKey(c.title))) return false;
+    // Only hide keep-title shadows while the seed course is still alive.
+    if (shadowsAliveKeepCourse(c)) return false;
     return true;
   });
 }
@@ -2242,32 +2242,94 @@ function seedCourseIds() {
 function seedCourseTitleKeys() {
   return new Set((typeof COURSES !== "undefined" ? COURSES : []).map((c) => courseTitleKey(c.title)));
 }
+/** Seed course matching a keep-course title (or slingshot id). */
+function findKeepSeedCourse(titleOrCourse) {
+  const title = typeof titleOrCourse === "string" ? titleOrCourse : (titleOrCourse?.title || "");
+  const key = courseTitleKey(title);
+  const list = typeof COURSES !== "undefined" ? COURSES : [];
+  if (key) {
+    const byTitle = list.find((c) => courseTitleKey(c.title) === key);
+    if (byTitle) return byTitle;
+  }
+  if (isPublicKeepCourse(typeof titleOrCourse === "string" ? { title } : titleOrCourse)) {
+    return list.find((c) => c.id === "slingshot") || null;
+  }
+  return null;
+}
+/** True when merged edits mark a seed id as soft-deleted. */
+function isSeedCourseDeleted(id) {
+  if (!id) return false;
+  try {
+    const edits = typeof mergedCourseEdits === "function" ? mergedCourseEdits() : courseEdits();
+    return Boolean(edits?.[id]?.deleted);
+  } catch {
+    return false;
+  }
+}
+/**
+ * Keep-title extras must not shadow a live seed. After a soft-delete of the seed,
+ * allow the extra through so control can open drafts (desk186).
+ */
+function shadowsAliveKeepCourse(c) {
+  if (!c || !isPublicKeepCourse(c)) return false;
+  const seed = findKeepSeedCourse(c);
+  if (!seed) return false;
+  if (isSeedCourseDeleted(seed.id)) return false;
+  return seedCourseTitleKeys().has(courseTitleKey(c.title)) || seed.id === "slingshot";
+}
+/** Drop keep-title ghost extras once the seed is alive again. */
+function purgeKeepTitleGhostExtras() {
+  const next = extraCourses().filter((c) => !shadowsAliveKeepCourse(c));
+  if (next.length !== extraCourses().length) writeList(EXTRA_COURSES_KEY, next);
+  return next;
+}
+/**
+ * Restore a soft-deleted keep seed so control can edit it again.
+ * Clears deleted/hidden and leaves it as a draft until staff go live.
+ */
+function restoreKeepSeedCourse(seed, actor) {
+  if (!seed?.id) return null;
+  const edits = courseEdits();
+  const prev = { ...(edits[seed.id] || {}) };
+  // Explicit false so hydrate merge (remote deleted:true ← local) cannot revive soft-delete.
+  prev.deleted = false;
+  prev.unpublished = true;
+  prev.status = "unlisted";
+  if (actor?.name) prev.instructor = actor.name;
+  edits[seed.id] = prev;
+  setCourseEdits(edits);
+  writeList(HIDDEN_COURSES_KEY, hiddenCourseIds().filter((id) => id !== seed.id));
+  purgeKeepTitleGhostExtras();
+  if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+  return seed;
+}
 /**
  * Admin extras that must not shadow the live public seed (title/price/cover).
- * Keeps unique drafts; drops retired demo ids and duplicates of keep-courses.
+ * Keeps unique drafts; drops retired demo ids and duplicates of alive keep-courses.
  */
 function catalogExtraCourses() {
   const seedIds = seedCourseIds();
-  const seedTitles = seedCourseTitleKeys();
   return extraCourses().filter((c) => {
     if (!c || c.deleted) return false;
     if (isRetiredPublicCourseId(c.id)) return false;
     if (seedIds.has(c.id)) return false;
-    if (isPublicKeepCourse(c) && seedTitles.has(courseTitleKey(c.title))) return false;
+    if (shadowsAliveKeepCourse(c)) return false;
     return true;
   });
 }
 /**
  * One-shot: purge retired / duplicate localStorage ghosts.
- * desk185+: keep seed courseEdits (price/pic) so control → shared KV → public stays intact.
+ * desk186+: keep-title extras only drop while the seed course is still alive
+ * (soft-deleted slingshot no longer blocks + New course).
  */
 function pruneStaleCatalogLocal() {
-  const FLAG = "tradeshalaCatalogPruneDesk185";
+  const FLAG = "tradeshalaCatalogPruneDesk186";
   try {
     if (localStorage.getItem(FLAG)) return;
   } catch { return; }
-  // Drop the prior prune flag that wiped seed edits (broke control→public sync).
+  // Drop prior prune flags so desk186 rules re-apply once.
   try { localStorage.removeItem("tradeshalaCatalogPruneDesk184"); } catch { /* ignore */ }
+  try { localStorage.removeItem("tradeshalaCatalogPruneDesk185"); } catch { /* ignore */ }
   const nextExtras = catalogExtraCourses();
   writeList(EXTRA_COURSES_KEY, nextExtras);
   const edits = courseEdits();
@@ -8457,3 +8519,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk184: control/CRM course list matches live public Slingshot seed (prune ghosts) */
 
 /* cache-bust desk185: control course edits (pic/price) sync via KV /api/catalog/courses */
+/* cache-bust desk186: soft-deleted keep seed no longer blocks + New course (shadow filter) */
