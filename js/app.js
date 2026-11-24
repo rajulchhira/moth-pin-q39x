@@ -2021,7 +2021,77 @@ function isPublicKeepCourse(c) {
   const t = String(c.title || "").replace(/\s+/g, " ").trim();
   return /^slingshot:\s*the\s*5[- ]?minute\s+trading\s+edge$/i.test(t);
 }
+/** Demo classrooms removed from the public seed in #155 — drop leftover localStorage ghosts. */
+const RETIRED_PUBLIC_COURSE_IDS = [
+  "breakout", "income", "price-action", "opening-range", "long-term", "mf-guide", "sip",
+  "opt-start", "spreads", "first-month", "charts-101", "candles", "levels", "hindi-ta",
+  "hindi-swing", "crypto-lab", "ema-swing", "vwap"
+];
+function courseTitleKey(title) {
+  return String(title || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+function isRetiredPublicCourseId(id) {
+  return RETIRED_PUBLIC_COURSE_IDS.includes(String(id || ""));
+}
+function seedCourseIds() {
+  return new Set((typeof COURSES !== "undefined" ? COURSES : []).map((c) => c.id));
+}
+function seedCourseTitleKeys() {
+  return new Set((typeof COURSES !== "undefined" ? COURSES : []).map((c) => courseTitleKey(c.title)));
+}
+/**
+ * Admin extras that must not shadow the live public seed (title/price/cover).
+ * Keeps unique drafts; drops retired demo ids and duplicates of keep-courses.
+ */
+function catalogExtraCourses() {
+  const seedIds = seedCourseIds();
+  const seedTitles = seedCourseTitleKeys();
+  return extraCourses().filter((c) => {
+    if (!c || c.deleted) return false;
+    if (isRetiredPublicCourseId(c.id)) return false;
+    if (seedIds.has(c.id)) return false;
+    if (isPublicKeepCourse(c) && seedTitles.has(courseTitleKey(c.title))) return false;
+    return true;
+  });
+}
+/**
+ * One-shot: purge retired / duplicate localStorage so /control matches the live public seed.
+ * Public keep-courses (Slingshot) drop stale courseEdits so title/cover/price match app.js.
+ */
+function pruneStaleCatalogLocal() {
+  const FLAG = "tradeshalaCatalogPruneDesk184";
+  try {
+    if (localStorage.getItem(FLAG)) return;
+  } catch { return; }
+  const seedIds = seedCourseIds();
+  const nextExtras = catalogExtraCourses();
+  writeList(EXTRA_COURSES_KEY, nextExtras);
+  const edits = courseEdits();
+  let editsDirty = false;
+  Object.keys(edits).forEach((id) => {
+    if (isRetiredPublicCourseId(id) || seedIds.has(id)) {
+      delete edits[id];
+      editsDirty = true;
+    }
+  });
+  if (editsDirty) setCourseEdits(edits);
+  const hidden = hiddenCourseIds().filter((id) => !isRetiredPublicCourseId(id) && !seedIds.has(id));
+  writeList(HIDDEN_COURSES_KEY, hidden);
+  try {
+    const owners = typeof courseOwners === "function" ? courseOwners() : {};
+    let ownersDirty = false;
+    Object.keys(owners || {}).forEach((id) => {
+      if (isRetiredPublicCourseId(id)) {
+        delete owners[id];
+        ownersDirty = true;
+      }
+    });
+    if (ownersDirty && typeof setCourseOwners === "function") setCourseOwners(owners);
+  } catch { /* ignore */ }
+  try { localStorage.setItem(FLAG, "1"); } catch { /* ignore */ }
+}
 function allCourses() {
+  pruneStaleCatalogLocal();
   const hidden = hiddenCourseIds();
   const edits = courseEdits();
   const u = typeof getUser === "function" ? getUser() : null;
@@ -2029,16 +2099,17 @@ function allCourses() {
     && u
     && typeof staffAccessRole === "function"
     && staffAccessRole(u.email);
-  const extras = extraCourses().filter((c) => preview || (!c.unpublished && c.status !== "unlisted"));
+  // Seed keep-courses are the live public truth; extras never shadow them.
+  const extras = catalogExtraCourses().filter((c) => preview || (!c.unpublished && c.status !== "unlisted"));
   let list = COURSES.filter((c) => preview || !hidden.includes(c.id))
     .map((c) => ({ ...c, ...(edits[c.id] || {}) }))
     .concat(extras);
-  // Learners only see Slingshot; staff preview=1 keeps full admin extras for QA.
+  // Learners only see Slingshot; staff preview=1 keeps remaining admin drafts for QA.
   if (!preview) {
     list = list.filter(isPublicKeepCourse);
     const seen = new Set();
     list = list.filter((c) => {
-      const key = String(c.title || "").toLowerCase().replace(/\s+/g, " ").trim() || c.id;
+      const key = courseTitleKey(c.title) || c.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -8170,3 +8241,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk181: CDN re-bust after desk180/logo4 immutable poison (desk181 itself got poisoned) */
 /* cache-bust desk183: CDN re-bust after desk181 immutable poison on www /css/style.css?v=desk60 mark?v=logo5 */
 /* cache-bust desk183: public catalog keep only Slingshot: The 5-Minute Trading Edge */
+/* cache-bust desk184: control/CRM course list matches live public Slingshot seed (prune ghosts) */

@@ -15,16 +15,19 @@ const CourseAdmin = {
   ],
 
   catalog() {
+    if (typeof pruneStaleCatalogLocal === "function") pruneStaleCatalogLocal();
     const hidden = hiddenCourseIds();
     const edits = courseEdits();
+    // Same seed truth as the live public catalog; extras never shadow keep-courses.
+    const extras = typeof catalogExtraCourses === "function" ? catalogExtraCourses() : extraCourses();
     const list = COURSES.map((c) => ({
       ...c,
       ...(edits[c.id] || {}),
       unpublished: hidden.includes(c.id) || Boolean((edits[c.id] || {}).unpublished)
-    })).concat(extraCourses().map((c) => ({
+    })).concat(extras.map((c) => ({
       ...c,
       unpublished: Boolean(c.unpublished || c.status === "unlisted")
-    }))).filter((c) => !c.deleted);
+    }))).filter((c) => !c.deleted && !(typeof isRetiredPublicCourseId === "function" && isRetiredPublicCourseId(c.id)));
     return AdminCore.isOwner()
       ? list
       : list.filter((c) => ownerEmailOf(c) === AdminCore.session().email || c.instructor === AdminCore.session().name);
