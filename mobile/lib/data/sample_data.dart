@@ -89,6 +89,8 @@ abstract final class SampleData {
 
   static String? photoAssetForInstructor(String name) {
     switch (name) {
+      case 'Rehan Khan':
+        return 'assets/mentors/rehan-khan.jpg';
       case 'Aarav Mehta':
         return 'assets/mentors/aarav-mehta.jpg';
       case 'Neha Kapoor':
@@ -199,95 +201,57 @@ abstract final class SampleData {
     ),
   ];
 
+  /// Live public instructor strip currently centers on Rehan (others hidden on web).
   static const mentors = <Mentor>[
     Mentor(
-      name: 'Aarav Mehta',
-      title: 'Full-time trader, Bizgarh desk',
-      tags: ['Intraday', 'Nifty options'],
-      learners: '50,483',
-      initials: 'AM',
-      accent: 0xFF4F46E5,
-      photoAsset: 'assets/mentors/aarav-mehta.jpg',
-    ),
-    Mentor(
-      name: 'Neha Kapoor',
-      title: 'Options specialist, defined risk',
-      tags: ['Credit spreads', 'Weekly income'],
-      learners: '36,800',
-      initials: 'NK',
-      accent: 0xFFE11D74,
-      photoAsset: 'assets/mentors/neha-kapoor.jpg',
-    ),
-    Mentor(
-      name: 'Vikram Singh',
-      title: 'Price action coach',
-      tags: ['Swing', 'Structure'],
-      learners: '28,220',
-      initials: 'VS',
-      accent: 0xFF0F766E,
-      photoAsset: 'assets/mentors/vikram-singh.jpg',
-    ),
-    Mentor(
-      name: 'Ananya Rao',
-      title: 'Long-term investor',
-      tags: ['Portfolio', 'SIP'],
-      learners: '33,650',
-      initials: 'AR',
-      accent: 0xFFF59E0B,
-      photoAsset: 'assets/mentors/ananya-rao.jpg',
-    ),
-    Mentor(
-      name: 'Kabir Joshi',
-      title: 'Index options, Bank Nifty',
-      tags: ['Index options', 'Bank Nifty'],
-      learners: '22,410',
-      initials: 'KJ',
-      accent: 0xFF1D4ED8,
-      photoAsset: 'assets/mentors/kabir-joshi.jpg',
-    ),
-    Mentor(
-      name: 'Rohan Desai',
-      title: 'Fund researcher',
-      tags: ['Mutual funds'],
-      learners: '19,880',
-      initials: 'RD',
-      accent: 0xFF0F766E,
-      photoAsset: 'assets/mentors/rohan-desai.jpg',
-    ),
-    Mentor(
-      name: 'Priya Nair',
-      title: 'Asset allocation, SIP lab',
-      tags: ['SIP', 'Allocation'],
-      learners: '17,240',
-      initials: 'PN',
-      accent: 0xFF7C3AED,
-      photoAsset: 'assets/mentors/priya-nair.jpg',
-    ),
-    Mentor(
-      name: 'Meera Iyer',
-      title: 'Options coach, defined risk',
-      tags: ['Defined risk'],
-      learners: '24,100',
-      initials: 'MI',
-      accent: 0xFFDB2777,
-      photoAsset: 'assets/mentors/meera-iyer.jpg',
+      name: 'Rehan Khan',
+      title: 'Stock market instructor',
+      tags: ['Forex', 'Indian markets', '5-min edge'],
+      learners: '1,240',
+      initials: 'RK',
+      accent: 0xFFC2410C,
+      photoAsset: 'assets/mentors/rehan-khan.jpg',
     ),
   ];
 
+  /// Mirrors live KV catalog (`/api/catalog/courses` + COURSE_ROOM_SEEDS).
   static const courses = <Course>[
     Course(
       id: 'slingshot',
       title: 'Slingshot: The 5-Minute Trading Edge',
-      instructor: 'Aarav Mehta',
+      instructor: 'Rehan Khan',
       learners: '1,240',
       rating: 4.9,
-      price: 999,
-      oldPrice: 2499,
-      category: 'trending',
+      price: 449,
+      oldPrice: 999,
+      category: 'strategy',
       hours: '5.0',
-      lessons: 12,
+      lessons: 6,
       coverLabel: 'SLINGSHOT',
       coverColors: [0xFF0B1220, 0xFF1E3A5F, 0xFFC2410C],
+      description:
+          'Jumping in too early on a falling market often leads to avoidable losses. This course shows how the slingshot stretches, when to wait for the real shift above the 9 EMA, and how strict rules help you trade with confidence. Practice on NASDAQ and Bitcoin 5-minute charts and turn patience into your biggest edge.',
+      learn: [
+        'Master simple 5-minute NASDAQ and BTC chart setups.',
+        'Avoid bad trades using a clear no-trade checklist.',
+        'Time entries cleanly with four exact slingshot rules.',
+        'Size trades smartly so two losses stay manageable.',
+        'Backtest past charts and build real trading confidence.',
+      ],
+      communityOpen: true,
+      communityRooms: [
+        CommunityRoom(
+          id: 'youtube',
+          label: 'YouTube',
+          url:
+              'https://youtube.com/@trading.house.official?si=j6Dbp6FqD3O5N2FO',
+        ),
+        CommunityRoom(
+          id: 'telegram',
+          label: 'Telegram',
+          url: 'https://t.me/tradinghouseTH',
+        ),
+      ],
     ),
   ];
 
@@ -321,6 +285,7 @@ abstract final class SampleData {
       txnId: 'TXNDEMOSLING01',
       orderId: 'ord-demo-slingshot',
       purchasedAt: '2026-08-12T11:00:00.000Z',
+      amount: 449,
       paymentMethod: 'UPI',
     ),
     EnrolledCourse(
@@ -331,6 +296,7 @@ abstract final class SampleData {
       txnId: 'TXNDEMOSLING02',
       orderId: 'ord-demo-slingshot-2',
       purchasedAt: '2026-09-04T14:00:00.000Z',
+      amount: 449,
       paymentMethod: 'UPI',
     ),
   ];

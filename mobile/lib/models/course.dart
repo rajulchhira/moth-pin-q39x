@@ -1,3 +1,17 @@
+class CommunityRoom {
+  const CommunityRoom({
+    required this.id,
+    required this.label,
+    required this.url,
+    this.live = true,
+  });
+
+  final String id;
+  final String label;
+  final String url;
+  final bool live;
+}
+
 class Course {
   const Course({
     required this.id,
@@ -12,6 +26,10 @@ class Course {
     required this.lessons,
     required this.coverLabel,
     required this.coverColors,
+    this.description = '',
+    this.learn = const <String>[],
+    this.communityOpen = false,
+    this.communityRooms = const <CommunityRoom>[],
   });
 
   final String id;
@@ -26,6 +44,13 @@ class Course {
   final int lessons;
   final String coverLabel;
   final List<int> coverColors;
+  /// Public about copy — mirrors live `/api/catalog/courses` edit.
+  final String description;
+  /// “What you will learn” bullets from live catalog.
+  final List<String> learn;
+  /// When true, Community links open without purchase (live Slingshot seed).
+  final bool communityOpen;
+  final List<CommunityRoom> communityRooms;
 }
 
 class EnrolledCourse {

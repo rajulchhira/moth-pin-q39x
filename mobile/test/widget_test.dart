@@ -141,7 +141,7 @@ void main() {
     await tester.tap(find.text('My Purchases').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Slingshot: The 5-Minute Trading Edge').hitTestable());
+    await tester.tap(find.text('Slingshot: The 5-Minute Trading Edge').hitTestable().first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Transaction ID'), findsOneWidget);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/sample_data.dart';
 import '../models/course.dart';
@@ -13,6 +14,22 @@ class CourseDetailScreen extends StatelessWidget {
 
   final Course course;
 
+  Future<void> _openCommunity(BuildContext context, CommunityRoom room) async {
+    final uri = Uri.tryParse(room.url);
+    if (uri == null) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not open ${room.label}',
+            style: bgText(fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
@@ -21,6 +38,12 @@ class CourseDetailScreen extends StatelessWidget {
         .toList(growable: false);
     final owned = auth.isSignedIn && enrolled.isNotEmpty;
     final progress = owned ? enrolled.first.progress : 0.0;
+    final liveRooms =
+        course.communityRooms.where((r) => r.live && r.url.isNotEmpty).toList();
+    final communityUnlocked = course.communityOpen || owned;
+    final about = course.description.trim().isNotEmpty
+        ? course.description.trim()
+        : 'Process and risk for this classroom — replayable lessons, journals, and a clear invalidation rule. Not a tip feed.';
 
     return Scaffold(
       backgroundColor: BgColors.canvas,
@@ -80,44 +103,6 @@ class CourseDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Text(
-            'Process and risk for this classroom — replayable lessons, journals, and a clear invalidation rule. Not a tip feed.',
-            style: bgText(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              height: 1.45,
-              color: BgColors.ink,
-            ),
-          ),
-          if (owned) ...[
-            const SizedBox(height: 18),
-            Text(
-              progress >= 1 ? 'Completed' : 'Continue learning',
-              style: bgText(fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                backgroundColor: BgColors.line,
-                valueColor: AlwaysStoppedAnimation(
-                  progress >= 1 ? const Color(0xFF16A34A) : BgColors.indigo,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              enrolled.first.nextLesson,
-              style: bgText(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: BgColors.muted,
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
           Row(
             children: [
               Text(
@@ -175,6 +160,156 @@ class CourseDetailScreen extends StatelessWidget {
               style: bgText(fontWeight: FontWeight.w800, color: Colors.white),
             ),
           ),
+          if (owned) ...[
+            const SizedBox(height: 18),
+            Text(
+              progress >= 1 ? 'Completed' : 'Continue learning',
+              style: bgText(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: BgColors.line,
+                valueColor: AlwaysStoppedAnimation(
+                  progress >= 1 ? const Color(0xFF16A34A) : BgColors.indigo,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              enrolled.first.nextLesson,
+              style: bgText(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: BgColors.muted,
+              ),
+            ),
+          ],
+          if (liveRooms.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Text(
+                  'Community',
+                  style: bgText(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                const Spacer(),
+                Text(
+                  communityUnlocked
+                      ? (owned ? 'Members only' : 'Open')
+                      : 'Locked',
+                  style: bgText(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: communityUnlocked
+                        ? const Color(0xFF16A34A)
+                        : BgColors.muted,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (communityUnlocked)
+              for (final room in liveRooms)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openCommunity(context, room),
+                    icon: Icon(
+                      room.id == 'youtube'
+                          ? Icons.play_circle_outline_rounded
+                          : room.id == 'telegram'
+                              ? Icons.send_rounded
+                              : Icons.link_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      room.label,
+                      style: bgText(fontWeight: FontWeight.w700),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                      foregroundColor: BgColors.ink,
+                      side: BorderSide(color: BgColors.line),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                )
+            else
+              OutlinedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Buy this course to unlock the community',
+                        style: bgText(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                label: Text(
+                  'Community',
+                  style: bgText(fontWeight: FontWeight.w700),
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                  foregroundColor: BgColors.muted,
+                  side: BorderSide(color: BgColors.line),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+          ],
+          const SizedBox(height: 22),
+          Text(
+            about,
+            style: bgText(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              height: 1.45,
+              color: BgColors.ink,
+            ),
+          ),
+          if (course.learn.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            Text(
+              'What you will learn',
+              style: bgText(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            for (final point in course.learn)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 18,
+                      color: Color(0xFF16A34A),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        point,
+                        style: bgText(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
