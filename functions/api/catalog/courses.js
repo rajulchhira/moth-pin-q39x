@@ -42,7 +42,9 @@ async function handler(event) {
         updatedBy: doc.updatedBy,
         edits: doc.edits || {},
         extras: doc.extras || [],
-        hidden: doc.hidden || []
+        hidden: doc.hidden || [],
+        videos: doc.videos || {},
+        syllabus: doc.syllabus || {}
       });
     }
 
@@ -58,7 +60,9 @@ async function handler(event) {
         updatedBy: doc.updatedBy,
         edits: doc.edits,
         extras: doc.extras,
-        hidden: doc.hidden
+        hidden: doc.hidden,
+        videos: doc.videos,
+        syllabus: doc.syllabus
       });
     }
 

@@ -16,7 +16,10 @@ export function emptyCatalogDoc() {
     updatedBy: "",
     edits: {},
     extras: [],
-    hidden: []
+    hidden: [],
+    // Control curriculum → public course overview (lessons + section map).
+    videos: {},
+    syllabus: {}
   };
 }
 
@@ -27,6 +30,58 @@ function asObject(raw) {
 
 function asArray(raw) {
   return Array.isArray(raw) ? raw : [];
+}
+
+/** Drop oversized inline blobs so KV stays under the write budget. */
+const INLINE_MEDIA_MAX = 200 * 1024;
+
+export function sanitizeLessonForRemote(lesson) {
+  if (!lesson || typeof lesson !== "object" || Array.isArray(lesson)) return null;
+  const out = { ...lesson };
+  for (const key of ["src", "pdf", "notes"]) {
+    const v = out[key];
+    if (typeof v !== "string") continue;
+    if (v.startsWith("data:") && v.length > INLINE_MEDIA_MAX) {
+      if (key === "pdf") out.pdfInline = true;
+      out[key] = "";
+    }
+  }
+  return out;
+}
+
+function normalizeVideosMap(raw) {
+  const src = asObject(raw);
+  const videos = {};
+  for (const [courseId, list] of Object.entries(src)) {
+    const key = String(courseId || "").trim();
+    if (!key || !Array.isArray(list)) continue;
+    videos[key] = list.map(sanitizeLessonForRemote).filter(Boolean);
+  }
+  return videos;
+}
+
+function normalizeSyllabusMap(raw) {
+  const src = asObject(raw);
+  const syllabus = {};
+  for (const [courseId, doc] of Object.entries(src)) {
+    const key = String(courseId || "").trim();
+    if (!key || !doc || typeof doc !== "object" || Array.isArray(doc)) continue;
+    const sections = asArray(doc.sections)
+      .filter((sec) => sec && typeof sec === "object" && !Array.isArray(sec))
+      .map((sec) => ({
+        id: String(sec.id || "").trim() || ("sec-" + key),
+        title: String(sec.title || "Lessons"),
+        items: asArray(sec.items)
+          .filter((it) => it && typeof it === "object" && !Array.isArray(it) && it.lessonId)
+          .map((it) => ({
+            lessonId: String(it.lessonId),
+            kind: String(it.kind || "video"),
+            published: it.published !== false
+          }))
+      }));
+    syllabus[key] = { sections };
+  }
+  return syllabus;
 }
 
 /** Sanitize a catalog write body into a stable KV document. */
@@ -51,7 +106,9 @@ export function normalizeCatalogDoc(body, actorEmail) {
     updatedBy: String(actorEmail || "").trim().toLowerCase(),
     edits,
     extras,
-    hidden
+    hidden,
+    videos: normalizeVideosMap(src.videos),
+    syllabus: normalizeSyllabusMap(src.syllabus)
   };
 }
 
@@ -80,7 +137,15 @@ export async function writeCatalogDoc(env, body, actorEmail) {
     err.code = "kv_missing";
     throw err;
   }
-  const doc = normalizeCatalogDoc(body, actorEmail);
+  // Preserve curriculum when an older client omits videos/syllabus on PUT
+  // (e.g. landing-only save from a cached pre-desk188 admin bundle).
+  const incoming = body && typeof body === "object" ? { ...body } : {};
+  if (incoming.videos === undefined || incoming.syllabus === undefined) {
+    const prev = await readCatalogDoc(env);
+    if (incoming.videos === undefined) incoming.videos = prev.doc?.videos || {};
+    if (incoming.syllabus === undefined) incoming.syllabus = prev.doc?.syllabus || {};
+  }
+  const doc = normalizeCatalogDoc(incoming, actorEmail);
   const payload = JSON.stringify(doc);
   // Cloudflare KV value limit is 25 MiB; refuse oversized catalog writes early.
   if (payload.length > 20 * 1024 * 1024) {
