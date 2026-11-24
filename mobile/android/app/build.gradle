@@ -45,6 +45,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.release
+            // Play-ready release: no debuggable, minify off (Flutter handles tree-shake).
+            debuggable = false
+            minifyEnabled = false
+            shrinkResources = false
         }
     }
 }

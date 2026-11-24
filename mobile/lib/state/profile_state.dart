@@ -5,16 +5,16 @@ import 'package:flutter/widgets.dart';
 /// Editable learner profile mirrored from the website Account → Edit Profile pane.
 class ProfileState extends ChangeNotifier {
   ProfileState({
-    this.name = 'Riya Sharma',
-    this.email = 'riya.sharma@example.com',
+    this.name = '',
+    this.email = '',
     this.phone = '',
-    this.gender = 'Female',
-    this.dobIso = '1998-07-15',
+    this.gender = '',
+    this.dobIso = '',
     this.country = 'India',
-    this.state = 'Maharashtra',
-    this.city = 'Mumbai',
-    this.pin = '400001',
-    this.joined = 'Joined Mar 2025',
+    this.state = '',
+    this.city = '',
+    this.pin = '',
+    this.joined = '',
   });
 
   String name;
@@ -30,6 +30,35 @@ class ProfileState extends ChangeNotifier {
   String pin;
   String joined;
   Uint8List? photoBytes;
+
+  /// Sync name/email after Login / Create account (www setUser).
+  void applyAccount({required String name, required String email}) {
+    this.name = name.trim();
+    this.email = email.trim().toLowerCase();
+    if (joined.isEmpty) {
+      final now = DateTime.now();
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      joined = 'Joined ${months[now.month - 1]} ${now.year}';
+    }
+    notifyListeners();
+  }
+
+  void clearAccount() {
+    name = '';
+    email = '';
+    phone = '';
+    gender = '';
+    dobIso = '';
+    state = '';
+    city = '';
+    pin = '';
+    joined = '';
+    photoBytes = null;
+    notifyListeners();
+  }
 
   String get initials {
     final parts = name
