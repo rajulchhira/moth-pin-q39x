@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk205 Rehan CRM login ID locked to rehan@bizgarh.in */
+/* Creator CRM dashboard — desk206 Rehan login/DP/admin-link fixes */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -119,13 +119,24 @@
   }
 
   function creatorAvatar(s) {
-    if (s?.photo) return s.photo;
+    const hosted = (p) => {
+      const v = String(p || "").trim();
+      if (!v || v.startsWith("data:")) return "";
+      return v;
+    };
+    const fromStaff = hosted(s?.photo);
+    if (fromStaff) return fromStaff;
     if (typeof photoFor === "function" && s?.name) {
-      const p = photoFor(s.name);
-      if (p) return p;
+      const p = hosted(photoFor(s.name));
+      if (p && !/randomuser\.me/i.test(p)) return p;
     }
+    const face = s?.faceKey || (typeof instructorSlug === "function" ? instructorSlug(s?.name || "") : "");
+    if (face === "rehan-khan" || (s?.name === "Rehan Khan")) {
+      return "/img/instructors/rehan-khan.jpg?v=desk206";
+    }
+    if (face) return `/img/instructors/${face}.jpg`;
     const mentors = typeof MENTORS !== "undefined" ? MENTORS : [];
-    const hit = mentors.find((m) => m.name === s.name);
+    const hit = mentors.find((m) => m.name === s?.name);
     return (hit && hit.img) || "/img/bizgarh-avatar.png";
   }
 
@@ -970,11 +981,31 @@
     </button>`;
   }
 
+  function clearLoginFields() {
+    const email = $("#crmEmail");
+    const pass = $("#crmPassword");
+    const totp = $("#crmTotp");
+    if (email) {
+      email.value = "";
+      email.removeAttribute("value");
+      email.setAttribute("autocomplete", "off");
+      email.setAttribute("readonly", "readonly");
+      setTimeout(() => { try { email.removeAttribute("readonly"); } catch { /* ignore */ } }, 50);
+    }
+    if (pass) {
+      pass.value = "";
+      pass.removeAttribute("value");
+      pass.setAttribute("autocomplete", "new-password");
+    }
+    if (totp) totp.value = "";
+  }
+
   function showLogin(errMsg) {
     const login = $("#crmLogin");
     const app = $("#crmApp");
     if (login) login.classList.remove("crm-hidden");
     if (app) app.classList.add("crm-hidden");
+    clearLoginFields();
     const err = $("#crmLoginErr");
     if (err) err.textContent = errMsg || "";
     ensureCrmMesh({ restart: true });
@@ -3869,6 +3900,39 @@
     }
   }
 
+  async function refreshCreatorFromAdmin() {
+    try {
+      if (typeof hydrateCatalogFromRemote === "function") await hydrateCatalogFromRemote();
+    } catch { /* ignore */ }
+    try {
+      if (typeof hydrateInstructorsFromRemote === "function") await hydrateInstructorsFromRemote();
+    } catch { /* ignore */ }
+    try {
+      if (typeof hydrateStaffFromRemote === "function") await hydrateStaffFromRemote();
+    } catch { /* ignore */ }
+    if (typeof AdminCore !== "undefined" && AdminCore.ensureRehanCreator) {
+      try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+    }
+    // Refresh session face/bio from the linked staff row after KV hydrate.
+    const s = session();
+    if (s && typeof AdminCore !== "undefined" && AdminCore.staffRow) {
+      const row = AdminCore.normalizeStaff(AdminCore.staffRow(s.email));
+      if (row) {
+        setStaffSession({
+          ...s,
+          ...row,
+          password: undefined,
+          photo: row.photo || s.photo || "",
+          bio: row.bio || s.bio || "",
+          faceKey: row.faceKey || s.faceKey || "",
+          referralCode: row.referralCode || s.referralCode || "",
+          creatorId: row.creatorId || s.creatorId || "",
+          creatorEnabled: row.creatorEnabled != null ? row.creatorEnabled : s.creatorEnabled
+        });
+      }
+    }
+  }
+
   function tryLogin(e) {
     if (e) {
       e.preventDefault();
@@ -3891,6 +3955,11 @@
       if (err) err.textContent = "Wrong email or password";
       return false;
     }
+    // Hard gate: Rehan CRM never opens without the exact password.
+    if (email === "rehan@bizgarh.in" && password !== "Rehan8055") {
+      if (err) err.textContent = "Wrong email or password";
+      return false;
+    }
     const r = AdminCore.login(email, password, ($("#crmTotp")?.value || ""));
     if (r?.needTotp) {
       $("#crmTotpWrap")?.classList.remove("crm-hidden");
@@ -3907,20 +3976,30 @@
       if (err) err.textContent = "This login is not a creator account";
       return false;
     }
-    showApp();
+    Promise.resolve(refreshCreatorFromAdmin()).finally(() => {
+      showApp();
+    });
     return false;
   }
 
-  function boot() {
+  async function boot() {
     ensureCrmMesh({ restart: true });
     applyTheme(getTheme());
+    clearLoginFields();
+    await refreshCreatorFromAdmin();
     ensureCreatorSeed();
     const existing = session();
-    if (existing && isCreatorStaff(existing)) {
+    const rehanSession = existing && typeof AdminCore !== "undefined" && AdminCore.isRehanStaffEmail
+      && AdminCore.isRehanStaffEmail(existing.email);
+    if (rehanSession && !(AdminCore.hasRehanCrmPasswordOk && AdminCore.hasRehanCrmPasswordOk())) {
+      // Stale / passwordless Rehan session — force a real CRM password login.
+      try { AdminCore.logout(); } catch { /* ignore */ }
+      showLogin();
+    } else if (existing && isCreatorStaff(existing)) {
       showApp();
     } else if (typeof AdminCore !== "undefined" && AdminCore.adoptPublicUser && AdminCore.adoptPublicUser()) {
       const s = session();
-      if (s && isCreatorStaff(s)) showApp();
+      if (s && isCreatorStaff(s) && !(AdminCore.isRehanStaffEmail && AdminCore.isRehanStaffEmail(s.email))) showApp();
       else showLogin();
     } else {
       showLogin();
