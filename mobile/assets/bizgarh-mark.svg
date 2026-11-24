@@ -13,6 +13,8 @@
       <circle cx="23" cy="25.4" r="16.35"/>
     </clipPath>
   </defs>
+  <!-- Solid white underlay so the ring gap stays circular/badge-like on dark footers -->
+  <circle cx="23" cy="25.4" r="20.35" fill="#fff"/>
   <circle cx="23" cy="25.4" r="20.35" fill="none" stroke="url(#bizgarhAurora)" stroke-width="1.75"/>
   <circle cx="23" cy="25.4" r="16.55" fill="url(#bizgarhAurora)"/>
   <ellipse cx="18.4" cy="20" rx="8.4" ry="5.8" fill="url(#bizgarhGlass)"/>

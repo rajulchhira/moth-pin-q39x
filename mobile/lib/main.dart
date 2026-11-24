@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'screens/shell.dart';
 import 'state/auth_state.dart';
+import 'state/profile_state.dart';
 import 'theme/app_theme.dart';
 import 'theme/colors.dart';
 
@@ -43,28 +44,37 @@ class BizgarhApp extends StatefulWidget {
 
 class _BizgarhAppState extends State<BizgarhApp> {
   final AuthState _auth = AuthState(signedIn: true);
+  final ProfileState _profile = ProfileState();
 
   @override
   void dispose() {
     _auth.dispose();
+    _profile.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Light theme only — matches www.bizgarh.com (no Theme / dark toggle).
+    final light = AppTheme.light();
     return AuthScope(
       notifier: _auth,
-      child: MaterialApp(
-        title: 'Bizgarh',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: const AppShell(),
-        builder: (context, child) {
-          return ColoredBox(
-            color: BgColors.canvas,
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
+      child: ProfileScope(
+        notifier: _profile,
+        child: MaterialApp(
+          title: 'Bizgarh',
+          debugShowCheckedModeBanner: false,
+          theme: light,
+          darkTheme: light,
+          themeMode: ThemeMode.light,
+          home: const AppShell(),
+          builder: (context, child) {
+            return ColoredBox(
+              color: BgColors.canvas,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+        ),
       ),
     );
   }

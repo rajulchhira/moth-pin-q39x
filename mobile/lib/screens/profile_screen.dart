@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/sample_data.dart';
 import '../models/course.dart';
 import '../state/app_nav.dart';
 import '../state/auth_state.dart';
+import '../state/profile_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
+import '../widgets/brand_mark.dart';
 import 'course_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -14,7 +18,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
-    const user = SampleData.user;
+    final profile = ProfileScope.of(context);
 
     return SafeArea(
       bottom: false,
@@ -39,25 +43,14 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    child: Text(
-                      user.initials,
-                      style: bgText(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 22,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  _ProfileAvatar(profile: profile, radius: 32, light: true),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user.name,
+                          profile.name,
                           style: bgText(
                             fontWeight: FontWeight.w800,
                             fontSize: 20,
@@ -66,7 +59,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          user.email,
+                          profile.email,
                           style: bgText(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -75,7 +68,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '${user.city} · ${user.joined}',
+                          '${profile.city} · ${profile.joined}',
                           style: bgText(
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
@@ -146,8 +139,8 @@ class ProfileScreen extends StatelessWidget {
             rows: [
               _SettingsRowData(
                 Icons.person_outline_rounded,
-                'Account detail',
-                onTap: () => _open(context, const _AccountDetailScreen()),
+                'Edit Profile',
+                onTap: () => _open(context, const _EditProfileScreen()),
               ),
               _SettingsRowData(
                 Icons.workspace_premium_outlined,
@@ -156,7 +149,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               _SettingsRowData(
                 Icons.receipt_long_outlined,
-                'Purchases & Invoices',
+                'My Purchases',
                 onTap: () => _open(context, const _PurchasesScreen()),
               ),
               _SettingsRowData(
@@ -194,10 +187,12 @@ class ProfileScreen extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
+          const Center(child: BrandMark(size: 36, showWordmark: true)),
+          const SizedBox(height: 10),
           Center(
             child: Text(
-              'Bizgarh mobile · v1.0.0 sample',
+              'Bizgarh mobile · v1.1.0',
               style: bgText(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -213,6 +208,45 @@ class ProfileScreen extends StatelessWidget {
   static void _open(BuildContext context, Widget page) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => page),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.profile,
+    required this.radius,
+    this.light = false,
+  });
+
+  final ProfileState profile;
+  final double radius;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = profile.photoBytes;
+    if (bytes != null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: light
+            ? Colors.white.withOpacity(0.2)
+            : BgColors.indigoSoft,
+        backgroundImage: MemoryImage(bytes),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor:
+          light ? Colors.white.withOpacity(0.2) : BgColors.indigoSoft,
+      child: Text(
+        profile.initials,
+        style: bgText(
+          fontWeight: FontWeight.w800,
+          fontSize: radius * 0.7,
+          color: light ? Colors.white : BgColors.indigo,
+        ),
+      ),
     );
   }
 }
@@ -296,56 +330,423 @@ class _SubpageScaffold extends StatelessWidget {
   }
 }
 
-class _AccountDetailScreen extends StatelessWidget {
-  const _AccountDetailScreen();
+class _EditProfileScreen extends StatefulWidget {
+  const _EditProfileScreen();
+
+  @override
+  State<_EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<_EditProfileScreen> {
+  late final TextEditingController _name;
+  late final TextEditingController _phone;
+  late final TextEditingController _email;
+  late final TextEditingController _dob;
+  late final TextEditingController _country;
+  late final TextEditingController _state;
+  late final TextEditingController _city;
+  late final TextEditingController _pin;
+  String _gender = 'Female';
+  String? _dobError;
+  bool _seeded = false;
+  final _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController();
+    _phone = TextEditingController();
+    _email = TextEditingController();
+    _dob = TextEditingController();
+    _country = TextEditingController();
+    _state = TextEditingController();
+    _city = TextEditingController();
+    _pin = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_seeded) return;
+    _seeded = true;
+    final p = ProfileScope.read(context);
+    _name.text = p.name;
+    _phone.text = p.phone;
+    _email.text = p.email;
+    _dob.text = DobFormat.toDisplay(p.dobIso);
+    _country.text = p.country;
+    _state.text = p.state;
+    _city.text = p.city;
+    _pin.text = p.pin;
+    _gender = (p.gender == 'Male' || p.gender == 'Female') ? p.gender : '';
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _email.dispose();
+    _dob.dispose();
+    _country.dispose();
+    _state.dispose();
+    _city.dispose();
+    _pin.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 88,
+    );
+    if (file == null || !mounted) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    ProfileScope.read(context).setPhoto(bytes);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Photo updated',
+          style: bgText(fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDobCalendar() async {
+    final iso = DobFormat.toIso(_dob.text.trim());
+    DateTime initial = DateTime(1998, 7, 15);
+    if (iso != null) {
+      final parts = iso.split('-');
+      initial = DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
+    }
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1920),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+                return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: BgColors.indigo,
+              onPrimary: Colors.white,
+              surface: BgColors.white,
+              onSurface: BgColors.ink,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked == null) return;
+    setState(() {
+      _dob.text = DobFormat.toDisplay(
+        '${picked.year.toString().padLeft(4, '0')}-'
+        '${picked.month.toString().padLeft(2, '0')}-'
+        '${picked.day.toString().padLeft(2, '0')}',
+      );
+      _dobError = null;
+    });
+  }
+
+  void _onDobChanged(String value) {
+    final masked = DobFormat.maskDigits(value);
+    if (masked != value) {
+      _dob.value = TextEditingValue(
+        text: masked,
+        selection: TextSelection.collapsed(offset: masked.length),
+      );
+    }
+    final t = _dob.text.trim();
+    setState(() {
+      if (t.isEmpty || t.length < 10) {
+        _dobError = null;
+      } else if (DobFormat.toIso(t) == null) {
+        _dobError = 'Use dd-mm-yyyy (e.g. 15-07-1998)';
+      } else {
+        _dobError = null;
+      }
+    });
+  }
+
+  void _save() {
+    final auth = AuthScope.read(context);
+    if (!auth.isSignedIn) return;
+    final dobRaw = _dob.text.trim();
+    final dobIso = dobRaw.isEmpty ? '' : DobFormat.toIso(dobRaw);
+    if (dobRaw.isNotEmpty && dobIso == null) {
+      setState(() => _dobError = 'Use dd-mm-yyyy (e.g. 15-07-1998)');
+      return;
+    }
+    ProfileScope.read(context).update(
+      name: _name.text.trim().isEmpty ? 'Learner' : _name.text.trim(),
+      phone: _phone.text.trim(),
+      gender: _gender,
+      dobIso: dobIso ?? '',
+      country: _country.text.trim(),
+      state: _state.text.trim(),
+      city: _city.text.trim(),
+      pin: _pin.text.trim(),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Profile saved',
+          style: bgText(fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+    Navigator.of(context).pop();
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
-    const user = SampleData.user;
+    final profile = ProfileScope.of(context);
 
     return _SubpageScaffold(
-      title: 'Account detail',
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-        children: [
-          if (auth.isSignedIn) ...[
-            _InfoTile(label: 'Name', value: user.name),
-            _InfoTile(label: 'Email', value: user.email),
-            _InfoTile(label: 'City', value: user.city),
-            _InfoTile(label: 'Member since', value: user.joined),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: BgColors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: BgColors.line),
-              ),
-              child: ListTile(
-                leading: const Icon(
-                  Icons.workspace_premium_outlined,
-                  color: BgColors.indigo,
+      title: 'Edit Profile',
+      child: !auth.isSignedIn
+          ? ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              children: [
+                _SignInPrompt(onSignIn: () => AuthScope.read(context).signIn()),
+              ],
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              children: [
+                Text(
+                  'Account info',
+                  style: bgText(fontWeight: FontWeight.w800, fontSize: 20),
                 ),
-                title: Text(
-                  'My certificate',
-                  style: bgText(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                const SizedBox(height: 14),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _Field(
+                            label: 'Name',
+                            controller: _name,
+                            textInputAction: TextInputAction.next,
+                          ),
+                          _Field(
+                            label: 'Phone number',
+                            controller: _phone,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      children: [
+                        GestureDetector(
+                          onTap: _pickPhoto,
+                          child: Stack(
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              _ProfileAvatar(profile: profile, radius: 40),
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: BgColors.indigo,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _pickPhoto,
+                          child: Text(
+                            profile.photoBytes == null
+                                ? 'Add photo'
+                                : 'Change photo',
+                            style: bgText(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              color: BgColors.indigo,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                _Field(
+                  label: 'Email ID',
+                  controller: _email,
+                  enabled: false,
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Gender',
+                    style: bgText(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: BgColors.muted,
+                    ),
                   ),
                 ),
-                trailing: const Icon(
-                  Icons.chevron_right_rounded,
-                  color: BgColors.muted,
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    for (final g in const ['Male', 'Female'])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: InkWell(
+                          onTap: () => setState(() => _gender = g),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Radio<String>(
+                                value: g,
+                                groupValue: _gender,
+                                activeColor: BgColors.indigo,
+                                onChanged: (v) =>
+                                    setState(() => _gender = v ?? ''),
+                              ),
+                              Text(
+                                g,
+                                style: bgText(fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const _CertificatesScreen(),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Date of birth',
+                    style: bgText(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: BgColors.muted,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _dob,
+                        keyboardType: TextInputType.number,
+                        onChanged: _onDobChanged,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[\d-]')),
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        decoration: InputDecoration(
+                          hintText: 'dd-mm-yyyy',
+                          errorText: _dobError,
+                        ),
+                        style: bgText(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      onPressed: _pickDobCalendar,
+                      style: IconButton.styleFrom(
+                        backgroundColor: BgColors.indigoSoft,
+                        foregroundColor: BgColors.indigo,
+                      ),
+                      icon: const Icon(Icons.calendar_today_rounded, size: 20),
+                      tooltip: 'Open calendar',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _Field(label: 'Country', controller: _country),
+                _Field(label: 'State', controller: _state),
+                _Field(label: 'City', controller: _city),
+                _Field(
+                  label: 'Pin code',
+                  controller: _pin,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: _save,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: BgColors.indigo,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Save changes',
+                    style: bgText(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
             ),
-          ] else
-            _SignInPrompt(onSignIn: () => AuthScope.read(context).signIn()),
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.label,
+    required this.controller,
+    this.keyboardType,
+    this.textInputAction,
+    this.enabled = true,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: bgText(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: BgColors.muted,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: controller,
+            enabled: enabled,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            style: bgText(fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -422,7 +823,7 @@ class _CertificatesScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Issued to ${SampleData.user.name}',
+                      'Issued to ${ProfileScope.of(context).name}',
                       style: bgText(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -494,7 +895,7 @@ class _PurchasesScreen extends StatelessWidget {
     final items = auth.isSignedIn ? SampleData.enrolled : <EnrolledCourse>[];
 
     return _SubpageScaffold(
-      title: 'Purchases & Invoices',
+      title: 'My Purchases',
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
@@ -548,6 +949,8 @@ class _PurchasesScreen extends StatelessWidget {
           else
             ...items.map((item) {
               final course = item.course;
+              final amt = item.amount ?? course.price;
+              final when = _formatPurchaseDate(item.purchasedAt);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Material(
@@ -556,7 +959,7 @@ class _PurchasesScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => _InvoiceDetailScreen(item: item),
+                          builder: (_) => _PurchaseDetailScreen(item: item),
                         ),
                       );
                     },
@@ -583,7 +986,10 @@ class _PurchasesScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '₹${course.price} · ${item.status}',
+                                  [
+                                    '₹${amt.toString()}',
+                                    if (when.isNotEmpty) when,
+                                  ].join(' · '),
                                   style: bgText(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
@@ -593,15 +999,6 @@ class _PurchasesScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Text(
-                            'Invoice',
-                            style: bgText(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
-                              color: BgColors.indigo,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
                           const Icon(
                             Icons.chevron_right_rounded,
                             color: BgColors.muted,
@@ -619,16 +1016,55 @@ class _PurchasesScreen extends StatelessWidget {
   }
 }
 
-class _InvoiceDetailScreen extends StatelessWidget {
-  const _InvoiceDetailScreen({required this.item});
+String _formatPurchaseDate(String? iso) {
+  if (iso == null || iso.isEmpty) return '';
+  try {
+    final dt = DateTime.parse(iso).toLocal();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${dt.day.toString().padLeft(2, '0')} ${months[dt.month - 1]} ${dt.year}';
+  } catch (_) {
+    return iso;
+  }
+}
+
+class _PurchaseDetailScreen extends StatelessWidget {
+  const _PurchaseDetailScreen({required this.item});
 
   final EnrolledCourse item;
 
   @override
   Widget build(BuildContext context) {
     final course = item.course;
+    final profile = ProfileScope.of(context);
+    final amt = item.amount ?? course.price;
+    final when = _formatPurchaseDate(item.purchasedAt);
+    final rows = <(String, String)>[
+      ('Item', course.title),
+      ('Transaction ID', item.txnId?.isNotEmpty == true ? item.txnId! : '—'),
+      if (item.orderId != null && item.orderId!.isNotEmpty)
+        ('Order ID', item.orderId!),
+      ('Date of purchase', when.isEmpty ? '—' : when),
+      ('Amount', '₹$amt'),
+      ('Status', 'Paid'),
+      if (item.paymentMethod != null && item.paymentMethod!.isNotEmpty)
+        ('Payment method', item.paymentMethod!),
+    ];
+
     return _SubpageScaffold(
-      title: 'Invoice',
+      title: 'Purchase detail',
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
@@ -642,56 +1078,53 @@ class _InvoiceDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const BrandMark(size: 32),
+                const SizedBox(height: 14),
                 Text(
-                  'Bizgarh',
-                  style: bgText(fontWeight: FontWeight.w800, fontSize: 18),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  course.title,
-                  style: bgText(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Billed to ${SampleData.user.name}',
+                  'Billed to ${profile.name}',
                   style: bgText(
                     fontWeight: FontWeight.w600,
                     color: BgColors.muted,
                   ),
                 ),
                 Text(
-                  SampleData.user.email,
+                  profile.email,
                   style: bgText(
                     fontWeight: FontWeight.w600,
                     color: BgColors.muted,
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text(
-                      'Amount paid',
-                      style: bgText(fontWeight: FontWeight.w600),
+                for (final row in rows) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 128,
+                          child: Text(
+                            row.$1,
+                            style: bgText(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: BgColors.muted,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            row.$2,
+                            style: bgText(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    Text(
-                      '₹${course.price}',
-                      style: bgText(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: BgColors.indigo,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Status · ${item.status}',
-                  style: bgText(
-                    fontWeight: FontWeight.w600,
-                    color: BgColors.muted,
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -993,47 +1426,6 @@ class _PolicyDocScreen extends StatelessWidget {
               fontWeight: FontWeight.w600,
               fontSize: 15,
               height: 1.45,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: BgColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: BgColors.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: bgText(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              color: BgColors.muted,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: bgText(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
             ),
           ),
         ],
