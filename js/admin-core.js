@@ -109,7 +109,7 @@ const REHAN_CRM_PASSWORD = "Rehan8055";
 /** Only CRM login ID allowed for Rehan (aliases blocked for security). */
 const REHAN_CRM_LOGIN_ID = "rehan@bizgarh.in";
 const REHAN_FACE_KEY = "rehan-khan";
-const REHAN_STOCK_PHOTO = "/img/instructors/rehan-khan.jpg?v=desk206";
+const REHAN_STOCK_PHOTO = "/img/instructors/rehan-khan.jpg?v=desk207";
 const REHAN_BIO_FALLBACK = "Rehan Khan is a Stock Market Instructor with 8+ years of experience in Forex and Indian Financial Markets. He focuses on educating aspiring traders and investors through practical market knowledge, trading concepts, and structured learning.";
 const REHAN_CRM_PW_FLAG = "crmRehanPwOk";
 
@@ -191,6 +191,9 @@ AdminCore.ensureRehanCreator = () => {
     photo: hosted,
     bio: (fromStaff && fromStaff.bio) || (prev && prev.bio) || REHAN_BIO_FALLBACK,
     photoInlineDropped: false,
+    contentProduction: AdminCore.normalizeContentProduction(
+      (fromStaff && fromStaff.contentProduction) || (prev && prev.contentProduction)
+    ),
     created: (prev && prev.created) || (fromStaff && fromStaff.created) || "2026-08-01T10:00:00.000Z",
     permissions: (fromStaff && fromStaff.permissions) || (prev && prev.permissions) || { ...CREATOR_DEFAULT_PERMS }
   };
@@ -413,12 +416,48 @@ AdminCore.normalizeStaff = (s) => {
     studentScope: s.studentScope || "own",
     commission: s.commission || { type: "percent", newSale: 20, renewal: 10, start: "", end: "" },
     payout: s.payout || { method: "upi", upi: "", account: "" },
+    contentProduction: AdminCore.normalizeContentProduction(s.contentProduction),
     permissions: s.permissions || (role === "owner" || role === "superadmin" ? {} : { ...CREATOR_DEFAULT_PERMS }),
     lastLogin: s.lastLogin || "",
     created: s.created || "2026-08-01T10:00:00.000Z",
     totp: !!s.totp,
     googleAuth: !!s.googleAuth || !s.password
   };
+};
+
+AdminCore.normalizeContentProduction = (raw) => {
+  const r = raw && typeof raw === "object" ? raw : {};
+  const n = (v) => Math.max(0, Math.floor(Number(v) || 0));
+  return {
+    scriptsPending: n(r.scriptsPending),
+    inEditing: n(r.inEditing),
+    awaitingApproval: n(r.awaitingApproval),
+    videosDelivered: n(r.videosDelivered)
+  };
+};
+
+/** Content Production counts — edited on /control, read-only on Creator CRM. */
+AdminCore.creatorProduction = (staffOrEmail) => {
+  const email = typeof staffOrEmail === "string"
+    ? staffOrEmail
+    : (staffOrEmail && staffOrEmail.email) || "";
+  const row = email ? AdminCore.staffRow(email) : (staffOrEmail || null);
+  return AdminCore.normalizeContentProduction(row && row.contentProduction);
+};
+
+AdminCore.setCreatorProduction = (email, production) => {
+  const row = AdminCore.staffRow(email);
+  if (!row) return null;
+  const next = AdminCore.normalizeStaff({
+    ...row,
+    contentProduction: AdminCore.normalizeContentProduction(production)
+  });
+  AdminCore.saveStaff(next);
+  if (typeof scheduleStaffPush === "function") scheduleStaffPush();
+  else if (typeof pushStaffRemote === "function") {
+    try { pushStaffRemote({ silent: true }); } catch { /* ignore */ }
+  }
+  return next;
 };
 
 AdminCore.migrateStaff = () => {
