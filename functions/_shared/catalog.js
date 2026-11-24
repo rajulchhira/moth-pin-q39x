@@ -49,6 +49,68 @@ export function sanitizeLessonForRemote(lesson) {
   return out;
 }
 
+const PLACEHOLDER_LESSON_TITLES = new Set([
+  "welcome & how this classroom works",
+  "setup selection on a live chart",
+  "entries, invalidation, targets",
+  "position sizing you can follow",
+  "journal template walkthrough"
+]);
+const PLACEHOLDER_SECTION_TITLES = new Set([
+  "introduction", "core ideas", "the setup", "risk & journal", "managing trades", "lessons", "new chapter"
+]);
+
+function isSampleMediaUrl(url) {
+  const s = String(url || "");
+  return !s || /flower\.mp4/i.test(s) || /interactive-examples\.mdn\.mozilla\.net/i.test(s);
+}
+
+function isPlaceholderLessonList(list) {
+  if (!Array.isArray(list) || !list.length) return true;
+  return list.every((l) => {
+    const title = String(l?.t || "").toLowerCase();
+    const kind = String(l?.kind || "video").toLowerCase();
+    if (kind === "pdf" || l?.pdf || l?.pdfInline) return false;
+    if (l?.vdoId || l?.fileKey) return false;
+    if (!PLACEHOLDER_LESSON_TITLES.has(title)) return false;
+    return isSampleMediaUrl(l?.src);
+  });
+}
+
+function isPlaceholderSyllabusDoc(doc) {
+  const sections = doc && Array.isArray(doc.sections) ? doc.sections : [];
+  if (!sections.length) return true;
+  return sections.every((sec) => PLACEHOLDER_SECTION_TITLES.has(String(sec?.title || "").toLowerCase()));
+}
+
+function curriculumVideosScore(list) {
+  if (!Array.isArray(list) || !list.length) return 0;
+  if (isPlaceholderLessonList(list)) return 1;
+  let score = list.length * 2;
+  for (const l of list) {
+    const title = String(l?.t || "").toLowerCase();
+    if (!PLACEHOLDER_LESSON_TITLES.has(title)) score += 4;
+    if (String(l?.kind || "") === "pdf" || l?.pdf || l?.pdfInline) score += 6;
+    if (l?.vdoId || l?.fileKey) score += 5;
+    if (l?.src && !isSampleMediaUrl(l.src)) score += 3;
+  }
+  return score;
+}
+
+function curriculumSyllabusScore(doc) {
+  const sections = doc && Array.isArray(doc.sections) ? doc.sections : [];
+  if (!sections.length) return 0;
+  if (isPlaceholderSyllabusDoc(doc)) return 1;
+  let score = sections.length * 2;
+  for (const sec of sections) {
+    const title = String(sec?.title || "");
+    if (/^lesson\s*\d+/i.test(title)) score += 8;
+    if (!PLACEHOLDER_SECTION_TITLES.has(title.toLowerCase())) score += 4;
+    score += asArray(sec?.items).length;
+  }
+  return score;
+}
+
 function normalizeVideosMap(raw) {
   const src = asObject(raw);
   const videos = {};
@@ -82,6 +144,47 @@ function normalizeSyllabusMap(raw) {
     syllabus[key] = { sections };
   }
   return syllabus;
+}
+
+/**
+ * Prefer authored curriculum over DEFAULT/flower placeholders on write.
+ * Explicit empty arrays still clear (course delete). Only placeholders lose to richer prev.
+ */
+function mergeCurriculumMaps(incomingVideos, incomingSyllabus, prevVideos, prevSyllabus) {
+  const videos = {};
+  const syllabus = {};
+  const ids = new Set([
+    ...Object.keys(asObject(incomingVideos)),
+    ...Object.keys(asObject(prevVideos)),
+    ...Object.keys(asObject(incomingSyllabus)),
+    ...Object.keys(asObject(prevSyllabus))
+  ]);
+  for (const id of ids) {
+    const nextList = incomingVideos[id];
+    const prevList = prevVideos[id];
+    if (Array.isArray(nextList)) {
+      if (nextList.length && isPlaceholderLessonList(nextList) && curriculumVideosScore(prevList) > 1) {
+        videos[id] = prevList;
+      } else {
+        videos[id] = nextList;
+      }
+    } else if (Array.isArray(prevList)) {
+      videos[id] = prevList;
+    }
+    const nextSy = incomingSyllabus[id];
+    const prevSy = prevSyllabus[id];
+    if (nextSy && Array.isArray(nextSy.sections)) {
+      const nextEmpty = !nextSy.sections.length;
+      if (!nextEmpty && isPlaceholderSyllabusDoc(nextSy) && curriculumSyllabusScore(prevSy) > 1) {
+        syllabus[id] = prevSy;
+      } else {
+        syllabus[id] = nextSy;
+      }
+    } else if (prevSy && Array.isArray(prevSy.sections)) {
+      syllabus[id] = prevSy;
+    }
+  }
+  return { videos, syllabus };
 }
 
 /** Sanitize a catalog write body into a stable KV document. */
@@ -139,13 +242,19 @@ export async function writeCatalogDoc(env, body, actorEmail) {
   }
   // Preserve curriculum when an older client omits videos/syllabus on PUT
   // (e.g. landing-only save from a cached pre-desk188 admin bundle).
+  // Also refuse DEFAULT/flower placeholders overwriting authored Lesson 2–4 maps.
+  const prev = await readCatalogDoc(env);
   const incoming = body && typeof body === "object" ? { ...body } : {};
-  if (incoming.videos === undefined || incoming.syllabus === undefined) {
-    const prev = await readCatalogDoc(env);
-    if (incoming.videos === undefined) incoming.videos = prev.doc?.videos || {};
-    if (incoming.syllabus === undefined) incoming.syllabus = prev.doc?.syllabus || {};
-  }
-  const doc = normalizeCatalogDoc(incoming, actorEmail);
+  if (incoming.videos === undefined) incoming.videos = prev.doc?.videos || {};
+  if (incoming.syllabus === undefined) incoming.syllabus = prev.doc?.syllabus || {};
+  const normalized = normalizeCatalogDoc(incoming, actorEmail);
+  const mergedMaps = mergeCurriculumMaps(
+    normalized.videos,
+    normalized.syllabus,
+    prev.doc?.videos || {},
+    prev.doc?.syllabus || {}
+  );
+  const doc = { ...normalized, videos: mergedMaps.videos, syllabus: mergedMaps.syllabus };
   const payload = JSON.stringify(doc);
   // Cloudflare KV value limit is 25 MiB; refuse oversized catalog writes early.
   if (payload.length > 20 * 1024 * 1024) {
