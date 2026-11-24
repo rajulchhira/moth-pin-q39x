@@ -1147,11 +1147,19 @@ async function pushInstructorsRemote(opts) {
     return { ok: false, skipped: "no_staff" };
   }
   try {
+    const payload = buildInstructorsPushPayload();
+    if (typeof ensureInstructorEditPhotosFitBudget === "function") {
+      const fitted = await ensureInstructorEditPhotosFitBudget(payload.edits);
+      if (fitted.changed) {
+        payload.edits = fitted.edits;
+        setInstructorEdits(fitted.edits);
+      }
+    }
     const res = await fetch(INSTRUCTORS_API, {
       method: "PUT",
       headers,
       credentials: "same-origin",
-      body: JSON.stringify(buildInstructorsPushPayload())
+      body: JSON.stringify(payload)
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
@@ -1342,11 +1350,19 @@ async function pushStaffRemote(opts) {
     return { ok: false, skipped: "no_staff" };
   }
   try {
+    const payload = buildStaffPushPayload();
+    if (typeof ensureStaffPhotosFitBudget === "function") {
+      const fitted = await ensureStaffPhotosFitBudget(payload.staff);
+      if (fitted.changed) {
+        payload.staff = fitted.staff;
+        if (typeof writeList === "function") writeList(STAFF_KEY, fitted.staff);
+      }
+    }
     const res = await fetch(STAFF_API, {
       method: "PUT",
       headers,
       credentials: "same-origin",
-      body: JSON.stringify(buildStaffPushPayload())
+      body: JSON.stringify(payload)
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
@@ -1354,6 +1370,12 @@ async function pushStaffRemote(opts) {
       return { ok: false, error: data?.error || String(res.status) };
     }
     setRemoteStaff(data);
+    const dropped = Array.isArray(data.staff)
+      ? data.staff.filter((s) => s && s.photoInlineDropped).length
+      : 0;
+    if (dropped && typeof toast === "function") {
+      toast("One or more staff photos were too large and could not be saved");
+    }
     return { ok: true, data };
   } catch (err) {
     if (!silent) console.warn("[staff] push error", err);
@@ -3025,6 +3047,138 @@ function readImageAsBanner(file) {
     };
     img.src = url;
   });
+}
+
+/**
+ * Staff / instructor DPs are stored as data: URLs in KV. Server sanitize drops any
+ * data: photo longer than INLINE_MEDIA_MAX (200 KB string) — which made Control
+ * "Save" look like it reset the DP after the next hydrate. Stay under ~180 KB.
+ */
+const STAFF_PHOTO_INLINE_BUDGET = 180 * 1024;
+const STAFF_PHOTO_INLINE_HARD_MAX = 200 * 1024;
+
+function compressImageElementToDataUrl(img, budget) {
+  const BUDGET = budget || STAFF_PHOTO_INLINE_BUDGET;
+  const draw = (w, h, q) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", q);
+  };
+  const nw = img.naturalWidth || img.width || 1;
+  const nh = img.naturalHeight || img.height || 1;
+  const ratio = nh / nw;
+  let out = "";
+  for (const [max, q] of [
+    [720, 0.82], [560, 0.76], [480, 0.7], [360, 0.64], [280, 0.58], [220, 0.52], [160, 0.45]
+  ]) {
+    const w = Math.min(max, nw);
+    out = draw(w, Math.max(1, Math.round(w * ratio)), q);
+    if (out.length <= BUDGET) break;
+  }
+  return out;
+}
+
+function readImageAsStaffPhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      reject(new Error("Pick a photo image"));
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const out = compressImageElementToDataUrl(img, STAFF_PHOTO_INLINE_BUDGET);
+        URL.revokeObjectURL(url);
+        if (!out || out.length > STAFF_PHOTO_INLINE_HARD_MAX) {
+          reject(new Error("Photo is too large to save — try a smaller image"));
+          return;
+        }
+        resolve(out);
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read that image"));
+    };
+    img.src = url;
+  });
+}
+
+function compressInlineStaffPhoto(src) {
+  const s = String(src || "").trim();
+  if (!s) return Promise.resolve("");
+  if (!s.startsWith("data:")) return Promise.resolve(s);
+  if (s.length <= STAFF_PHOTO_INLINE_BUDGET) return Promise.resolve(s);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const out = compressImageElementToDataUrl(img, STAFF_PHOTO_INLINE_BUDGET);
+        if (out && out.length <= STAFF_PHOTO_INLINE_HARD_MAX) resolve(out);
+        else resolve("");
+      } catch {
+        resolve("");
+      }
+    };
+    img.onerror = () => resolve("");
+    img.src = s;
+  });
+}
+
+async function ensureStaffPhotosFitBudget(staffRows) {
+  const rows = Array.isArray(staffRows) ? staffRows : [];
+  const out = [];
+  let changed = false;
+  for (const row of rows) {
+    if (!row || typeof row !== "object") {
+      out.push(row);
+      continue;
+    }
+    const photo = String(row.photo || "");
+    if (!photo.startsWith("data:") || photo.length <= STAFF_PHOTO_INLINE_BUDGET) {
+      out.push(row);
+      continue;
+    }
+    const nextPhoto = await compressInlineStaffPhoto(photo);
+    changed = true;
+    if (nextPhoto) {
+      out.push({ ...row, photo: nextPhoto, photoInlineDropped: false });
+    } else {
+      out.push({ ...row, photo: "", photoInlineDropped: true });
+    }
+  }
+  return { staff: out, changed };
+}
+
+async function ensureInstructorEditPhotosFitBudget(editsMap) {
+  const src = editsMap && typeof editsMap === "object" ? editsMap : {};
+  const out = {};
+  let changed = false;
+  for (const [key, patch] of Object.entries(src)) {
+    if (!patch || typeof patch !== "object") {
+      out[key] = patch;
+      continue;
+    }
+    const photo = String(patch.photo || "");
+    if (!photo.startsWith("data:") || photo.length <= STAFF_PHOTO_INLINE_BUDGET) {
+      out[key] = patch;
+      continue;
+    }
+    const nextPhoto = await compressInlineStaffPhoto(photo);
+    changed = true;
+    if (nextPhoto) {
+      out[key] = { ...patch, photo: nextPhoto, photoInlineDropped: false };
+    } else {
+      out[key] = { ...patch, photo: "", photoInlineDropped: true };
+    }
+  }
+  return { edits: out, changed };
 }
 async function resolveCourseBanner(form, current) {
   if (form?.bannerClear?.checked) return "";
@@ -9333,6 +9487,7 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk202: Creator CRM mesh motion + Public Site box + no demo login hint */
+/* cache-bust desk207: Control staff/sub-admin DP compress under KV 200KB so Save+hydrate keeps photo */
 /* cache-bust desk193: Rehan Khan instructor CRM seed linked to admin staff KV */
 /* cache-bust desk194: Rehan CRM login/DP/admin-link fix */
 /* cache-bust desk165: Become a Creator form + public demo learner seed */
