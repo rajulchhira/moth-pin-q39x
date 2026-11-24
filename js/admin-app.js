@@ -2290,6 +2290,15 @@ function bootAdminUi() {
       if (typeof hydrateStaffFromRemote === "function") {
         await hydrateStaffFromRemote();
       }
+      // After hydrate, ensure demo mentor Sub-admins are gone locally + KV (keep Rehan).
+      if (AdminCore.purgeDemoMentorStaff) {
+        try {
+          const purged = AdminCore.purgeDemoMentorStaff({ push: false });
+          if (purged && purged.changed && typeof pushStaffRemote === "function") {
+            await pushStaffRemote({ silent: true });
+          }
+        } catch { /* ignore */ }
+      }
       bindApp();
       bindCourseOverlays();
       if (typeof CourseAdmin !== "undefined") CourseAdmin.bind();

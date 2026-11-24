@@ -44,14 +44,14 @@ function seedAdminDemo() {
 function seedStaffAndAnalytics() {
   seedAdminDemo();
   seedLms();
+  // Do NOT seed MENTORS[] into staff — those fake Sub-admins reappeared after remove.
+  // Keep only real staff + Rehan (ensureRehan / migrateStaff); purge any leftover demos.
+  if (typeof AdminCore !== "undefined") {
+    try { if (AdminCore.migrateStaff) AdminCore.migrateStaff(); } catch { /* ignore */ }
+    try { if (AdminCore.ensureRehanCreator) AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+    try { if (AdminCore.purgeDemoMentorStaff) AdminCore.purgeDemoMentorStaff({ push: false }); } catch { /* ignore */ }
+  }
   const staff = staffList();
-  MENTORS.forEach((m) => {
-    const email = m.name.split(" ")[0].toLowerCase() + "@bizgarh.in";
-    if (!staff.some((s) => s.email === email)) {
-      staff.push({ name: m.name, email, password: "creator123", role: "creator" });
-    }
-  });
-  writeList(STAFF_KEY, staff);
 
   const owners = courseOwners();
   allCourses().forEach((c) => {
