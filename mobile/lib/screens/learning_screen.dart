@@ -7,6 +7,7 @@ import '../state/auth_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/course_card.dart';
+import 'auth_screen.dart';
 import 'course_detail_screen.dart';
 
 class LearningScreen extends StatefulWidget {
@@ -76,7 +77,7 @@ class _LearningScreenState extends State<LearningScreen> {
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
-                    onPressed: () => AuthScope.read(context).signIn(),
+                    onPressed: () => openAuthScreen(context),
                     style: FilledButton.styleFrom(
                       backgroundColor: BgColors.indigo,
                       foregroundColor: Colors.white,

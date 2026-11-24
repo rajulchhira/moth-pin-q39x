@@ -7,6 +7,7 @@ import '../state/auth_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/course_card.dart';
+import 'auth_screen.dart';
 
 /// Lightweight classroom page — mirrors site course detail essentials.
 class CourseDetailScreen extends StatelessWidget {
@@ -127,11 +128,12 @@ class CourseDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               if (!auth.isSignedIn) {
-                AuthScope.read(context).signIn();
+                await openAuthScreen(context);
                 return;
               }
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(

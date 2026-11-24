@@ -1,23 +1,48 @@
+import 'package:bizgarh_mobile/data/local_users.dart';
 import 'package:bizgarh_mobile/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const BizgarhApp());
     await tester.pump();
+    // Boot + restore session
+    await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 1700));
+  }
+
+  Future<void> signInDemo(WidgetTester tester) async {
+    await tester.tap(find.text('Profile'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Sign in').hitTestable().first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Welcome back'), findsOneWidget);
+    final fields = find.byType(TextField);
+    expect(fields, findsWidgets);
+    await tester.enterText(fields.at(0), LocalUsers.demoEmail);
+    await tester.enterText(fields.at(1), LocalUsers.demoPassword);
+    await tester.tap(find.widgetWithText(FilledButton, 'Login'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Ritesh Kulkarni'), findsWidgets);
   }
 
   testWidgets('Bizgarh shell shows Home brand and bottom tabs', (tester) async {
     await pumpApp(tester);
 
     expect(find.text('Bizgarh'), findsWidgets);
-    expect(find.textContaining('Welcome back'), findsOneWidget);
+    expect(find.text('Welcome!'), findsOneWidget);
     expect(find.textContaining('Learn from the journey'), findsOneWidget);
     expect(find.text('Popular Categories'), findsOneWidget);
     expect(find.text('Stock Market Investing'), findsOneWidget);
@@ -49,15 +74,22 @@ void main() {
 
     await tester.tap(find.text('My Learning').last);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('enrolled'), findsOneWidget);
+    expect(find.textContaining('signed out'), findsOneWidget);
 
     await tester.tap(find.text('Profile'));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Riya Sharma'), findsOneWidget);
+    expect(find.text('Welcome to Bizgarh'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Saved item'), findsNothing);
     expect(find.text('Frequently asked questions'), findsNothing);
     expect(find.text('Help & FAQs'), findsOneWidget);
+    expect(find.text('Sign in'), findsWidgets);
+  });
+
+  testWidgets('Login with demo credentials opens signed-in profile',
+      (tester) async {
+    await pumpApp(tester);
+    await signInDemo(tester);
     expect(find.text('Sign out'), findsOneWidget);
   });
 
@@ -107,9 +139,11 @@ void main() {
 
   testWidgets('Search course card opens classroom detail', (tester) async {
     await pumpApp(tester);
+    await signInDemo(tester);
     await tester.tap(find.text('Search'));
     await tester.pump(const Duration(milliseconds: 300));
-    final course = find.text('Slingshot: The 5-Minute Trading Edge').hitTestable();
+    final course =
+        find.text('Slingshot: The 5-Minute Trading Edge').hitTestable();
     expect(course, findsOneWidget);
     await tester.tap(course);
     await tester.pump();
@@ -121,8 +155,7 @@ void main() {
   testWidgets('Profile My certificates opens completed classroom',
       (tester) async {
     await pumpApp(tester);
-    await tester.tap(find.text('Profile'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await signInDemo(tester);
     await tester.tap(find.text('My certificates').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -135,13 +168,14 @@ void main() {
 
   testWidgets('Profile purchases open purchase detail with TXN', (tester) async {
     await pumpApp(tester);
-    await tester.tap(find.text('Profile'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await signInDemo(tester);
     expect(find.text('Edit Profile'), findsOneWidget);
     await tester.tap(find.text('My Purchases').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Slingshot: The 5-Minute Trading Edge').hitTestable().first);
+    await tester.tap(
+      find.text('Slingshot: The 5-Minute Trading Edge').hitTestable().first,
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Transaction ID'), findsOneWidget);
@@ -153,14 +187,12 @@ void main() {
   testWidgets('Edit Profile shows dd-mm-yyyy DOB and no retired fields',
       (tester) async {
     await pumpApp(tester);
-    await tester.tap(find.text('Profile'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await signInDemo(tester);
     await tester.tap(find.text('Edit Profile').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Account info'), findsOneWidget);
     expect(find.text('dd-mm-yyyy'), findsOneWidget);
-    expect(find.text('15-07-1998'), findsOneWidget);
     expect(find.text('Male'), findsOneWidget);
     expect(find.text('Female'), findsOneWidget);
     expect(find.text('Prefer not to say'), findsNothing);

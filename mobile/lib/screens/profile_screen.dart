@@ -10,6 +10,7 @@ import '../state/profile_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/brand_mark.dart';
+import 'auth_screen.dart';
 import 'course_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -110,7 +111,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   FilledButton(
-                    onPressed: () => AuthScope.read(context).signIn(),
+                    onPressed: () => openAuthScreen(context),
                     style: FilledButton.styleFrom(
                       backgroundColor: BgColors.indigo,
                       foregroundColor: Colors.white,
@@ -177,13 +178,18 @@ class ProfileScreen extends StatelessWidget {
                   Icons.logout_rounded,
                   'Sign out',
                   danger: true,
-                  onTap: () => AuthScope.read(context).signOut(),
+                  onTap: () async {
+                    await AuthScope.read(context).signOut();
+                    if (context.mounted) {
+                      ProfileScope.read(context).clearAccount();
+                    }
+                  },
                 )
               else
                 _SettingsRowData(
                   Icons.login_rounded,
                   'Sign in',
-                  onTap: () => AuthScope.read(context).signIn(),
+                  onTap: () => openAuthScreen(context),
                 ),
             ],
           ),
@@ -192,7 +198,7 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Center(
             child: Text(
-              'Bizgarh mobile · v1.1.0',
+              'Bizgarh mobile · v1.1.14',
               style: bgText(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -517,7 +523,7 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
           ? ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
               children: [
-                _SignInPrompt(onSignIn: () => AuthScope.read(context).signIn()),
+                _SignInPrompt(onSignIn: () => openAuthScreen(context)),
               ],
             )
           : ListView(
@@ -769,7 +775,7 @@ class _CertificatesScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
           if (!auth.isSignedIn)
-            _SignInPrompt(onSignIn: () => AuthScope.read(context).signIn())
+            _SignInPrompt(onSignIn: () => openAuthScreen(context))
           else if (certs.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 32),
@@ -900,7 +906,7 @@ class _PurchasesScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
           if (!auth.isSignedIn)
-            _SignInPrompt(onSignIn: () => AuthScope.read(context).signIn())
+            _SignInPrompt(onSignIn: () => openAuthScreen(context))
           else if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 40),

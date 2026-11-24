@@ -43,8 +43,23 @@ class BizgarhApp extends StatefulWidget {
 }
 
 class _BizgarhAppState extends State<BizgarhApp> {
-  final AuthState _auth = AuthState(signedIn: true);
+  final AuthState _auth = AuthState(signedIn: false);
   final ProfileState _profile = ProfileState();
+  bool _booting = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _boot();
+  }
+
+  Future<void> _boot() async {
+    await _auth.restore();
+    if (_auth.isSignedIn) {
+      _profile.applyAccount(name: _auth.name, email: _auth.email);
+    }
+    if (mounted) setState(() => _booting = false);
+  }
 
   @override
   void dispose() {
@@ -67,7 +82,12 @@ class _BizgarhAppState extends State<BizgarhApp> {
           theme: light,
           darkTheme: light,
           themeMode: ThemeMode.light,
-          home: const AppShell(),
+          home: _booting
+              ? const Scaffold(
+                  backgroundColor: BgColors.canvas,
+                  body: Center(child: CircularProgressIndicator()),
+                )
+              : const AppShell(),
           builder: (context, child) {
             return ColoredBox(
               color: BgColors.canvas,
