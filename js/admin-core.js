@@ -108,6 +108,10 @@ const REHAN_CANONICAL_EMAIL = "rrehann3377@gmail.com";
 const REHAN_CRM_PASSWORD = "Rehan8055";
 /** Only CRM login ID allowed for Rehan (aliases blocked for security). */
 const REHAN_CRM_LOGIN_ID = "rehan@bizgarh.in";
+const REHAN_FACE_KEY = "rehan-khan";
+const REHAN_STOCK_PHOTO = "/img/instructors/rehan-khan.jpg?v=desk206";
+const REHAN_BIO_FALLBACK = "Rehan Khan is a Stock Market Instructor with 8+ years of experience in Forex and Indian Financial Markets. He focuses on educating aspiring traders and investors through practical market knowledge, trading concepts, and structured learning.";
+const REHAN_CRM_PW_FLAG = "crmRehanPwOk";
 
 AdminCore.resolveStaffLoginId = (raw) => {
   const v = String(raw || "").trim().toLowerCase();
@@ -117,6 +121,11 @@ AdminCore.resolveStaffLoginId = (raw) => {
   return AdminCore.brandEmail(v);
 };
 
+AdminCore.isRehanStaffEmail = (email) => {
+  const e = AdminCore.brandEmail(email).toLowerCase();
+  return e === REHAN_CANONICAL_EMAIL || e === REHAN_CRM_LOGIN_ID;
+};
+
 /** Creator CRM only: reject Rehan aliases / canonical gmail; allow `rehan@bizgarh.in`. */
 AdminCore.isRehanCrmLoginAllowed = (raw) => {
   const v = String(raw || "").trim().toLowerCase();
@@ -124,6 +133,23 @@ AdminCore.isRehanCrmLoginAllowed = (raw) => {
   if (v === REHAN_CRM_LOGIN_ID) return true;
   if (v === REHAN_CANONICAL_EMAIL || v === "rehan" || v === "rehan.khan") return false;
   return true;
+};
+
+AdminCore.hasRehanCrmPasswordOk = () => {
+  try { return sessionStorage.getItem(REHAN_CRM_PW_FLAG) === "1"; } catch { return false; }
+};
+AdminCore.markRehanCrmPasswordOk = () => {
+  try { sessionStorage.setItem(REHAN_CRM_PW_FLAG, "1"); } catch { /* ignore */ }
+};
+AdminCore.clearRehanCrmPasswordOk = () => {
+  try { sessionStorage.removeItem(REHAN_CRM_PW_FLAG); } catch { /* ignore */ }
+};
+
+AdminCore.pickHostedPhoto = (raw) => {
+  const p = String(raw || "").trim();
+  if (!p) return "";
+  if (p.startsWith("data:")) return ""; // oversized inline DPs get dropped from KV
+  return p;
 };
 
 /**
@@ -139,27 +165,52 @@ AdminCore.ensureRehanCreator = () => {
   const fromRoster = Array.isArray(remote?.roster)
     ? remote.roster.find((r) => String(r?.email || "").toLowerCase() === mail)
     : null;
+  const fromStaff = Array.isArray(remote?.staff)
+    ? remote.staff.find((r) => String(r?.email || "").toLowerCase() === mail)
+    : null;
   const prev = i >= 0 ? list[i] : null;
+  const hosted = AdminCore.pickHostedPhoto(fromStaff?.photo)
+    || AdminCore.pickHostedPhoto(prev?.photo)
+    || AdminCore.pickHostedPhoto(fromRoster?.photo)
+    || REHAN_STOCK_PHOTO;
   const next = {
     ...(prev || {}),
-    name: (prev && prev.name) || fromRoster?.name || "Rehan Khan",
+    name: (fromStaff && fromStaff.name) || (prev && prev.name) || fromRoster?.name || "Rehan Khan",
     email: mail,
     password: REHAN_CRM_PASSWORD,
-    role: (prev && prev.role) || fromRoster?.role || "subadmin",
-    status: (prev && prev.status) || fromRoster?.status || "active",
+    role: (fromStaff && fromStaff.role) || (prev && prev.role) || fromRoster?.role || "subadmin",
+    status: (fromStaff && fromStaff.status) || (prev && prev.status) || fromRoster?.status || "active",
     creatorEnabled: true,
     googleAuth: false,
     totp: false,
-    referralCode: (prev && prev.referralCode) || fromRoster?.referralCode || "REHAN-ZMQOH1",
-    creatorId: (prev && prev.creatorId) || fromRoster?.creatorId || "CR-REHAN-ZMQOH1",
-    photo: (prev && prev.photo) || fromRoster?.photo || "",
-    bio: (prev && prev.bio) || "",
-    created: (prev && prev.created) || "2026-08-01T10:00:00.000Z",
-    permissions: (prev && prev.permissions) || { ...CREATOR_DEFAULT_PERMS }
+    faceKey: (fromStaff && fromStaff.faceKey) || (prev && prev.faceKey) || REHAN_FACE_KEY,
+    referralCode: (fromStaff && fromStaff.referralCode) || (prev && prev.referralCode) || fromRoster?.referralCode || "REHAN-ZMQOH1",
+    creatorId: (fromStaff && fromStaff.creatorId) || (prev && prev.creatorId) || fromRoster?.creatorId || "CR-REHAN-ZMQOH1",
+    photo: hosted,
+    bio: (fromStaff && fromStaff.bio) || (prev && prev.bio) || REHAN_BIO_FALLBACK,
+    photoInlineDropped: false,
+    created: (prev && prev.created) || (fromStaff && fromStaff.created) || "2026-08-01T10:00:00.000Z",
+    permissions: (fromStaff && fromStaff.permissions) || (prev && prev.permissions) || { ...CREATOR_DEFAULT_PERMS }
   };
   if (i >= 0) list[i] = next;
   else list.push(next);
   writeList(STAFF_KEY, list);
+
+  // Mirror into instructor catalog edits (same source of truth as /control Staff face).
+  if (typeof applyInstructorEdit === "function") {
+    try {
+      applyInstructorEdit(next.name, {
+        name: next.name,
+        email: next.email,
+        photo: next.photo,
+        bio: next.bio,
+        title: "Stock market instructor",
+        tag: "Forex & markets",
+        hidden: false,
+        faceKey: next.faceKey || REHAN_FACE_KEY
+      }, next.email);
+    } catch { /* ignore */ }
+  }
 
   // Keep course ownership aligned with admin catalog (instructor name + owner email).
   // Live /control assigns Slingshot → Rehan; pin that even before KV catalog hydrates.
@@ -185,6 +236,17 @@ AdminCore.ensureRehanCreator = () => {
       });
     }
     if (dirty) setCourseOwners(owners);
+  }
+  // Pin local course edit so CRM cards show Rehan even before / while KV merges.
+  if (typeof courseEdits === "function" && typeof setCourseEdits === "function") {
+    try {
+      const edits = courseEdits();
+      const prev = edits.slingshot || {};
+      if (prev.instructor !== "Rehan Khan" || String(prev.ownerEmail || "").toLowerCase() !== mail) {
+        edits.slingshot = { ...prev, instructor: "Rehan Khan", ownerEmail: mail };
+        setCourseEdits(edits);
+      }
+    } catch { /* ignore */ }
   }
   return next;
 };
@@ -649,10 +711,23 @@ AdminCore.resolveAttribution = (user, couponCode) => {
 };
 
 AdminCore.login = (email, password, totp) => {
+  const rawId = String(email || "").trim().toLowerCase();
   email = AdminCore.resolveStaffLoginId(email);
   // Ensure Rehan's CRM password exists before password check (local seed; same email as admin KV).
   if (email === REHAN_CANONICAL_EMAIL) {
     try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+    // Hard require the CRM password — no empty / Google / session bypass.
+    if (!password || password !== REHAN_CRM_PASSWORD) {
+      AdminCore.noteLoginFail();
+      AdminCore.recordSession({ email }, false);
+      AdminCore.clearRehanCrmPasswordOk();
+      return { ok: false, error: "Wrong email or password" };
+    }
+    // CRM must use rehan@bizgarh.in only (aliases already blocked upstream).
+    if (rawId && rawId !== REHAN_CRM_LOGIN_ID && rawId !== REHAN_CANONICAL_EMAIL) {
+      AdminCore.noteLoginFail();
+      return { ok: false, error: "Wrong email or password" };
+    }
   }
   const ownerOk = email === "admin@bizgarh.in" && password === "admin123";
   if (!ownerOk && AdminCore.loginLocked()) {
@@ -681,6 +756,7 @@ AdminCore.login = (email, password, totp) => {
   AdminCore.saveStaff(staff);
   AdminCore.recordSession(staff, true);
   setStaffSession({ ...staff, password: undefined });
+  if (email === REHAN_CANONICAL_EMAIL) AdminCore.markRehanCrmPasswordOk();
   AdminCore.audit("login", staff.email, "", "ok");
   return { ok: true, staff };
 };
@@ -688,6 +764,8 @@ AdminCore.login = (email, password, totp) => {
 AdminCore.adoptPublicUser = () => {
   const u = typeof getUser === "function" ? getUser() : null;
   if (!u?.email) return false;
+  // Never passwordless-adopt Rehan into Creator CRM / staff session.
+  if (AdminCore.isRehanStaffEmail(u.email)) return false;
   const role = typeof staffAccessRole === "function" ? staffAccessRole(u.email) : "";
   if (!role) return false;
   let row = AdminCore.staffRow(u.email);
@@ -768,6 +846,7 @@ AdminCore.logout = () => {
     const list = AdminCore.sessions().map((x) => x.email === s.email && x.active ? { ...x, active: false } : x);
     saveStore(SESSION_KEY, list);
     AdminCore.audit("logout", s.email, "", "");
+    if (AdminCore.isRehanStaffEmail(s.email)) AdminCore.clearRehanCrmPasswordOk();
   }
   clearStaffSession();
 };

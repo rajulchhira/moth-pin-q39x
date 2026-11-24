@@ -1446,14 +1446,16 @@ function applyInstructorEdit(name, fields, email) {
 }
 function photoFor(name) {
   const edit = instructorEditFor(name);
-  if (edit && edit.photo) return edit.photo;
+  if (edit && edit.photo && !String(edit.photo).startsWith("data:")) return edit.photo;
   const stock = MENTORS.find((m) => m.name === name)?.img;
   if (stock) return stock;
   try {
     const row = (typeof staffList === "function" ? staffList() : []).find((s) => s && s.name === name && s.photo);
-    if (row && row.photo) return row.photo;
+    if (row && row.photo && !String(row.photo).startsWith("data:")) return row.photo;
   } catch {}
-  return "https://randomuser.me/api/portraits/men/15.jpg";
+  const slug = typeof instructorSlug === "function" ? instructorSlug(name) : "";
+  if (slug === "rehan-khan" || name === "Rehan Khan") return "/img/instructors/rehan-khan.jpg?v=desk206";
+  return "/img/bizgarh-avatar.png";
 }
 function instructorSlug(name) {
   return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -9332,6 +9334,7 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk202: Creator CRM mesh motion + Public Site box + no demo login hint */
 /* cache-bust desk193: Rehan Khan instructor CRM seed linked to admin staff KV */
+/* cache-bust desk194: Rehan CRM login/DP/admin-link fix */
 /* cache-bust desk165: Become a Creator form + public demo learner seed */
 /* cache-bust desk167: Become a Creator segment multi-select + free years */
 /* cache-bust desk167: CF edge purge after desk166 app.js poison on www */
