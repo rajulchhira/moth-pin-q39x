@@ -4,6 +4,8 @@
  */
 
 export const CATALOG_KV_KEY = "catalog:courses:v1";
+/** Shared public instructor faces — control Staff writes; /instructors reads. */
+export const INSTRUCTORS_KV_KEY = "catalog:instructors:v1";
 
 export function salesKv(env) {
   return env && (env.SALES || env.SALES_KV || null);
@@ -264,5 +266,80 @@ export async function writeCatalogDoc(env, body, actorEmail) {
     throw err;
   }
   await kv.put(CATALOG_KV_KEY, payload);
+  return doc;
+}
+
+export function emptyInstructorsDoc() {
+  return {
+    version: 1,
+    updatedAt: null,
+    updatedBy: "",
+    edits: {}
+  };
+}
+
+/** Drop oversized inline photos so instructor KV stays under the write budget. */
+function sanitizeInstructorEdit(patch) {
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) return null;
+  const out = { ...patch };
+  if (typeof out.photo === "string" && out.photo.startsWith("data:") && out.photo.length > INLINE_MEDIA_MAX) {
+    out.photo = "";
+    out.photoInlineDropped = true;
+  }
+  return out;
+}
+
+export function normalizeInstructorsDoc(body, actorEmail) {
+  const src = body && typeof body === "object" ? body : {};
+  const editsIn = asObject(src.edits);
+  const edits = {};
+  for (const [id, patch] of Object.entries(editsIn)) {
+    const key = String(id || "").trim();
+    if (!key) continue;
+    const clean = sanitizeInstructorEdit(patch);
+    if (!clean) continue;
+    edits[key] = clean;
+  }
+  return {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: String(actorEmail || "").trim().toLowerCase(),
+    edits
+  };
+}
+
+export async function readInstructorsDoc(env) {
+  const kv = salesKv(env);
+  if (!kv) return { ok: false, missing: "kv", doc: emptyInstructorsDoc() };
+  try {
+    const raw = await kv.get(INSTRUCTORS_KV_KEY);
+    if (!raw) return { ok: true, missing: "empty", doc: emptyInstructorsDoc() };
+    const parsed = JSON.parse(raw);
+    const doc = normalizeInstructorsDoc(parsed, parsed?.updatedBy || "");
+    if (parsed?.updatedAt) doc.updatedAt = parsed.updatedAt;
+    if (parsed?.updatedBy) doc.updatedBy = String(parsed.updatedBy);
+    return { ok: true, missing: null, doc };
+  } catch (err) {
+    return { ok: false, missing: "parse", error: String(err?.message || err), doc: emptyInstructorsDoc() };
+  }
+}
+
+export async function writeInstructorsDoc(env, body, actorEmail) {
+  const kv = salesKv(env);
+  if (!kv) {
+    const err = new Error("SALES KV binding missing");
+    err.status = 503;
+    err.code = "kv_missing";
+    throw err;
+  }
+  const doc = normalizeInstructorsDoc(body, actorEmail);
+  const payload = JSON.stringify(doc);
+  if (payload.length > 20 * 1024 * 1024) {
+    const err = new Error("Instructors payload too large");
+    err.status = 413;
+    err.code = "payload_too_large";
+    throw err;
+  }
+  await kv.put(INSTRUCTORS_KV_KEY, payload);
   return doc;
 }

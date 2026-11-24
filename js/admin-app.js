@@ -1412,6 +1412,9 @@ function bindApp() {
       if (!confirm(`Delete admin "${row.name}" (${row.email})? They will lose /control access.`)) return;
       try {
         AdminCore.deleteStaff(mail);
+        if (typeof pushInstructorsRemote === "function") {
+          pushInstructorsRemote({ silent: true }).catch(() => {});
+        }
         toast("Admin deleted");
         document.getElementById("adDrawer")?.remove();
         paint();
@@ -1606,6 +1609,9 @@ function bindApp() {
         });
         AdminCore.saveStaff(row);
         syncStaffInstructor(row, face);
+        if (typeof pushInstructorsRemote === "function") {
+          pushInstructorsRemote({ silent: true }).catch(() => {});
+        }
         if (creatorEnabled) {
           const aff = affiliates();
           if (!aff.some((a)=>a.email===email)) {
@@ -1664,6 +1670,9 @@ function bindApp() {
         });
         AdminCore.saveStaff(next);
         syncStaffInstructor(next, face);
+        if (typeof pushInstructorsRemote === "function") {
+          pushInstructorsRemote({ silent: true }).catch(() => {});
+        }
         if (creatorEnabled) {
           const aff = affiliates();
           if (!aff.some((a)=>a.email===email)) {
