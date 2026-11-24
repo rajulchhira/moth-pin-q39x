@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk202 mesh motion + Public Site box */
+/* Creator CRM dashboard — desk205 Rehan CRM login ID locked to rehan@bizgarh.in */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -37,6 +37,10 @@
     if (typeof seedLms === "function") seedLms();
     if (typeof AdminCore !== "undefined" && AdminCore.migrateStaff) AdminCore.migrateStaff();
     if (typeof AdminCore !== "undefined" && AdminCore.seedControlPlane) AdminCore.seedControlPlane();
+    // Rehan Khan CRM: same staff email as /control KV + password Rehan8055
+    if (typeof AdminCore !== "undefined" && AdminCore.ensureRehanCreator) {
+      try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+    }
 
     const mentors = typeof MENTORS !== "undefined" ? MENTORS : [];
     const staff = typeof staffList === "function" ? staffList() : [];
@@ -115,6 +119,11 @@
   }
 
   function creatorAvatar(s) {
+    if (s?.photo) return s.photo;
+    if (typeof photoFor === "function" && s?.name) {
+      const p = photoFor(s.name);
+      if (p) return p;
+    }
     const mentors = typeof MENTORS !== "undefined" ? MENTORS : [];
     const hit = mentors.find((m) => m.name === s.name);
     return (hit && hit.img) || "/img/bizgarh-avatar.png";
@@ -3875,6 +3884,11 @@
     }
     if (typeof AdminCore === "undefined" || !AdminCore.login) {
       if (err) err.textContent = "Auth is still loading — try again";
+      return false;
+    }
+    // Rehan: only rehan@bizgarh.in — block rehan / rehan.khan / admin gmail aliases
+    if (typeof AdminCore.isRehanCrmLoginAllowed === "function" && !AdminCore.isRehanCrmLoginAllowed(email)) {
+      if (err) err.textContent = "Wrong email or password";
       return false;
     }
     const r = AdminCore.login(email, password, ($("#crmTotp")?.value || ""));
