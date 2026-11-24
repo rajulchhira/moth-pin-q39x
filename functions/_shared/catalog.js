@@ -23,7 +23,9 @@ export function emptyCatalogDoc() {
     hidden: [],
     // Control curriculum → public course overview (lessons + section map).
     videos: {},
-    syllabus: {}
+    syllabus: {},
+    // Per-course Community rooms (YouTube / Telegram / …) + optional free-open.
+    rooms: {}
   };
 }
 
@@ -150,6 +152,41 @@ function normalizeSyllabusMap(raw) {
   return syllabus;
 }
 
+const ROOM_TYPE_IDS = ["whatsapp", "discord", "youtube", "telegram"];
+
+function sanitizeRoomUrl(url) {
+  let raw = String(url || "").trim();
+  if (!raw) return "";
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(raw)) raw = "https://" + raw;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === "http:" || u.protocol === "https:") return u.href;
+  } catch { /* ignore */ }
+  return "";
+}
+
+function normalizeRoomsMap(raw) {
+  const src = asObject(raw);
+  const rooms = {};
+  for (const [courseId, doc] of Object.entries(src)) {
+    const key = String(courseId || "").trim();
+    if (!key || !doc || typeof doc !== "object" || Array.isArray(doc)) continue;
+    const out = {};
+    for (const id of ROOM_TYPE_IDS) {
+      const row = doc[id] && typeof doc[id] === "object" && !Array.isArray(doc[id]) ? doc[id] : {};
+      out[id] = {
+        live: row.live === true || row.live === "1",
+        url: sanitizeRoomUrl(row.url)
+      };
+    }
+    if (doc.open === true || doc.open === "1" || doc.open === false || doc.open === "0") {
+      out.open = doc.open === true || doc.open === "1";
+    }
+    rooms[key] = out;
+  }
+  return rooms;
+}
+
 /**
  * Prefer authored curriculum over DEFAULT/flower placeholders on write.
  * Explicit empty arrays still clear (course delete). Only placeholders lose to richer prev.
@@ -215,7 +252,8 @@ export function normalizeCatalogDoc(body, actorEmail) {
     extras,
     hidden,
     videos: normalizeVideosMap(src.videos),
-    syllabus: normalizeSyllabusMap(src.syllabus)
+    syllabus: normalizeSyllabusMap(src.syllabus),
+    rooms: normalizeRoomsMap(src.rooms)
   };
 }
 
@@ -247,10 +285,12 @@ export async function writeCatalogDoc(env, body, actorEmail) {
   // Preserve curriculum when an older client omits videos/syllabus on PUT
   // (e.g. landing-only save from a cached pre-desk188 admin bundle).
   // Also refuse DEFAULT/flower placeholders overwriting authored Lesson 2–4 maps.
+  // Preserve Community rooms when an older client omits rooms on PUT.
   const prev = await readCatalogDoc(env);
   const incoming = body && typeof body === "object" ? { ...body } : {};
   if (incoming.videos === undefined) incoming.videos = prev.doc?.videos || {};
   if (incoming.syllabus === undefined) incoming.syllabus = prev.doc?.syllabus || {};
+  if (incoming.rooms === undefined) incoming.rooms = prev.doc?.rooms || {};
   const normalized = normalizeCatalogDoc(incoming, actorEmail);
   const mergedMaps = mergeCurriculumMaps(
     normalized.videos,

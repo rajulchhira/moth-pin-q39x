@@ -162,6 +162,16 @@ const DESK_ROOM_DEFAULTS = {
   youtube: { live: true, url: "https://www.youtube.com/@bizgarh" },
   telegram: { live: true, url: "https://t.me/bizgarh" }
 };
+/** Per-course Community defaults (URLs + free-open). Control / KV can override. */
+const COURSE_ROOM_SEEDS = {
+  slingshot: {
+    open: true,
+    whatsapp: { live: false, url: "" },
+    discord: { live: false, url: "" },
+    youtube: { live: true, url: "https://youtube.com/@trading.house.official?si=j6Dbp6FqD3O5N2FO" },
+    telegram: { live: true, url: "https://t.me/tradinghouseTH" }
+  }
+};
 function deskRoomsMap() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(DESK_ROOMS_KEY) || "{}") || {}; } catch { saved = {}; }
@@ -224,24 +234,74 @@ function deskRoomCardHTML(room, canJoin) {
 function courseRoomsMap() {
   try { return JSON.parse(localStorage.getItem(COURSE_ROOMS_KEY) || "{}") || {}; } catch { return {}; }
 }
-function setCourseRooms(courseId, next) {
-  const all = courseRoomsMap();
+function normalizeCourseRoomsRow(raw, fallbackOpen) {
+  const src = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const out = {};
   DESK_ROOM_TYPES.forEach((t) => {
-    const row = (next && next[t.id]) || {};
+    const row = src[t.id] || {};
     out[t.id] = {
       live: row.live === true || row.live === "1",
       url: typeof sanitizeSocialUrl === "function" ? sanitizeSocialUrl(row.url) : String(row.url || "").trim()
     };
   });
+  if (src.open === true || src.open === "1" || src.open === false || src.open === "0") {
+    out.open = src.open === true || src.open === "1";
+  } else if (fallbackOpen === true || fallbackOpen === false) {
+    out.open = fallbackOpen;
+  }
+  return out;
+}
+function setCourseRooms(courseId, next) {
+  const all = courseRoomsMap();
+  const prev = all[courseId];
+  const out = normalizeCourseRoomsRow(next, typeof prev?.open === "boolean" ? prev.open : undefined);
+  if (next && (next.open === true || next.open === "1" || next.open === false || next.open === "0")) {
+    out.open = next.open === true || next.open === "1";
+  }
   all[courseId] = out;
   localStorage.setItem(COURSE_ROOMS_KEY, JSON.stringify(all));
   return out;
 }
+function remoteRoomsMap() {
+  try {
+    const remote = typeof getRemoteCatalog === "function" ? getRemoteCatalog() : null;
+    return remote && remote.rooms && typeof remote.rooms === "object" ? remote.rooms : {};
+  } catch { return {}; }
+}
+function courseRoomSeed(courseId) {
+  const seed = COURSE_ROOM_SEEDS[courseId];
+  return seed ? normalizeCourseRoomsRow(seed, seed.open === true) : null;
+}
 function courseRoomsOf(courseId) {
-  const own = courseRoomsMap()[courseId];
-  if (own && typeof own === "object") return own;
+  const local = courseRoomsMap()[courseId];
+  const remote = remoteRoomsMap()[courseId];
+  const seed = courseRoomSeed(courseId);
+  const onAdmin = typeof isAdminPage === "function" && isAdminPage();
+  let pick = null;
+  if (onAdmin) {
+    if (local && typeof local === "object") pick = local;
+    else if (remote && typeof remote === "object") pick = remote;
+    else if (seed) pick = seed;
+  } else {
+    if (remote && typeof remote === "object") pick = remote;
+    else if (local && typeof local === "object") pick = local;
+    else if (seed) pick = seed;
+  }
+  if (pick) {
+    const openFallback = typeof pick.open === "boolean"
+      ? pick.open
+      : (typeof seed?.open === "boolean" ? seed.open : undefined);
+    return normalizeCourseRoomsRow(pick, openFallback);
+  }
   return deskRoomsMap();
+}
+/** Community links clickable without purchase when course rooms.open (Slingshot seed defaults true). */
+function courseCommunityUnlocked(c, owned) {
+  if (owned) return true;
+  const id = typeof c === "string" ? c : c?.id;
+  if (!id) return false;
+  const rooms = courseRoomsOf(id);
+  return rooms && rooms.open === true;
 }
 function mentorRoomsMap() {
   try { return JSON.parse(localStorage.getItem(MENTOR_ROOMS_KEY) || "{}") || {}; } catch { return {}; }
@@ -2543,7 +2603,8 @@ function emptyRemoteCatalog() {
     extras: [],
     hidden: [],
     videos: {},
-    syllabus: {}
+    syllabus: {},
+    rooms: {}
   };
 }
 
@@ -2560,7 +2621,8 @@ function getRemoteCatalog() {
         extras: Array.isArray(cached.extras) ? cached.extras : [],
         hidden: Array.isArray(cached.hidden) ? cached.hidden : [],
         videos: cached.videos && typeof cached.videos === "object" ? cached.videos : {},
-        syllabus: cached.syllabus && typeof cached.syllabus === "object" ? cached.syllabus : {}
+        syllabus: cached.syllabus && typeof cached.syllabus === "object" ? cached.syllabus : {},
+        rooms: cached.rooms && typeof cached.rooms === "object" ? cached.rooms : {}
       };
       return __catalogRemote;
     }
@@ -2577,7 +2639,8 @@ function setRemoteCatalog(doc) {
     extras: Array.isArray(doc?.extras) ? doc.extras : [],
     hidden: Array.isArray(doc?.hidden) ? doc.hidden : [],
     videos: doc?.videos && typeof doc.videos === "object" ? doc.videos : {},
-    syllabus: doc?.syllabus && typeof doc.syllabus === "object" ? doc.syllabus : {}
+    syllabus: doc?.syllabus && typeof doc.syllabus === "object" ? doc.syllabus : {},
+    rooms: doc?.rooms && typeof doc.rooms === "object" ? doc.rooms : {}
   };
   __catalogRemote = next;
   try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
@@ -2670,12 +2733,25 @@ function buildCatalogPushPayload() {
     const picked = pickRicherCourseSyllabus(localSy[id], remoteSy[id]);
     if (picked && Array.isArray(picked.sections)) syllabus[id] = picked;
   });
+  const remoteRooms = remote.rooms && typeof remote.rooms === "object" ? remote.rooms : {};
+  const localRooms = courseRoomsMap();
+  const roomIds = new Set([...Object.keys(remoteRooms), ...Object.keys(localRooms), ...Object.keys(COURSE_ROOM_SEEDS)]);
+  const rooms = {};
+  roomIds.forEach((id) => {
+    const local = localRooms[id];
+    const rem = remoteRooms[id];
+    const seed = COURSE_ROOM_SEEDS[id];
+    if (local && typeof local === "object") rooms[id] = normalizeCourseRoomsRow(local, local.open);
+    else if (rem && typeof rem === "object") rooms[id] = normalizeCourseRoomsRow(rem, rem.open);
+    else if (seed) rooms[id] = normalizeCourseRoomsRow(seed, seed.open === true);
+  });
   return {
     edits: courseEdits(),
     extras: extraCourses(),
     hidden: hiddenCourseIds(),
     videos,
-    syllabus
+    syllabus,
+    rooms
   };
 }
 
@@ -2795,7 +2871,8 @@ async function hydrateCatalogFromRemote() {
     const hasContent = (data.edits && Object.keys(data.edits).length)
       || (Array.isArray(data.extras) && data.extras.length)
       || (Array.isArray(data.hidden) && data.hidden.length)
-      || catalogHasCurriculum(data);
+      || catalogHasCurriculum(data)
+      || (data.rooms && typeof data.rooms === "object" && Object.keys(data.rooms).length);
     // Empty KV: if this browser has control edits/curriculum, seed the shared store once.
     if (!hasContent) {
       const localPayload = buildCatalogPushPayload();
@@ -2860,6 +2937,19 @@ async function hydrateCatalogFromRemote() {
           }
         });
         if (syTouched) saveJson(COURSE_SYLLABUS_KEY, localSy);
+        // Fill missing local course Community rooms from KV (control tab sync).
+        const localRooms = courseRoomsMap();
+        const remoteRooms = data.rooms && typeof data.rooms === "object" ? data.rooms : {};
+        let roomsTouched = false;
+        Object.keys(remoteRooms).forEach((id) => {
+          const rem = remoteRooms[id];
+          if (!rem || typeof rem !== "object") return;
+          if (!localRooms[id]) {
+            localRooms[id] = normalizeCourseRoomsRow(rem, rem.open);
+            roomsTouched = true;
+          }
+        });
+        if (roomsTouched) localStorage.setItem(COURSE_ROOMS_KEY, JSON.stringify(localRooms));
         // Authored local (Intro / Lesson 2–4) always wins over empty or placeholder KV.
         await syncRicherCurriculumToRemote({ silent: true });
       } catch { /* ignore mirror errors */ }
@@ -6701,16 +6791,17 @@ function courseAbout(c) {
 function courseLiveRooms(c) {
   return visibleDeskRooms(typeof courseRoomsOf === "function" ? courseRoomsOf(c.id) : deskRoomsMap());
 }
-function courseCommunityBodyHTML(c, owned) {
+function courseCommunityBodyHTML(c, unlocked) {
   const rooms = typeof courseRoomsOf === "function" ? courseRoomsOf(c.id) : null;
   const live = visibleDeskRooms(rooms);
   if (!live.length) return "";
   const names = live.map((r) => r.label).join(", ");
-  return `<div class="course-comm-body">${deskRoomsGridHTML(owned, "Buy this classroom to open " + names + ".", rooms)}</div>`;
+  return `<div class="course-comm-body">${deskRoomsGridHTML(unlocked, "Buy this classroom to open " + names + ".", rooms)}</div>`;
 }
 
 function courseBuyBoxHTML(c, langs, watchers, extraClass) {
   const hasComm = courseLiveRooms(c).length > 0;
+  const commOpen = typeof courseCommunityUnlocked === "function" ? courseCommunityUnlocked(c, false) : false;
   return `<aside class="cd-buy${extraClass ? ` ${extraClass}` : ""}">
         <ul class="cd-facts">
           <li>${iconSvg("badge")} <span>${c.learners} Learners Enrolled</span></li>
@@ -6722,10 +6813,12 @@ function courseBuyBoxHTML(c, langs, watchers, extraClass) {
         </ul>
         <div class="cd-price">₹${Number(c.price).toLocaleString("en-IN")}</div>
         <button class="btn btn-primary btn-block cd-cta js-enroll">Buy Now →</button>
-        ${hasComm ? `<button type="button" class="btn btn-ghost btn-block cd-comm-cta locked js-comm-lock">
+        ${hasComm ? (commOpen
+          ? `<a class="btn btn-ghost btn-block cd-comm-cta" href="#courseCommunity">Community</a>`
+          : `<button type="button" class="btn btn-ghost btn-block cd-comm-cta locked js-comm-lock">
           <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
           Community
-        </button>` : ""}
+        </button>`) : ""}
         <p class="cd-watch"><i></i> ${watchers} learners watching right now</p>
       </aside>`;
 }
@@ -6748,6 +6841,7 @@ function renderCoursePage() {
   const points = learnPoints(c);
   const bonuses = bonusResourcesOf(c);
   const liveRooms = courseLiveRooms(c);
+  const commOpen = typeof courseCommunityUnlocked === "function" ? courseCommunityUnlocked(c, owned) : owned;
   const watchers = 11 + (c.title.length * 3) % 37;
   const photo = photoFor(c.instructor);
   if (window.BizgarhSeo) window.BizgarhSeo.apply();
@@ -6824,15 +6918,17 @@ function renderCoursePage() {
           <button type="button" class="cd-more" id="cdMore">See more</button>
         </section>
 
-        ${liveRooms.length ? `<section class="cd-card cd-community-card cd-community ${owned ? "is-open" : "is-locked"}" id="courseCommunity">
+        ${liveRooms.length ? `<section class="cd-card cd-community-card cd-community ${commOpen ? "is-open" : "is-locked"}" id="courseCommunity">
           <div class="cd-ov-head">
             <h2>Community</h2>
             <p class="cd-ov-meta">
-              ${owned ? `<span class="cd-comm-open">Members only</span>` : `<span class="cd-lock-badge">${iconSvg("lock")} Locked</span>`}
+              ${commOpen
+                ? `<span class="cd-comm-open">${owned ? "Members only" : "Open"}</span>`
+                : `<span class="cd-lock-badge">${iconSvg("lock")} Locked</span>`}
             </p>
           </div>
-          <div id="courseCommInner">${courseCommunityBodyHTML(c, owned)}</div>
-          ${owned ? "" : `<button type="button" class="cd-comm-cta locked" id="commLockedBtn">
+          <div id="courseCommInner">${courseCommunityBodyHTML(c, commOpen)}</div>
+          ${commOpen ? "" : `<button type="button" class="cd-comm-cta locked" id="commLockedBtn">
             <span class="cd-lock-on" aria-hidden="true">${iconSvg("lock")}</span>
             Community
           </button>`}
@@ -9254,3 +9350,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk186: soft-deleted keep seed no longer blocks + New course (shadow filter) */
 /* cache-bust desk187: public lists live control courses (remote hidden + unpublished/deleted; Popular keeps slingshot) */
 /* cache-bust desk189: richer-wins curriculum sync — placeholders never wipe Lesson 2–4 */
+/* cache-bust desk192: Slingshot Community unlock — YouTube + Telegram open links + KV rooms */

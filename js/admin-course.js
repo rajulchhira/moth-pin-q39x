@@ -601,8 +601,13 @@ const CourseAdmin = {
     const can = canEditCourse(c) && AdminCore.can("courses", "edit");
     const map = typeof courseRoomsOf === "function" ? courseRoomsOf(c.id) : {};
     const types = typeof DESK_ROOM_TYPES !== "undefined" ? DESK_ROOM_TYPES : [];
+    const openFree = map.open === true;
     const body = `<form class="cb-panel" id="cbRoomsForm" data-course="${adEsc(c.id)}">
       <p class="cb-say">Turn a room on and paste the invite link. Off rooms stay hidden on this course.</p>
+      <label class="cb-switch cb-open-free">
+        <input type="checkbox" name="community_open" ${openFree ? "checked" : ""} ${can ? "" : "disabled"}>
+        <span>${openFree ? "Open without purchase" : "Purchase unlocks Community"}</span>
+      </label>
       <div class="cb-rooms">
         ${types.map((t) => {
           const row = map[t.id] || {};
@@ -967,6 +972,10 @@ const CourseAdmin = {
         const lab = e.target.closest(".cb-switch")?.querySelector("span");
         if (lab) lab.textContent = e.target.checked ? "On" : "Off";
       }
+      if (e.target.closest("#cbRoomsForm") && e.target.name === "community_open") {
+        const lab = e.target.closest(".cb-switch")?.querySelector("span");
+        if (lab) lab.textContent = e.target.checked ? "Open without purchase" : "Purchase unlocks Community";
+      }
     });
 
     view.addEventListener("blur", (e) => {
@@ -1190,11 +1199,13 @@ const CourseAdmin = {
     }
   },
 
-  saveRooms(form) {
+  async saveRooms(form) {
     const id = form.dataset.course;
     const c = this.byId(id);
     if (!c || !canEditCourse(c)) return;
-    const next = {};
+    const next = {
+      open: form.community_open?.checked === true
+    };
     (typeof DESK_ROOM_TYPES !== "undefined" ? DESK_ROOM_TYPES : []).forEach((t) => {
       next[t.id] = {
         live: form[t.id + "_live"]?.checked === true,
@@ -1202,8 +1213,14 @@ const CourseAdmin = {
       };
     });
     if (typeof setCourseRooms === "function") setCourseRooms(id, next);
-    AdminCore.audit("course_community", id, "", "updated");
-    toast("Community saved for this course");
+    AdminCore.audit("course_community", id, "", next.open ? "open" : "locked");
+    if (typeof pushCatalogRemote === "function") {
+      const pushed = await pushCatalogRemote({ silent: true });
+      if (!pushed?.ok && !pushed?.skipped) toast("Saved locally — site sync pending (retry save)");
+      else toast("Community saved for this course");
+    } else {
+      toast("Community saved for this course");
+    }
     paint();
   },
 
@@ -1312,3 +1329,4 @@ const CourseAdmin = {
 
 /* cache-bust desk6: catalog() merges shared KV course edits */
 /* cache-bust desk7: createCourse restores soft-deleted keep seed; byId reads raw extras */
+/* cache-bust desk10: Community open-without-purchase + push rooms to catalog KV */
