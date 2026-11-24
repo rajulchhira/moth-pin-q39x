@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk204 Rehan Khan instructor CRM (admin-linked) */
+/* Creator CRM dashboard — desk205 Rehan CRM login ID locked to rehan@bizgarh.in */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -3884,6 +3884,11 @@
     }
     if (typeof AdminCore === "undefined" || !AdminCore.login) {
       if (err) err.textContent = "Auth is still loading — try again";
+      return false;
+    }
+    // Rehan: only rehan@bizgarh.in — block rehan / rehan.khan / admin gmail aliases
+    if (typeof AdminCore.isRehanCrmLoginAllowed === "function" && !AdminCore.isRehanCrmLoginAllowed(email)) {
+      if (err) err.textContent = "Wrong email or password";
       return false;
     }
     const r = AdminCore.login(email, password, ($("#crmTotp")?.value || ""));

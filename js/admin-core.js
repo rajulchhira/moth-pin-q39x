@@ -106,18 +106,24 @@ AdminCore.brandEmail = (email) => String(email || "").replace(/@tradeshala\.in$/
 /** Rehan Khan — same staff row as /control KV (courses, students, referral). */
 const REHAN_CANONICAL_EMAIL = "rrehann3377@gmail.com";
 const REHAN_CRM_PASSWORD = "Rehan8055";
-const REHAN_LOGIN_ALIASES = {
-  rehan: REHAN_CANONICAL_EMAIL,
-  "rehan.khan": REHAN_CANONICAL_EMAIL,
-  "rehan@bizgarh.in": REHAN_CANONICAL_EMAIL,
-  [REHAN_CANONICAL_EMAIL]: REHAN_CANONICAL_EMAIL
-};
+/** Only CRM login ID allowed for Rehan (aliases blocked for security). */
+const REHAN_CRM_LOGIN_ID = "rehan@bizgarh.in";
 
 AdminCore.resolveStaffLoginId = (raw) => {
   const v = String(raw || "").trim().toLowerCase();
   if (!v) return "";
-  if (REHAN_LOGIN_ALIASES[v]) return REHAN_LOGIN_ALIASES[v];
+  // Map the single allowed CRM ID → live admin staff email. No short/gmail aliases.
+  if (v === REHAN_CRM_LOGIN_ID) return REHAN_CANONICAL_EMAIL;
   return AdminCore.brandEmail(v);
+};
+
+/** Creator CRM only: reject Rehan aliases / canonical gmail; allow `rehan@bizgarh.in`. */
+AdminCore.isRehanCrmLoginAllowed = (raw) => {
+  const v = String(raw || "").trim().toLowerCase();
+  if (!v) return true;
+  if (v === REHAN_CRM_LOGIN_ID) return true;
+  if (v === REHAN_CANONICAL_EMAIL || v === "rehan" || v === "rehan.khan") return false;
+  return true;
 };
 
 /**
