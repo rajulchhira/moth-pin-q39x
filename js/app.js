@@ -1467,16 +1467,25 @@ function applyInstructorEdit(name, fields, email) {
   return map[key];
 }
 function photoFor(name) {
+  const pick = (raw) => {
+    const v = String(raw || "").trim();
+    if (!v) return "";
+    // Allow Control inline DPs under KV budget; oversized data: never render.
+    if (v.startsWith("data:") && v.length > 200 * 1024) return "";
+    return v;
+  };
   const edit = instructorEditFor(name);
-  if (edit && edit.photo && !String(edit.photo).startsWith("data:")) return edit.photo;
+  const fromEdit = pick(edit && edit.photo);
+  if (fromEdit) return fromEdit;
   const stock = MENTORS.find((m) => m.name === name)?.img;
   if (stock) return stock;
   try {
     const row = (typeof staffList === "function" ? staffList() : []).find((s) => s && s.name === name && s.photo);
-    if (row && row.photo && !String(row.photo).startsWith("data:")) return row.photo;
+    const fromStaff = pick(row && row.photo);
+    if (fromStaff) return fromStaff;
   } catch {}
   const slug = typeof instructorSlug === "function" ? instructorSlug(name) : "";
-  if (slug === "rehan-khan" || name === "Rehan Khan") return "/img/instructors/rehan-khan.jpg?v=desk207";
+  if (slug === "rehan-khan" || name === "Rehan Khan") return "/img/instructors/rehan-khan.jpg?v=desk208";
   return "/img/bizgarh-avatar.png";
 }
 function instructorSlug(name) {
@@ -9515,3 +9524,5 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk189: richer-wins curriculum sync — placeholders never wipe Lesson 2–4 */
 /* cache-bust desk192: Slingshot Community unlock — YouTube + Telegram open links + KV rooms */
 /* cache-bust desk207: Rehan CRM control-sync (read-only production, real thumbs, no demo fill) */
+
+/* cache-bust desk208: CRM header DP from Control staff + empty Editing Queue (purge V1 demo seeds) */

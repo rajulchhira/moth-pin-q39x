@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk207 control-sync: read-only production, no demo fill */
+/* Creator CRM dashboard — desk208 header DP from Control + empty studio until real rows */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -7,11 +7,19 @@
   const THEME_KEY = "crmTheme";
   const ACCORDION_KEY = "crmAccordionOpen";
   const STUDENTS_DEMO_KEY = "crmStudentsDemoV1";
-  const STUDIO_SCRIPTS_KEY = "crmStudioScriptsV1";
-  const STUDIO_RECORDINGS_KEY = "crmStudioRecordingsV1";
-  const STUDIO_QUEUE_KEY = "crmStudioEditingQueueV1";
-  const STUDIO_LIBRARY_KEY = "crmStudioContentLibraryV1";
-  const STUDY_KEY = "crmStudyMaterialsV1";
+  // V2 drops poisoned V1 seeds (queue demos were written without demo:true).
+  const STUDIO_SCRIPTS_KEY = "crmStudioScriptsV2";
+  const STUDIO_RECORDINGS_KEY = "crmStudioRecordingsV2";
+  const STUDIO_QUEUE_KEY = "crmStudioEditingQueueV2";
+  const STUDIO_LIBRARY_KEY = "crmStudioContentLibraryV2";
+  const STUDY_KEY = "crmStudyMaterialsV2";
+  const STUDIO_LEGACY_KEYS = [
+    "crmStudioScriptsV1",
+    "crmStudioRecordingsV1",
+    "crmStudioEditingQueueV1",
+    "crmStudioContentLibraryV1",
+    "crmStudyMaterialsV1"
+  ];
   const TICKETS_KEY = "crmCreatorTicketsV1";
   const PROFILE_KEY = "crmCreatorProfileV1";
   const ACTIVE_DAYS = 14;
@@ -127,8 +135,10 @@
       localStorage.removeItem(STUDENTS_DEMO_KEY);
       localStorage.removeItem("crmAnalyticsOutstandingV1");
       localStorage.removeItem("tradeshalaAnalyticsV2");
+      STUDIO_LEGACY_KEYS.forEach((k) => localStorage.removeItem(k));
       // Allow one more purge pass if demo LMS seeds reappear after staff hydrate.
       localStorage.setItem("crmDemoFillPurgedV2", "1");
+      localStorage.setItem("crmStudioDemoPurgedV2", "1");
     } catch { /* ignore */ }
   }
 
@@ -146,26 +156,60 @@
     return false;
   }
 
-  function creatorAvatar(s) {
-    const hosted = (p) => {
-      const v = String(p || "").trim();
-      if (!v || v.startsWith("data:")) return "";
-      return v;
-    };
-    const fromStaff = hosted(s?.photo);
-    if (fromStaff) return fromStaff;
-    if (typeof photoFor === "function" && s?.name) {
-      const p = hosted(photoFor(s.name));
-      if (p && !/randomuser\.me/i.test(p)) return p;
+  /** Control Sub-admin staff row linked to this CRM session (generic, not Rehan-only). */
+  function linkedControlStaff(s) {
+    if (!s) return null;
+    const mail = String(s.email || "").trim().toLowerCase();
+    let row = null;
+    if (typeof AdminCore !== "undefined" && AdminCore.staffRow) {
+      try { row = AdminCore.staffRow(mail) || AdminCore.staffRow(s.email); } catch { row = null; }
     }
-    const face = s?.faceKey || (typeof instructorSlug === "function" ? instructorSlug(s?.name || "") : "");
-    if (face === "rehan-khan" || (s?.name === "Rehan Khan")) {
-      return "/img/instructors/rehan-khan.jpg?v=desk207";
+    if (!row && typeof staffList === "function") {
+      try {
+        row = (staffList() || []).find((x) => String(x?.email || "").trim().toLowerCase() === mail) || null;
+      } catch { row = null; }
+    }
+    const base = row || s;
+    if (typeof AdminCore !== "undefined" && AdminCore.normalizeStaff) {
+      try { return AdminCore.normalizeStaff(base); } catch { /* fall through */ }
+    }
+    return base;
+  }
+
+  function pickStaffPhoto(raw) {
+    const v = String(raw || "").trim();
+    if (!v) return "";
+    // Keep under-budget inline DPs from Control (KV drops >200KB).
+    if (v.startsWith("data:") && v.length > 200 * 1024) return "";
+    if (/randomuser\.me/i.test(v)) return "";
+    return v;
+  }
+
+  function creatorAvatar(s) {
+    const linked = linkedControlStaff(s) || s;
+    const fromStaff = pickStaffPhoto(linked?.photo);
+    if (fromStaff) return fromStaff;
+    if (typeof photoFor === "function" && linked?.name) {
+      const p = pickStaffPhoto(photoFor(linked.name));
+      if (p) return p;
+    }
+    const face = linked?.faceKey || (typeof instructorSlug === "function" ? instructorSlug(linked?.name || "") : "");
+    if (face === "rehan-khan" || linked?.name === "Rehan Khan") {
+      return "/img/instructors/rehan-khan.jpg?v=desk208";
     }
     if (face) return `/img/instructors/${face}.jpg`;
     const mentors = typeof MENTORS !== "undefined" ? MENTORS : [];
-    const hit = mentors.find((m) => m.name === s?.name);
+    const hit = mentors.find((m) => m.name === linked?.name);
     return (hit && hit.img) || "/img/bizgarh-avatar.png";
+  }
+
+  function creatorHeaderLabel(s) {
+    const linked = linkedControlStaff(s) || s;
+    const name = linked?.name || s?.name || "Creator";
+    const loginId = (typeof AdminCore !== "undefined" && AdminCore.isRehanStaffEmail && AdminCore.isRehanStaffEmail(s?.email))
+      ? "rehan@bizgarh.in"
+      : (s?.email || linked?.email || "");
+    return { linked, name, loginId };
   }
 
   function ownedCourseIds(staff) {
@@ -454,13 +498,22 @@
     return (v / (1024 * 1024)).toFixed(1).replace(/\.0$/, "") + " MB";
   }
 
+  function isStudioDemoRow(r) {
+    if (!r || typeof r !== "object") return true;
+    if (r.demo) return true;
+    const id = String(r.id || "");
+    // Legacy V1 seeds often omitted demo:true (esp. editing queue).
+    if (/^(eq|script|rec|lib)_demo/i.test(id) || /_demo_/i.test(id)) return true;
+    return false;
+  }
+
   function studioRealRows(key, email) {
     const existing = readStudioBucket(key, email);
     if (!existing) {
       writeStudioBucket(key, email, []);
       return [];
     }
-    const real = existing.filter((r) => r && !r.demo);
+    const real = existing.filter((r) => !isStudioDemoRow(r));
     if (real.length !== existing.length) writeStudioBucket(key, email, real);
     return real;
   }
@@ -1156,9 +1209,15 @@
     }
     const who = $("#crmWho");
     if (who) {
+      const label = creatorHeaderLabel(s);
+      who.setAttribute("role", "button");
+      who.setAttribute("tabindex", "0");
+      who.setAttribute("data-crm-open-profile", "1");
+      who.setAttribute("aria-label", "Open profile");
+      who.title = "Open profile";
       who.innerHTML = `
-        <img src="${esc(creatorAvatar(s))}" alt="">
-        <span><b>${esc(s.name || "Creator")}</b><small>${esc(s.email || "")}</small></span>`;
+        <img src="${esc(creatorAvatar(label.linked))}" alt="">
+        <span><b>${esc(label.name)}</b><small>${esc(label.loginId)}</small></span>`;
     }
     const badge = $("#crmBellBadge");
     const notes = unreadNotes(s.email);
@@ -1225,7 +1284,7 @@
       writeStudyBucket(email, []);
       return [];
     }
-    const real = existing.filter((r) => r && !r.demo);
+    const real = existing.filter((r) => !isStudioDemoRow(r));
     if (real.length !== existing.length) writeStudyBucket(email, real);
     return real;
   }
@@ -3544,6 +3603,8 @@
     if (who) {
       const b = who.querySelector("b");
       if (b) b.textContent = nextName || "Creator";
+      const img = who.querySelector("img");
+      if (img) img.src = creatorAvatar(linkedControlStaff(s) || s);
     }
     const msg = $("#crmProfileMsg");
     if (msg) msg.textContent = "Name saved";
@@ -3552,16 +3613,12 @@
   function renderProfile(root, s, view) {
     const extras = profileExtras(s.email);
     const api = socialApiState(s.email);
-    const linked = (typeof AdminCore !== "undefined" && AdminCore.staffRow)
-      ? AdminCore.normalizeStaff(AdminCore.staffRow(s.email) || s)
-      : ((typeof AdminCore !== "undefined" && AdminCore.normalizeStaff) ? AdminCore.normalizeStaff(s) : s);
+    const linked = linkedControlStaff(s) || s;
     const displayName = extras.name || linked.name || s.name || "";
     const creatorId = linked.creatorId || s.creatorId || "—";
     const referral = linked.referralCode || s.referralCode || "—";
     const bio = linked.bio || "";
-    const loginId = (typeof AdminCore !== "undefined" && AdminCore.isRehanStaffEmail && AdminCore.isRehanStaffEmail(s.email))
-      ? "rehan@bizgarh.in"
-      : (s.email || "");
+    const loginId = creatorHeaderLabel(s).loginId;
     root.innerHTML = `
       <div class="crm-panel-view crm-section">
         <div class="crm-section-head">
@@ -3799,6 +3856,12 @@
       }
       if (t.closest("#crmScrim")) {
         $("#crmApp")?.classList.remove("nav-open");
+        return;
+      }
+      if (t.closest("[data-crm-open-profile]") || t.closest("#crmWho")) {
+        e.preventDefault();
+        $("#crmApp")?.classList.remove("nav-open");
+        goView("profile");
         return;
       }
       if (t.closest("#crmBell")) {
@@ -4039,6 +4102,11 @@
     });
 
     document.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && e.target && e.target.closest && e.target.closest("#crmWho")) {
+        e.preventDefault();
+        goView("profile");
+        return;
+      }
       if (e.key !== "Escape") return;
       if ($("#crmCourseOverlay")) {
         closeCoursePopup();
