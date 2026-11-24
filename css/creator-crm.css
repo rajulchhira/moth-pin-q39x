@@ -747,6 +747,13 @@ html.crm-html[data-crm-reduce-motion="1"] .crm-mesh-waves {
   border-radius: 999px;
   background: var(--crm-panel);
   border: 1px solid var(--crm-line);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.crm-who:hover,
+.crm-who:focus-visible {
+  border-color: rgba(148, 163, 184, 0.55);
+  outline: none;
 }
 .crm-who img {
   width: 34px;

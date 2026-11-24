@@ -109,7 +109,7 @@ const REHAN_CRM_PASSWORD = "Rehan8055";
 /** Only CRM login ID allowed for Rehan (aliases blocked for security). */
 const REHAN_CRM_LOGIN_ID = "rehan@bizgarh.in";
 const REHAN_FACE_KEY = "rehan-khan";
-const REHAN_STOCK_PHOTO = "/img/instructors/rehan-khan.jpg?v=desk207";
+const REHAN_STOCK_PHOTO = "/img/instructors/rehan-khan.jpg?v=desk208";
 const REHAN_BIO_FALLBACK = "Rehan Khan is a Stock Market Instructor with 8+ years of experience in Forex and Indian Financial Markets. He focuses on educating aspiring traders and investors through practical market knowledge, trading concepts, and structured learning.";
 const REHAN_CRM_PW_FLAG = "crmRehanPwOk";
 
