@@ -44,7 +44,8 @@ async function handler(event) {
         extras: doc.extras || [],
         hidden: doc.hidden || [],
         videos: doc.videos || {},
-        syllabus: doc.syllabus || {}
+        syllabus: doc.syllabus || {},
+        rooms: doc.rooms || {}
       });
     }
 
@@ -62,7 +63,8 @@ async function handler(event) {
         extras: doc.extras,
         hidden: doc.hidden,
         videos: doc.videos,
-        syllabus: doc.syllabus
+        syllabus: doc.syllabus,
+        rooms: doc.rooms
       });
     }
 
