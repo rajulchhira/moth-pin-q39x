@@ -195,8 +195,8 @@ function seedLms() {
   }
   if (!referrals().length) {
     writeList(REFERRAL_KEY, [
-      { id: "rf-demo1", code: "AARAV20", affiliateEmail: "aarav@bizgarh.in", email: "ritesh@gmail.com", name: "Ritesh Kulkarni", courseId: "breakout", amount: 799, commission: 160, status: "unpaid", at: "2026-08-12T11:00:00.000Z" },
-      { id: "rf-demo2", code: "NEHA20", affiliateEmail: "neha@bizgarh.in", email: "kavya@gmail.com", name: "Kavya Iyer", courseId: "income", amount: 499, commission: 125, status: "paid", at: "2026-09-04T14:00:00.000Z" }
+      { id: "rf-demo1", code: "AARAV20", affiliateEmail: "aarav@bizgarh.in", email: "ritesh@gmail.com", name: "Ritesh Kulkarni", courseId: "slingshot", amount: 999, commission: 200, status: "unpaid", at: "2026-08-12T11:00:00.000Z" },
+      { id: "rf-demo2", code: "AARAV20", affiliateEmail: "aarav@bizgarh.in", email: "kavya@gmail.com", name: "Kavya Iyer", courseId: "slingshot", amount: 999, commission: 200, status: "paid", at: "2026-09-04T14:00:00.000Z" }
     ]);
   }
   if (!invites().length) {
@@ -212,33 +212,31 @@ function seedLms() {
   }
   if (!telegramChannels().length) {
     writeList(COMMUNITY_KEY, [
-      { id: "tg-1", name: "Breakout desk", url: "https://t.me/bizgarh_breakout", creatorEmail: "aarav@bizgarh.in", courseId: "breakout" },
-      { id: "tg-2", name: "Options income room", url: "https://t.me/bizgarh_income", creatorEmail: "neha@bizgarh.in", courseId: "income" }
+      { id: "tg-1", name: "Slingshot desk", url: "https://t.me/bizgarh_slingshot", creatorEmail: "aarav@bizgarh.in", courseId: "slingshot" }
     ]);
   }
   if (!forumPosts().length) {
     writeList(POST_KEY, [
-      { id: "p-1", title: "How do you size the first week?", body: "I keep going too big on Bank Nifty. What did you write in the journal after lesson 3?", author: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "breakout", at: "2026-09-09T10:00:00.000Z" },
-      { id: "p-2", title: "SIP vs lump sum this quarter", body: "Ananya's lab said pick one. I picked SIP. Anyone doing both?", author: "Aditya Menon", email: "aditya@gmail.com", courseId: "long-term", at: "2026-09-10T12:00:00.000Z" }
+      { id: "p-1", title: "How do you size the first week?", body: "I keep going too big on the open. What did you write in the journal after the 5-minute edge lesson?", author: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-09-09T10:00:00.000Z" }
     ]);
   }
 
   const qmap = lmsMap(QUIZ_KEY);
-  if (!qmap.breakout) {
-    qmap.breakout = [{
-      id: "quiz-breakout",
-      title: "Breakout checkpoint",
+  if (!qmap.slingshot) {
+    qmap.slingshot = [{
+      id: "quiz-slingshot",
+      title: "Slingshot checkpoint",
       passScore: 70,
       questions: [
-        { q: "A valid breakout usually needs which of these?", options: ["A volume expansion", "A paid telegram tip", "More indicators on the chart"], answer: 0 },
-        { q: "What do you write before you click buy?", options: ["The guru's name", "Invalidation and size", "Yesterday's P&L only"], answer: 1 }
+        { q: "What do you write before you take the 5-minute edge?", options: ["A tip from a group", "Invalidation and size", "Yesterday's P&L only"], answer: 1 },
+        { q: "This classroom is for which of these?", options: ["Education and process", "Guaranteed returns", "Live buy/sell calls"], answer: 0 }
       ]
     }];
     setLmsMap(QUIZ_KEY, qmap);
   }
   const amap = lmsMap(ASSIGN_KEY);
-  if (!amap.breakout) {
-    amap.breakout = [{ id: "as-1", title: "Week-1 journal", due: "2026-09-20", prompt: "Screenshot one setup, write the invalidation, and the size you would actually take." }];
+  if (!amap.slingshot) {
+    amap.slingshot = [{ id: "as-1", title: "Week-1 journal", due: "2026-09-20", prompt: "Screenshot one 5-minute edge setup, write the invalidation, and the size you would actually take." }];
     setLmsMap(ASSIGN_KEY, amap);
   }
   localStorage.setItem("tradeshalaLmsSeeded", "1");

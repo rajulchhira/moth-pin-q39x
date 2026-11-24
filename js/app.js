@@ -772,45 +772,11 @@ function setMentorLessons(programId, lessons) {
 }
 
 const COURSES = [
-  { id: "breakout", title: "Intraday Breakout Blueprint", instructor: "Aarav Mehta", learners: "12,480", rating: "4.8", price: 799, old: 1999, cat: "trending", cover: "breakout", hours: "6.5", lessons: 18 },
-  { id: "income", title: "Weekly Options Income Playbook", instructor: "Neha Kapoor", learners: "28,910", rating: "4.9", price: 499, old: 1499, cat: "trending", cover: "income", hours: "8.0", lessons: 22 },
-  { id: "price-action", title: "Price Action Without Indicators", instructor: "Vikram Singh", learners: "9,340", rating: "4.8", price: 899, old: 2199, cat: "trending", cover: "pa", hours: "7.0", lessons: 16 },
-  { id: "opening-range", title: "Opening Range for Index Options", instructor: "Kabir Joshi", learners: "6,112", rating: "4.7", price: 999, old: 2499, cat: "trending", cover: "or", hours: "5.5", lessons: 14 },
-  { id: "long-term", title: "How to Build a 10-Year Stock Portfolio", instructor: "Ananya Rao", learners: "15,220", rating: "4.8", price: 399, old: 999, cat: "investing", cover: "lt", hours: "5.0", lessons: 12 },
-  { id: "mf-guide", title: "Mutual Funds Made Simple", instructor: "Rohan Desai", learners: "11,004", rating: "4.7", price: 299, old: 799, cat: "investing", cover: "mf", hours: "4.0", lessons: 10 },
-  { id: "sip", title: "SIP & Asset Allocation Lab", instructor: "Priya Nair", learners: "8,760", rating: "4.8", price: 349, old: 899, cat: "investing", cover: "sip", hours: "3.5", lessons: 9 },
-  { id: "opt-start", title: "Options from Zero", instructor: "Meera Iyer", learners: "21,550", rating: "4.8", price: 449, old: 1199, cat: "options", cover: "opt", hours: "7.5", lessons: 20 },
-  { id: "spreads", title: "Spreads & Defined-Risk Setups", instructor: "Neha Kapoor", learners: "7,890", rating: "4.8", price: 699, old: 1799, cat: "options", cover: "spread", hours: "6.0", lessons: 15 },
-  { id: "first-month", title: "Your First 30 Days in Markets", instructor: "Aarav Mehta", learners: "33,001", rating: "4.9", price: 199, old: 599, cat: "beginners", cover: "first", hours: "4.5", lessons: 11 },
-  { id: "charts-101", title: "Reading Charts for Beginners", instructor: "Vikram Singh", learners: "14,670", rating: "4.7", price: 299, old: 799, cat: "beginners", cover: "charts", hours: "5.0", lessons: 13 },
-  { id: "candles", title: "Candlestick Context Course", instructor: "Kabir Joshi", learners: "10,240", rating: "4.8", price: 399, old: 999, cat: "ta", cover: "candle", hours: "5.5", lessons: 12 },
-  { id: "levels", title: "Support, Resistance & Market Structure", instructor: "Meera Iyer", learners: "9,018", rating: "4.8", price: 449, old: 1099, cat: "ta", cover: "levels", hours: "6.0", lessons: 14 },
-  { id: "hindi-ta", title: "टेक्निकल एनालिसिस हिंदी में", instructor: "Ananya Rao", learners: "18,430", rating: "4.8", price: 399, old: 999, cat: "hindi", cover: "hindi", hours: "6.5", lessons: 16 },
-  { id: "hindi-swing", title: "स्विंग ट्रेडिंग आसान भाषा में", instructor: "Rohan Desai", learners: "13,880", rating: "4.7", price: 449, old: 1099, cat: "hindi", cover: "swing", hours: "6.0", lessons: 14 },
-  { id: "crypto-lab", title: "Crypto Spot & Risk Basics", instructor: "Priya Nair", learners: "6,540", rating: "4.6", price: 499, old: 1299, cat: "crypto", cover: "crypto", hours: "5.0", lessons: 12 },
-  { id: "ema-swing", title: "EMA Pullback Swing System", instructor: "Vikram Singh", learners: "4,210", rating: "4.7", price: 249, old: 699, cat: "strategy", cover: "ema", hours: "3.5", lessons: 8 },
-  { id: "vwap", title: "VWAP Intraday Checklist", instructor: "Aarav Mehta", learners: "5,002", rating: "4.7", price: 249, old: 699, cat: "strategy", cover: "vwap", hours: "3.0", lessons: 8 }
+  { id: "slingshot", title: "Slingshot: The 5-Minute Trading Edge", instructor: "Aarav Mehta", learners: "1,240", rating: "4.9", price: 999, old: 2499, cat: "trending", cover: "slingshot", hours: "5.0", lessons: 12, description: "A focused 5-minute trading edge for Indian desks — written process, invalidation, and size. Education, not tips." }
 ];
 
 const COVERS = {
-  breakout: { bg: "linear-gradient(135deg,#0b1220 0%,#1e3a5f 55%,#0f766e 100%)", title: "BREAKOUT<br>BLUEPRINT", sub: "Intraday system" },
-  income: { bg: "linear-gradient(135deg,#1c1917,#9a3412 70%)", title: "WEEKLY<br>OPTIONS", sub: "Income playbook" },
-  pa: { bg: "linear-gradient(135deg,#0f172a,#334155)", title: "PRICE<br>ACTION", sub: "No indicators" },
-  or: { bg: "linear-gradient(135deg,#1e1b4b,#1d4ed8)", title: "OPENING<br>RANGE", sub: "Index options" },
-  lt: { bg: "linear-gradient(135deg,#042f2e,#0f766e)", title: "10-YEAR<br>PORTFOLIO", sub: "Long-term" },
-  mf: { bg: "linear-gradient(135deg,#1a2e05,#4d7c0f)", title: "MUTUAL<br>FUNDS", sub: "Simple picks" },
-  sip: { bg: "linear-gradient(135deg,#083344,#0e7490)", title: "SIP<br>LAB", sub: "Allocation" },
-  opt: { bg: "linear-gradient(135deg,#431407,#c2410c)", title: "OPTIONS<br>FROM ZERO", sub: "Start here" },
-  spread: { bg: "linear-gradient(135deg,#1e1b4b,#4338ca)", title: "DEFINED<br>RISK", sub: "Spreads" },
-  first: { bg: "linear-gradient(135deg,#022c22,#0f766e)", title: "FIRST<br>30 DAYS", sub: "Beginner path" },
-  charts: { bg: "linear-gradient(135deg,#111827,#374151)", title: "CHARTS<br>101", sub: "Read the tape" },
-  candle: { bg: "linear-gradient(135deg,#052e16,#166534)", title: "CANDLE<br>CONTEXT", sub: "TA course" },
-  levels: { bg: "linear-gradient(135deg,#020617,#1e293b)", title: "MARKET<br>STRUCTURE", sub: "S/R + trend" },
-  hindi: { bg: "linear-gradient(135deg,#042f2e,#0f766e)", title: "टेक्निकल<br>एनालिसिस", sub: "हिंदी में" },
-  swing: { bg: "linear-gradient(135deg,#431407,#9a3412)", title: "स्विंग<br>ट्रेडिंग", sub: "हिंदी course" },
-  crypto: { bg: "linear-gradient(135deg,#020617,#111827)", title: "CRYPTO<br>SPOT", sub: "Risk basics" },
-  ema: { bg: "linear-gradient(135deg,#1e1b4b,#4f46e5)", title: "EMA<br>SWING", sub: "Pullback system" },
-  vwap: { bg: "linear-gradient(135deg,#1e1b4b,#4f46e5)", title: "VWAP<br>CHECKLIST", sub: "Intraday" }
+  slingshot: { bg: "linear-gradient(135deg,#0b1220 0%,#1e3a5f 55%,#c2410c 100%)", title: "SLINGSHOT<br>5-MINUTE", sub: "Trading edge" }
 };
 
 const MENTORS = [
@@ -1177,7 +1143,7 @@ const WEB_BANNERS = [
   "linear-gradient(135deg,#1d4ed8,#1e3a8a)"
 ];
 
-const CERT_COURSE_IDS = ["first-month", "charts-101", "opt-start", "mf-guide", "candles", "levels"];
+const CERT_COURSE_IDS = ["slingshot"];
 function courseFilterFromCat(id) {
   return id || "all";
 }
@@ -2049,6 +2015,12 @@ async function resolveCourseBanner(form, current) {
   if (url) return url;
   return current || "";
 }
+function isPublicKeepCourse(c) {
+  if (!c) return false;
+  if (c.id === "slingshot") return true;
+  const t = String(c.title || "").replace(/\s+/g, " ").trim();
+  return /^slingshot:\s*the\s*5[- ]?minute\s+trading\s+edge$/i.test(t);
+}
 function allCourses() {
   const hidden = hiddenCourseIds();
   const edits = courseEdits();
@@ -2058,9 +2030,21 @@ function allCourses() {
     && typeof staffAccessRole === "function"
     && staffAccessRole(u.email);
   const extras = extraCourses().filter((c) => preview || (!c.unpublished && c.status !== "unlisted"));
-  return COURSES.filter((c) => preview || !hidden.includes(c.id))
+  let list = COURSES.filter((c) => preview || !hidden.includes(c.id))
     .map((c) => ({ ...c, ...(edits[c.id] || {}) }))
     .concat(extras);
+  // Learners only see Slingshot; staff preview=1 keeps full admin extras for QA.
+  if (!preview) {
+    list = list.filter(isPublicKeepCourse);
+    const seen = new Set();
+    list = list.filter((c) => {
+      const key = String(c.title || "").toLowerCase().replace(/\s+/g, " ").trim() || c.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  return list;
 }
 function formatLiveWhen(iso) {
   const d = new Date(iso);
@@ -4512,24 +4496,6 @@ function enroll(id) {
 }
 
 const COURSE_NEXT = {
-  "first-month": ["charts-101", "opt-start", "candles"],
-  "charts-101": ["candles", "price-action", "levels"],
-  "candles": ["levels", "price-action", "breakout"],
-  "levels": ["price-action", "breakout"],
-  "mf-guide": ["sip", "long-term"],
-  "sip": ["long-term", "mf-guide"],
-  "long-term": ["sip", "opt-start"],
-  "opt-start": ["income", "spreads"],
-  "income": ["spreads", "opening-range"],
-  "spreads": ["opening-range", "income"],
-  "breakout": ["opening-range", "price-action"],
-  "price-action": ["breakout", "opening-range"],
-  "opening-range": ["breakout", "spreads"],
-  "hindi-ta": ["hindi-swing", "candles"],
-  "hindi-swing": ["hindi-ta", "price-action"],
-  "crypto-lab": ["opt-start", "first-month"],
-  "ema-swing": ["price-action", "vwap"],
-  "vwap": ["breakout", "opening-range"]
 };
 
 function resolveNextTarget(kind, id) {
@@ -7638,10 +7604,8 @@ function ensurePublicDemoUsers() {
 function ensurePublicDemoPurchases() {
   if (localStorage.getItem("tradeshalaPublicPurchaseSeed")) return;
   const demoEn = [
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "breakout", at: "2026-08-12T11:00:00.000Z", tx: "TXNDEMOBREAK01", orderId: "ord-demo-breakout", method: "upi" },
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "opt-start", at: "2026-08-13T11:00:00.000Z", tx: "TXNDEMOOPTST02", orderId: "ord-demo-opt-start", method: "upi" },
-    { name: "Sneha Bansal", email: "sneha@gmail.com", courseId: "hindi-ta", at: "2026-08-18T12:00:00.000Z", tx: "TXNDEMOHINDITA", orderId: "ord-demo-hindi-ta", method: "card" },
-    { name: "Kavya Iyer", email: "kavya@gmail.com", courseId: "income", at: "2026-09-04T14:00:00.000Z", tx: "TXNDEMOINCOME1", orderId: "ord-demo-income", method: "upi" }
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-08-12T11:00:00.000Z", tx: "TXNDEMOSLING01", orderId: "ord-demo-slingshot", method: "upi" },
+    { name: "Kavya Iyer", email: "kavya@gmail.com", courseId: "slingshot", at: "2026-09-04T14:00:00.000Z", tx: "TXNDEMOSLING02", orderId: "ord-demo-slingshot-2", method: "upi" }
   ];
   const enrolls = readList(ALL_ENROLL_KEY);
   let enChanged = false;
@@ -8204,4 +8168,5 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk179: Edit Profile DOB dd-mm-yyyy + footer/header shared mark img /css/style.css?v=desk59 */
 /* cache-bust desk180: circular badge mark white underlay so footer matches header /css/style.css?v=desk60 */
 /* cache-bust desk181: CDN re-bust after desk180/logo4 immutable poison (desk181 itself got poisoned) */
-/* cache-bust desk182: CDN re-bust after desk181 immutable poison on www /css/style.css?v=desk60 mark?v=logo5 */
+/* cache-bust desk183: CDN re-bust after desk181 immutable poison on www /css/style.css?v=desk60 mark?v=logo5 */
+/* cache-bust desk183: public catalog keep only Slingshot: The 5-Minute Trading Edge */
