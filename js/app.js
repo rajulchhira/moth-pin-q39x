@@ -1956,17 +1956,220 @@ function courseEdits() {
   try { return JSON.parse(localStorage.getItem(COURSE_EDITS_KEY) || "{}"); } catch { return {}; }
 }
 function setCourseEdits(map) { return saveJson(COURSE_EDITS_KEY, map); }
+
+/** Shared KV catalog mirror (control writes → public reads). */
+const CATALOG_API = "/api/catalog/courses";
+const CATALOG_CACHE_KEY = "tradeshalaCatalogRemoteCache";
+let __catalogRemote = null;
+let __catalogPushTimer = null;
+let __catalogHydrated = false;
+
+function emptyRemoteCatalog() {
+  return { version: 1, updatedAt: null, updatedBy: "", edits: {}, extras: [], hidden: [] };
+}
+
+function getRemoteCatalog() {
+  if (__catalogRemote) return __catalogRemote;
+  try {
+    const cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || "null");
+    if (cached && typeof cached === "object") {
+      __catalogRemote = {
+        version: cached.version || 1,
+        updatedAt: cached.updatedAt || null,
+        updatedBy: cached.updatedBy || "",
+        edits: cached.edits && typeof cached.edits === "object" ? cached.edits : {},
+        extras: Array.isArray(cached.extras) ? cached.extras : [],
+        hidden: Array.isArray(cached.hidden) ? cached.hidden : []
+      };
+      return __catalogRemote;
+    }
+  } catch { /* ignore */ }
+  return emptyRemoteCatalog();
+}
+
+function setRemoteCatalog(doc) {
+  const next = {
+    version: doc?.version || 1,
+    updatedAt: doc?.updatedAt || null,
+    updatedBy: doc?.updatedBy || "",
+    edits: doc?.edits && typeof doc.edits === "object" ? doc.edits : {},
+    extras: Array.isArray(doc?.extras) ? doc.extras : [],
+    hidden: Array.isArray(doc?.hidden) ? doc.hidden : []
+  };
+  __catalogRemote = next;
+  try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  return next;
+}
+
+function mergedCourseEdits() {
+  const remote = getRemoteCatalog().edits || {};
+  const local = courseEdits();
+  return { ...remote, ...local };
+}
+
+function mergedHiddenCourseIds() {
+  const remote = getRemoteCatalog().hidden || [];
+  const local = hiddenCourseIds();
+  return Array.from(new Set([].concat(remote, local).map(String)));
+}
+
+function remoteExtraCourses() {
+  const seedIds = seedCourseIds();
+  const seedTitles = seedCourseTitleKeys();
+  return (getRemoteCatalog().extras || []).filter((c) => {
+    if (!c || c.deleted) return false;
+    if (isRetiredPublicCourseId(c.id)) return false;
+    if (seedIds.has(c.id)) return false;
+    if (isPublicKeepCourse(c) && seedTitles.has(courseTitleKey(c.title))) return false;
+    return true;
+  });
+}
+
+function catalogStaffHeaders() {
+  try {
+    if (typeof AdminCore !== "undefined" && AdminCore.session) {
+      const s = AdminCore.session();
+      if (s?.email) {
+        return {
+          "Content-Type": "application/json",
+          "X-Staff-Email": s.email,
+          "X-Staff-Role": s.role || (AdminCore.isOwner && AdminCore.isOwner() ? "owner" : "subadmin"),
+          "X-Staff-Creator": s.creatorEnabled ? "1" : "0"
+        };
+      }
+    }
+  } catch { /* ignore */ }
+  try {
+    const raw = localStorage.getItem(STAFF_SESSION_KEY);
+    const s = raw ? JSON.parse(raw) : null;
+    if (s?.email) {
+      return {
+        "Content-Type": "application/json",
+        "X-Staff-Email": s.email,
+        "X-Staff-Role": s.role || "subadmin",
+        "X-Staff-Creator": s.creatorEnabled ? "1" : "0"
+      };
+    }
+  } catch { /* ignore */ }
+  return { "Content-Type": "application/json" };
+}
+
+function buildCatalogPushPayload() {
+  return {
+    edits: courseEdits(),
+    extras: extraCourses(),
+    hidden: hiddenCourseIds()
+  };
+}
+
+async function pushCatalogRemote(opts) {
+  const silent = !opts || opts.silent !== false;
+  if (__catalogPushTimer) {
+    clearTimeout(__catalogPushTimer);
+    __catalogPushTimer = null;
+  }
+  const headers = catalogStaffHeaders();
+  if (!headers["X-Staff-Email"]) {
+    if (!silent) console.warn("[catalog] skip push — no staff session");
+    return { ok: false, skipped: "no_staff" };
+  }
+  try {
+    const res = await fetch(CATALOG_API, {
+      method: "PUT",
+      headers,
+      credentials: "same-origin",
+      body: JSON.stringify(buildCatalogPushPayload())
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      if (!silent) console.warn("[catalog] push failed", data?.error || res.status);
+      return { ok: false, error: data?.error || String(res.status) };
+    }
+    setRemoteCatalog(data);
+    return { ok: true, data };
+  } catch (err) {
+    if (!silent) console.warn("[catalog] push error", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+function scheduleCatalogPush() {
+  if (__catalogPushTimer) clearTimeout(__catalogPushTimer);
+  __catalogPushTimer = setTimeout(() => {
+    __catalogPushTimer = null;
+    pushCatalogRemote({ silent: true });
+  }, 400);
+}
+
+async function hydrateCatalogFromRemote() {
+  try {
+    const res = await fetch(CATALOG_API, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+    });
+    if (!res.ok) return getRemoteCatalog();
+    const data = await res.json().catch(() => null);
+    if (!data || !data.ok) return getRemoteCatalog();
+    const hasContent = (data.edits && Object.keys(data.edits).length)
+      || (Array.isArray(data.extras) && data.extras.length)
+      || (Array.isArray(data.hidden) && data.hidden.length);
+    // Empty KV: if this browser has control edits, seed the shared store once.
+    if (!hasContent) {
+      const localPayload = buildCatalogPushPayload();
+      const localHas = Object.keys(localPayload.edits || {}).length
+        || (localPayload.extras || []).length
+        || (localPayload.hidden || []).length;
+      if (localHas && catalogStaffHeaders()["X-Staff-Email"]) {
+        await pushCatalogRemote({ silent: true });
+      }
+      __catalogHydrated = true;
+      return getRemoteCatalog();
+    }
+    setRemoteCatalog(data);
+    // Mirror into localStorage only on control/admin so staff devices stay in sync.
+    // Public visitors apply remote via mergedCourseEdits() without writing local keys.
+    if (typeof isAdminPage === "function" && isAdminPage()) {
+      try {
+        const local = courseEdits();
+        const remoteEdits = data.edits || {};
+        Object.keys(remoteEdits).forEach((id) => {
+          local[id] = { ...remoteEdits[id], ...(local[id] || {}) };
+        });
+        if (Object.keys(remoteEdits).length) setCourseEdits(local);
+        const extras = extraCourses();
+        const byId = new Map(extras.map((c) => [c.id, c]));
+        (data.extras || []).forEach((c) => {
+          if (!c?.id || isRetiredPublicCourseId(c.id)) return;
+          if (!byId.has(c.id)) byId.set(c.id, c);
+        });
+        writeList(EXTRA_COURSES_KEY, Array.from(byId.values()));
+        const hidden = Array.from(new Set([].concat(hiddenCourseIds(), data.hidden || []).map(String)));
+        writeList(HIDDEN_COURSES_KEY, hidden.filter((id) => !isRetiredPublicCourseId(id)));
+      } catch { /* ignore mirror errors */ }
+    }
+    __catalogHydrated = true;
+    return getRemoteCatalog();
+  } catch {
+    __catalogHydrated = true;
+    return getRemoteCatalog();
+  }
+}
+
 function applyCoursePatch(id, fields) {
   const extra = extraCourses();
   const i = extra.findIndex((c) => c.id === id);
   if (i >= 0) {
     extra[i] = { ...extra[i], ...fields };
     writeList(EXTRA_COURSES_KEY, extra);
+    scheduleCatalogPush();
     return;
   }
   const edits = courseEdits();
   edits[id] = { ...(edits[id] || {}), ...fields };
   setCourseEdits(edits);
+  scheduleCatalogPush();
 }
 function courseBannerOf(c) {
   return String(c?.banner || "").trim();
@@ -2055,27 +2258,28 @@ function catalogExtraCourses() {
   });
 }
 /**
- * One-shot: purge retired / duplicate localStorage so /control matches the live public seed.
- * Public keep-courses (Slingshot) drop stale courseEdits so title/cover/price match app.js.
+ * One-shot: purge retired / duplicate localStorage ghosts.
+ * desk185+: keep seed courseEdits (price/pic) so control → shared KV → public stays intact.
  */
 function pruneStaleCatalogLocal() {
-  const FLAG = "tradeshalaCatalogPruneDesk184";
+  const FLAG = "tradeshalaCatalogPruneDesk185";
   try {
     if (localStorage.getItem(FLAG)) return;
   } catch { return; }
-  const seedIds = seedCourseIds();
+  // Drop the prior prune flag that wiped seed edits (broke control→public sync).
+  try { localStorage.removeItem("tradeshalaCatalogPruneDesk184"); } catch { /* ignore */ }
   const nextExtras = catalogExtraCourses();
   writeList(EXTRA_COURSES_KEY, nextExtras);
   const edits = courseEdits();
   let editsDirty = false;
   Object.keys(edits).forEach((id) => {
-    if (isRetiredPublicCourseId(id) || seedIds.has(id)) {
+    if (isRetiredPublicCourseId(id)) {
       delete edits[id];
       editsDirty = true;
     }
   });
   if (editsDirty) setCourseEdits(edits);
-  const hidden = hiddenCourseIds().filter((id) => !isRetiredPublicCourseId(id) && !seedIds.has(id));
+  const hidden = hiddenCourseIds().filter((id) => !isRetiredPublicCourseId(id));
   writeList(HIDDEN_COURSES_KEY, hidden);
   try {
     const owners = typeof courseOwners === "function" ? courseOwners() : {};
@@ -2092,24 +2296,31 @@ function pruneStaleCatalogLocal() {
 }
 function allCourses() {
   pruneStaleCatalogLocal();
-  const hidden = hiddenCourseIds();
-  const edits = courseEdits();
+  const hidden = mergedHiddenCourseIds();
+  const edits = mergedCourseEdits();
   const u = typeof getUser === "function" ? getUser() : null;
   const preview = /(?:\?|&)preview=1(?:&|$)/.test(location.search)
     && u
     && typeof staffAccessRole === "function"
     && staffAccessRole(u.email);
-  // Seed keep-courses are the live public truth; extras never shadow them.
-  const extras = catalogExtraCourses().filter((c) => preview || (!c.unpublished && c.status !== "unlisted"));
+  // Local extras + shared KV extras (dedupe by id); seed keep-courses never shadowed by extras.
+  const localExtras = catalogExtraCourses();
+  const remoteExtras = remoteExtraCourses();
+  const extraById = new Map();
+  remoteExtras.forEach((c) => { if (c?.id) extraById.set(c.id, c); });
+  localExtras.forEach((c) => { if (c?.id) extraById.set(c.id, { ...(extraById.get(c.id) || {}), ...c }); });
+  const extras = Array.from(extraById.values()).filter((c) => preview || (!c.unpublished && c.status !== "unlisted"));
   let list = COURSES.filter((c) => preview || !hidden.includes(c.id))
     .map((c) => ({ ...c, ...(edits[c.id] || {}) }))
     .concat(extras);
-  // Learners only see Slingshot; staff preview=1 keeps remaining admin drafts for QA.
+  // Learners only see keep-courses (Slingshot by id) + live extras; preview=1 keeps drafts.
   if (!preview) {
-    list = list.filter(isPublicKeepCourse);
+    list = list.filter((c) => isPublicKeepCourse(c) || (!isRetiredPublicCourseId(c.id) && !seedCourseIds().has(c.id)));
     const seen = new Set();
     list = list.filter((c) => {
-      const key = courseTitleKey(c.title) || c.id;
+      const key = (isPublicKeepCourse(c) ? "keep:" + (seedCourseIds().has(c.id) ? c.id : courseTitleKey(c.title)) : null)
+        || courseTitleKey(c.title)
+        || c.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -7806,6 +8017,8 @@ async function startPublicBoot() {
   }
   if (typeof seedLms === "function") seedLms();
   ensurePublicDemoUsers();
+  // Shared KV catalog: public + control both hydrate before painting courses.
+  try { await hydrateCatalogFromRemote(); } catch { /* seed fallback */ }
 
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");
@@ -8242,3 +8455,5 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk183: CDN re-bust after desk181 immutable poison on www /css/style.css?v=desk60 mark?v=logo5 */
 /* cache-bust desk183: public catalog keep only Slingshot: The 5-Minute Trading Edge */
 /* cache-bust desk184: control/CRM course list matches live public Slingshot seed (prune ghosts) */
+
+/* cache-bust desk185: control course edits (pic/price) sync via KV /api/catalog/courses */
