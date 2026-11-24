@@ -19,6 +19,7 @@ function brandMarkSVG() {
       </linearGradient>
       <clipPath id="${clip}"><circle cx="23" cy="25.4" r="16.35"/></clipPath>
     </defs>
+    <circle cx="23" cy="25.4" r="20.35" fill="#fff"/>
     <circle cx="23" cy="25.4" r="20.35" fill="none" stroke="url(#${g})" stroke-width="1.75"/>
     <circle cx="23" cy="25.4" r="16.55" fill="url(#${g})"/>
     <ellipse cx="18.4" cy="20" rx="8.4" ry="5.8" fill="url(#${glass})"/>
@@ -34,8 +35,11 @@ function brandMarkSVG() {
   </svg></span>`;
 }
 
+const BRAND_MARK_SRC = "/img/bizgarh-mark.svg?v=logo4";
+
 function brandLogoHTML() {
-  return `${brandMarkSVG()}<span class="logo-word">Bizgarh</span>`;
+  // Same circular badge asset for header + footer (white underlay keeps ring gap solid on dark bg).
+  return `<span class="logo-mark" aria-hidden="true"><img src="${BRAND_MARK_SRC}" width="40" height="40" alt=""></span><span class="logo-word">Bizgarh</span>`;
 }
 
 function currentPageName() {
@@ -6147,6 +6151,85 @@ function renderMyLearning() {
   bindSlideFades(root);
 }
 
+/** Display DOB as dd-mm-yyyy. Accepts stored YYYY-MM-DD or already-formatted dd-mm-yyyy. */
+function dobToDisplay(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (iso) return `${iso[3]}-${iso[2]}-${iso[1]}`;
+  const dmy = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/.exec(s);
+  if (dmy) {
+    return `${String(dmy[1]).padStart(2, "0")}-${String(dmy[2]).padStart(2, "0")}-${dmy[3]}`;
+  }
+  return s;
+}
+
+/** Mask typed digits into dd-mm-yyyy while typing. */
+function maskDobDigits(raw) {
+  const digits = String(raw || "").replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+}
+
+/**
+ * Parse visible dd-mm-yyyy into YYYY-MM-DD for storage.
+ * Empty → ""; invalid → null (caller should toast).
+ */
+function dobDisplayToIso(display) {
+  const s = String(display || "").trim();
+  if (!s) return "";
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+  if (!m) return null;
+  const day = +m[1];
+  const month = +m[2];
+  const year = +m[3];
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return null;
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) return null;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function bindDobField(form) {
+  const text = form?.querySelector('input[name="dob"]');
+  const picker = form?.querySelector("#dobPicker");
+  if (!text) return;
+  text.addEventListener("input", () => {
+    const start = text.selectionStart;
+    const before = text.value;
+    const next = maskDobDigits(before);
+    if (next !== before) {
+      text.value = next;
+      const delta = next.length - before.length;
+      const pos = Math.max(0, (start || next.length) + delta);
+      try { text.setSelectionRange(pos, pos); } catch {}
+    }
+  });
+  text.addEventListener("blur", () => {
+    const v = text.value.trim();
+    if (!v) return;
+    if (dobDisplayToIso(v) === null) {
+      text.setCustomValidity("Use dd-mm-yyyy (e.g. 15-07-1998)");
+      text.reportValidity();
+    } else {
+      text.setCustomValidity("");
+    }
+  });
+  picker?.addEventListener("change", () => {
+    if (!picker.value) return;
+    text.value = dobToDisplay(picker.value);
+    text.setCustomValidity("");
+  });
+  form.querySelector("[data-dob-pick]")?.addEventListener("click", () => {
+    const iso = dobDisplayToIso(text.value.trim());
+    if (iso) picker.value = iso;
+    if (typeof picker.showPicker === "function") {
+      try { picker.showPicker(); return; } catch {}
+    }
+    picker.click();
+  });
+}
+
 function renderAccountPage() {
   const root = document.getElementById("accountRoot");
   if (!root) return;
@@ -6171,6 +6254,7 @@ function renderAccountPage() {
   };
   const genderVal = p.gender === "Prefer not to say" ? "" : (p.gender || "");
   const dpPhoto = learnerPhotoUrl(row.email || user.email) || p.photo || "";
+  const dobDisplay = dobToDisplay(p.dob || "");
   const panes = {
     edit: `<h2>Account info</h2>
       <form id="profileForm" class="form-card" style="max-width:none;box-shadow:none;border:0;padding:0">
@@ -6188,7 +6272,13 @@ function renderAccountPage() {
         <div class="field"><label>Gender</label><div class="radios">
           ${["Male", "Female"].map((g) => `<label><input type="radio" name="gender" value="${g}" ${genderVal === g ? "checked" : ""}> ${g}</label>`).join("")}
         </div></div>
-        <div class="field"><label>Date of birth</label><input name="dob" type="date" value="${escapeHtml(p.dob || "")}"></div>
+        <div class="field"><label>Date of birth</label>
+          <div class="dob-row">
+            <input name="dob" type="text" inputmode="numeric" autocomplete="bday" placeholder="dd-mm-yyyy" maxlength="10" pattern="\\d{2}-\\d{2}-\\d{4}" title="Use dd-mm-yyyy" value="${escapeHtml(dobDisplay)}">
+            <button type="button" class="dob-pick" data-dob-pick aria-label="Open calendar">${iconSvg("cal")}</button>
+            <input id="dobPicker" type="date" class="dob-native" tabindex="-1" aria-hidden="true">
+          </div>
+        </div>
         <div class="field"><label>Country</label><input name="country" value="${escapeHtml(p.country || "India")}"></div>
         <div class="field"><label>State</label><input name="state" value="${escapeHtml(p.state || "")}"></div>
         <div class="field"><label>City</label><input name="city" value="${escapeHtml(p.city || "")}"></div>
@@ -6230,15 +6320,25 @@ function renderAccountPage() {
     <section>${pane}</section>
   </div>`;
   root.dataset.tk = tkTab;
-  document.getElementById("profileForm")?.addEventListener("submit", (e) => {
+  const profileForm = document.getElementById("profileForm");
+  if (profileForm) bindDobField(profileForm);
+  profileForm?.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
     const pickedGender = f.gender?.value || "";
     const keptPhoto = learnerPhotoUrl(row.email || user.email) || p.photo || "";
+    const dobRaw = f.dob.value.trim();
+    const dobIso = dobDisplayToIso(dobRaw);
+    if (dobRaw && dobIso === null) {
+      f.dob.setCustomValidity("Use dd-mm-yyyy (e.g. 15-07-1998)");
+      f.dob.reportValidity();
+      return;
+    }
+    f.dob.setCustomValidity("");
     const profile = {
       phone: f.phone.value.trim(),
       gender: pickedGender === "Prefer not to say" ? "" : (pickedGender || (genderVal || "")),
-      dob: f.dob.value,
+      dob: dobIso || "",
       country: f.country.value.trim(),
       state: f.state.value.trim(),
       city: f.city.value.trim(),
@@ -8101,3 +8201,5 @@ else setTimeout(startPublicBoot, 0);
 
 /* cache-bust desk177: CDN re-bust after desk56 immutable poison /css/style.css?v=desk57 */
 /* cache-bust desk178: light-only site — remove Theme menu + header My Learning /css/style.css?v=desk58 */
+/* cache-bust desk179: Edit Profile DOB dd-mm-yyyy + footer/header shared mark img /css/style.css?v=desk59 */
+/* cache-bust desk180: circular badge mark white underlay so footer matches header /css/style.css?v=desk60 */
