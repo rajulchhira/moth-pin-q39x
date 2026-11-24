@@ -148,7 +148,9 @@ AdminCore.clearRehanCrmPasswordOk = () => {
 AdminCore.pickHostedPhoto = (raw) => {
   const p = String(raw || "").trim();
   if (!p) return "";
-  if (p.startsWith("data:")) return ""; // oversized inline DPs get dropped from KV
+  // KV drops data: photos over 200 KB; keep under-budget inline DPs so Save+hydrate
+  // does not wipe a successfully persisted sub-admin / Rehan DP back to stock.
+  if (p.startsWith("data:") && p.length > 200 * 1024) return "";
   return p;
 };
 

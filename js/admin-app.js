@@ -1102,8 +1102,17 @@ function staffDrawer(email) {
       <h4>Public instructor page</h4>
       <p class="muted">These fields are what students see on /instructor. Save here and that page updates.</p>
       <label>Display name</label><input name="name" value="${adEsc(s.name)}" required>
-      <label>Photo URL</label><input name="photo" value="${adEsc(s.photo || pack.photo || "")}" placeholder="https://…">
+      ${(() => {
+        const rawPhoto = String(s.photo || pack.photo || "").trim();
+        const isInline = rawPhoto.startsWith("data:");
+        const urlVal = isInline ? "" : rawPhoto;
+        const preview = rawPhoto
+          ? `<p class="muted staff-photo-preview"><img src="${adEsc(rawPhoto)}" alt="" width="64" height="64" style="width:64px;height:64px;object-fit:cover;border-radius:50%;vertical-align:middle"> ${isInline ? "Inline photo kept — upload to replace or paste https://…" : ""}</p>`
+          : "";
+        return `<label>Photo URL</label><input name="photo" value="${adEsc(urlVal)}" placeholder="${isInline ? "Inline photo kept — upload to replace" : "https://…"}">
       <label>Upload photo</label><input name="photoFile" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+      ${preview}`;
+      })()}
       <label>Bio</label><textarea name="bio" rows="4">${adEsc(s.bio || pack.bio || "")}</textarea>
       ${instructorFaceFieldsHTML({ ...pack, tag: pack.tag, hidden: pack.hidden }, "full")}
       <h4>Account</h4>
@@ -1605,7 +1614,8 @@ function bindApp() {
           name, email, password: f.password.value, role: "subadmin", status: "active",
           photo, bio, faceKey: instructorSlug(name),
           creatorEnabled, referralCode: creatorEnabled ? code : "", creatorId: creatorEnabled ? "CR-"+code : "",
-          permissions: { ...CREATOR_DEFAULT_PERMS }, created: AdminCore.now()
+          permissions: { ...CREATOR_DEFAULT_PERMS }, created: AdminCore.now(),
+          photoInlineDropped: false
         });
         AdminCore.saveStaff(row);
         syncStaffInstructor(row, face);
@@ -1623,15 +1633,19 @@ function bindApp() {
         toast("Sub-admin created · public instructor page is ready");
         paint();
       };
+      const fallbackPhoto = () => (f.photo?.value || "").trim() || (typeof photoFor === "function" ? photoFor(f.name.value.trim()) : "");
       const file = f.photoFile?.files?.[0];
       if (file) {
-        const r = new FileReader();
-        r.onload = () => finish(String(r.result || ""));
-        r.onerror = () => finish((f.photo?.value || "").trim() || (typeof photoFor === "function" ? photoFor(f.name.value.trim()) : ""));
-        r.readAsDataURL(file);
+        const compress = typeof readImageAsStaffPhoto === "function"
+          ? readImageAsStaffPhoto(file)
+          : Promise.reject(new Error("no compress"));
+        compress.then((dataUrl) => finish(dataUrl)).catch(() => {
+          toast("Could not compress photo — try a smaller image or paste a URL");
+          finish(fallbackPhoto());
+        });
         return;
       }
-      finish((f.photo?.value || "").trim() || (typeof photoFor === "function" ? photoFor(f.name.value.trim()) : ""));
+      finish(fallbackPhoto());
     }
     if (f.id === "editStaffForm") {
       e.preventDefault();
@@ -1666,7 +1680,8 @@ function bindApp() {
           permissions: perms,
           commission: { type: f.ctype.value, newSale: Number(f.newSale.value), renewal: Number(f.renewal.value), start: row.commission?.start || "", end: row.commission?.end || "" },
           referralCode: row.referralCode || (creatorEnabled ? makeCode(name.slice(0,5).toUpperCase()) : row.referralCode),
-          creatorId: row.creatorId || (creatorEnabled ? "CR-" + (row.referralCode || "") : row.creatorId)
+          creatorId: row.creatorId || (creatorEnabled ? "CR-" + (row.referralCode || "") : row.creatorId),
+          photoInlineDropped: false
         });
         AdminCore.saveStaff(next);
         syncStaffInstructor(next, face);
@@ -1685,12 +1700,29 @@ function bindApp() {
         paint();
       };
       const file = f.photoFile?.files?.[0];
-      const photoUrl = (f.photo?.value || row.photo || "").trim();
+      // Keep existing row photo when the URL field is empty (inline data: DPs are not
+      // re-emitted into the text input so the field does not truncate them).
+      const photoUrl = (f.photo?.value || "").trim() || String(row.photo || "").trim();
       if (file) {
-        const r = new FileReader();
-        r.onload = () => saveRow(String(r.result || photoUrl));
-        r.onerror = () => saveRow(photoUrl);
-        r.readAsDataURL(file);
+        const priorHosted = photoUrl.startsWith("data:") ? "" : photoUrl;
+        const compress = typeof readImageAsStaffPhoto === "function"
+          ? readImageAsStaffPhoto(file)
+          : Promise.reject(new Error("no compress"));
+        compress.then((dataUrl) => saveRow(dataUrl)).catch(() => {
+          toast("Could not compress photo — keeping the previous photo");
+          saveRow(priorHosted || photoUrl);
+        });
+        return;
+      }
+      if (photoUrl.startsWith("data:") && typeof compressInlineStaffPhoto === "function"
+          && photoUrl.length > (typeof STAFF_PHOTO_INLINE_BUDGET === "number" ? STAFF_PHOTO_INLINE_BUDGET : 180 * 1024)) {
+        compressInlineStaffPhoto(photoUrl).then((next) => {
+          if (next) saveRow(next);
+          else {
+            toast("Existing photo is too large to keep in sync — upload a smaller image");
+            saveRow(photoUrl);
+          }
+        });
         return;
       }
       saveRow(photoUrl);
