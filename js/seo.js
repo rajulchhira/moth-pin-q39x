@@ -3,7 +3,7 @@
   var BRAND = "Bizgarh";
   var IMG = ORIGIN + "/img/bizgarh-lockup.png";
   var ICON = ORIGIN + "/img/favicon-512.png?v=logo2";
-  var LOGO = ORIGIN + "/img/bizgarh-mark.svg?v=logo4";
+  var LOGO = ORIGIN + "/img/bizgarh-mark.svg?v=logo5";
 
   function pathOf() {
     var p = (location.pathname || "/").replace(/\.html$/i, "").replace(/\/+$/, "");
