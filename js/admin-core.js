@@ -189,13 +189,41 @@ AdminCore.deleteStaff = (email) => {
   if (typeof instructorEdits === "function" && typeof setInstructorEdits === "function") {
     const map = instructorEdits();
     const slug = typeof instructorSlug === "function" ? instructorSlug(row.name) : "";
-    Object.keys(map).forEach((k) => {
-      const e = map[k];
-      if (!e) return;
-      if (String(e.email || "").toLowerCase() === mail) delete map[k];
-      else if (slug && typeof instructorSlug === "function" && instructorSlug(e.name) === slug) delete map[k];
-    });
+    const isSeed = typeof MENTORS !== "undefined" && Array.isArray(MENTORS)
+      && MENTORS.some((m) => {
+        if (!m || !m.name) return false;
+        if (m.name === row.name) return true;
+        return slug && typeof instructorSlug === "function" && instructorSlug(m.name) === slug;
+      });
+    // Seed faces live in MENTORS[]; deleting staff must hide them on public, not drop the edit key.
+    if (isSeed && slug) {
+      Object.keys(map).forEach((k) => {
+        const e = map[k];
+        if (!e) return;
+        const matchMail = String(e.email || "").toLowerCase() === mail;
+        const matchSlug = slug && typeof instructorSlug === "function" && instructorSlug(e.name) === slug;
+        if (matchMail || matchSlug || k === slug) delete map[k];
+      });
+      map[slug] = {
+        name: row.name,
+        email: mail,
+        hidden: true,
+        photo: row.photo || "",
+        bio: row.bio || ""
+      };
+    } else {
+      Object.keys(map).forEach((k) => {
+        const e = map[k];
+        if (!e) return;
+        if (String(e.email || "").toLowerCase() === mail) delete map[k];
+        else if (slug && typeof instructorSlug === "function" && instructorSlug(e.name) === slug) delete map[k];
+      });
+    }
     setInstructorEdits(map);
+    if (typeof scheduleInstructorsPush === "function") scheduleInstructorsPush();
+    else if (typeof pushInstructorsRemote === "function") {
+      try { pushInstructorsRemote({ silent: true }); } catch { /* ignore */ }
+    }
   }
   if (typeof AdminCore.forceLogout === "function") AdminCore.forceLogout(mail);
   AdminCore.audit("staff_delete", mail, row.name || "", "");

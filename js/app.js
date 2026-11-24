@@ -1013,8 +1013,152 @@ function instructorEdits() {
 function setInstructorEdits(map) {
   saveJson(INSTRUCTOR_EDITS_KEY, map);
 }
+
+/** Shared KV instructor faces (control Staff → public /instructors). */
+const INSTRUCTORS_API = "/api/catalog/instructors";
+const INSTRUCTORS_CACHE_KEY = "tradeshalaInstructorsRemoteCache";
+let __instructorsRemote = null;
+let __instructorsPushTimer = null;
+let __instructorsHydrated = false;
+
+function emptyRemoteInstructors() {
+  return { version: 1, updatedAt: null, updatedBy: "", edits: {} };
+}
+
+function getRemoteInstructors() {
+  if (__instructorsRemote) return __instructorsRemote;
+  try {
+    const cached = JSON.parse(localStorage.getItem(INSTRUCTORS_CACHE_KEY) || "null");
+    if (cached && typeof cached === "object") {
+      __instructorsRemote = {
+        version: cached.version || 1,
+        updatedAt: cached.updatedAt || null,
+        updatedBy: cached.updatedBy || "",
+        edits: cached.edits && typeof cached.edits === "object" ? cached.edits : {}
+      };
+      return __instructorsRemote;
+    }
+  } catch { /* ignore */ }
+  return emptyRemoteInstructors();
+}
+
+function setRemoteInstructors(doc) {
+  const next = {
+    version: doc?.version || 1,
+    updatedAt: doc?.updatedAt || null,
+    updatedBy: doc?.updatedBy || "",
+    edits: doc?.edits && typeof doc.edits === "object" ? doc.edits : {}
+  };
+  __instructorsRemote = next;
+  try { localStorage.setItem(INSTRUCTORS_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  return next;
+}
+
+function mergedInstructorEdits() {
+  const remote = getRemoteInstructors().edits || {};
+  const local = instructorEdits();
+  // Public: after hydrate, remote is authoritative so control deletes/hides stick.
+  if (__instructorsHydrated && typeof isAdminPage === "function" && !isAdminPage()) {
+    return remote;
+  }
+  return { ...remote, ...local };
+}
+
+function buildInstructorsPushPayload() {
+  return { edits: instructorEdits() };
+}
+
+async function pushInstructorsRemote(opts) {
+  const silent = !opts || opts.silent !== false;
+  if (__instructorsPushTimer) {
+    clearTimeout(__instructorsPushTimer);
+    __instructorsPushTimer = null;
+  }
+  const headers = typeof catalogStaffHeaders === "function"
+    ? catalogStaffHeaders()
+    : { "Content-Type": "application/json" };
+  if (!headers["X-Staff-Email"]) {
+    if (!silent) console.warn("[instructors] skip push — no staff session");
+    return { ok: false, skipped: "no_staff" };
+  }
+  try {
+    const res = await fetch(INSTRUCTORS_API, {
+      method: "PUT",
+      headers,
+      credentials: "same-origin",
+      body: JSON.stringify(buildInstructorsPushPayload())
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      if (!silent) console.warn("[instructors] push failed", data?.error || res.status);
+      return { ok: false, error: data?.error || String(res.status) };
+    }
+    setRemoteInstructors(data);
+    return { ok: true, data };
+  } catch (err) {
+    if (!silent) console.warn("[instructors] push error", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+function scheduleInstructorsPush() {
+  if (__instructorsPushTimer) clearTimeout(__instructorsPushTimer);
+  __instructorsPushTimer = setTimeout(() => {
+    __instructorsPushTimer = null;
+    pushInstructorsRemote({ silent: true });
+  }, 400);
+}
+
+async function hydrateInstructorsFromRemote() {
+  try {
+    const res = await fetch(INSTRUCTORS_API, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+    });
+    if (!res.ok) {
+      __instructorsHydrated = true;
+      return getRemoteInstructors();
+    }
+    const data = await res.json().catch(() => null);
+    if (!data || !data.ok) {
+      __instructorsHydrated = true;
+      return getRemoteInstructors();
+    }
+    const hasContent = data.edits && Object.keys(data.edits).length;
+    if (!hasContent) {
+      const localPayload = buildInstructorsPushPayload();
+      const localHas = Object.keys(localPayload.edits || {}).length;
+      const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+      if (localHas && headers["X-Staff-Email"]) {
+        await pushInstructorsRemote({ silent: true });
+      }
+      __instructorsHydrated = true;
+      return getRemoteInstructors();
+    }
+    setRemoteInstructors(data);
+    // Mirror into localStorage only on control/admin so staff devices stay in sync.
+    if (typeof isAdminPage === "function" && isAdminPage()) {
+      try {
+        const local = instructorEdits();
+        const remoteEdits = data.edits || {};
+        Object.keys(remoteEdits).forEach((id) => {
+          local[id] = { ...remoteEdits[id], ...(local[id] || {}) };
+        });
+        if (Object.keys(remoteEdits).length) setInstructorEdits(local);
+      } catch { /* ignore mirror errors */ }
+    }
+    __instructorsHydrated = true;
+    return getRemoteInstructors();
+  } catch {
+    __instructorsHydrated = true;
+    return getRemoteInstructors();
+  }
+}
+
 function instructorEditFor(name, email) {
-  const map = instructorEdits();
+  const map = mergedInstructorEdits();
   const mail = String(email || "").toLowerCase();
   if (mail) {
     const byMail = Object.values(map).find((e) => String(e.email || "").toLowerCase() === mail);
@@ -1033,6 +1177,7 @@ function applyInstructorEdit(name, fields, email) {
   if (!key) return null;
   map[key] = { ...(map[key] || {}), ...fields, name: fields.name || name, email: mail || map[key]?.email || "" };
   setInstructorEdits(map);
+  scheduleInstructorsPush();
   return map[key];
 }
 function photoFor(name) {
@@ -1202,7 +1347,7 @@ const INSTRUCTOR_PACKS = {
   }
 };
 function allMentors() {
-  const edits = instructorEdits();
+  const edits = mergedInstructorEdits();
   const out = [];
   const seen = new Set();
   const push = (m) => {
@@ -1224,26 +1369,29 @@ function allMentors() {
       _slug: slug
     });
   });
-  try {
-    (typeof staffList === "function" ? staffList() : []).forEach((raw) => {
-      if (!raw || !raw.name) return;
-      const role = String(raw.role || "");
-      if (role === "owner" || role === "superadmin") return;
-      if (raw.status === "suspended" || raw.status === "inactive") return;
-      const slug = raw.faceKey || instructorSlug(raw.name);
-      if (seen.has(slug) || seen.has(instructorSlug(raw.name))) return;
-      const e = instructorEditFor(raw.name, raw.email);
-      if (e.hidden) return;
-      push({
-        name: e.name || raw.name,
-        role: e.title || e.role || "Mentor",
-        tag: e.tag || (Array.isArray(e.tags) && e.tags[0]) || "Desk",
-        img: e.photo || raw.photo || photoFor(raw.name),
-        _slug: slug,
-        extra: true
+  // Staff list is browser-local; public visitors rely on merged remote edits below.
+  if (typeof isAdminPage === "function" && isAdminPage()) {
+    try {
+      (typeof staffList === "function" ? staffList() : []).forEach((raw) => {
+        if (!raw || !raw.name) return;
+        const role = String(raw.role || "");
+        if (role === "owner" || role === "superadmin") return;
+        if (raw.status === "suspended" || raw.status === "inactive") return;
+        const slug = raw.faceKey || instructorSlug(raw.name);
+        if (seen.has(slug) || seen.has(instructorSlug(raw.name))) return;
+        const e = instructorEditFor(raw.name, raw.email);
+        if (e.hidden) return;
+        push({
+          name: e.name || raw.name,
+          role: e.title || e.role || "Mentor",
+          tag: e.tag || (Array.isArray(e.tags) && e.tags[0]) || "Desk",
+          img: e.photo || raw.photo || photoFor(raw.name),
+          _slug: slug,
+          extra: true
+        });
       });
-    });
-  } catch {}
+    } catch {}
+  }
   Object.keys(edits).forEach((key) => {
     const e = edits[key];
     if (!e || e.hidden || seen.has(key) || seen.has(instructorSlug(e.name))) return;
@@ -8463,6 +8611,7 @@ async function startPublicBoot() {
   ensurePublicDemoUsers();
   // Shared KV catalog: public + control both hydrate before painting courses.
   try { await hydrateCatalogFromRemote(); } catch { /* seed fallback */ }
+  try { await hydrateInstructorsFromRemote(); } catch { /* seed fallback */ }
 
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");
