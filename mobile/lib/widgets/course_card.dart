@@ -25,48 +25,82 @@ class CourseCover extends StatelessWidget {
     final pad = height <= 110 ? 10.0 : 16.0;
     final titleSize = height <= 110 ? 13.0 : 18.0;
     final showMeta = !compactMeta && height >= 120;
+    final thumb = course.coverImageAsset;
 
-    return Container(
-      height: height,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors.length == 1 ? [colors.first, colors.first] : colors,
-        ),
-      ),
-      padding: EdgeInsets.all(pad),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            course.coverLabel,
-            maxLines: height <= 110 ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: bgText(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: titleSize,
-              height: 1.1,
-              letterSpacing: -0.3,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors:
+                      colors.length == 1 ? [colors.first, colors.first] : colors,
+                ),
+              ),
             ),
-          ),
-          if (showMeta) ...[
-            const Spacer(),
-            Text(
-              '${course.hours} hrs · ${course.lessons} lessons',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: bgText(
-                color: Colors.white.withOpacity(0.82),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
+            if (thumb != null)
+              Image.asset(
+                thumb,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            if (thumb != null)
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x66000000),
+                      Color(0x00000000),
+                      Color(0x99000000),
+                    ],
+                  ),
+                ),
+              ),
+            Padding(
+              padding: EdgeInsets.all(pad),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    course.coverLabel,
+                    maxLines: height <= 110 ? 2 : 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: bgText(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: titleSize,
+                      height: 1.1,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  if (showMeta) ...[
+                    const Spacer(),
+                    Text(
+                      '${course.hours} hrs · ${course.lessons} lessons',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: bgText(
+                        color: Colors.white.withOpacity(0.82),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }

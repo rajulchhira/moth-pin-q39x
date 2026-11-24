@@ -46,6 +46,12 @@ class _AutoMarqueeState extends State<AutoMarquee>
 
   static const int _loops = 6;
 
+  /// Infinite clones only when there are enough distinct items; otherwise a
+  /// single catalog row looks like “every card is the same course”.
+  bool get _shouldLoop => widget.itemCount >= 3;
+
+  int get _effectiveLoops => _shouldLoop ? _loops : 1;
+
   double get _stride => widget.itemExtent + widget.gap;
 
   double get _loopWidth {
@@ -60,10 +66,14 @@ class _AutoMarqueeState extends State<AutoMarquee>
     _ticker = createTicker(_onTick);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_controller.hasClients) return;
-      _controller.jumpTo(_loopWidth * (_loops ~/ 2).toDouble());
-      _ready = true;
-      _lastElapsed = Duration.zero;
-      _ticker?.start();
+      if (_shouldLoop) {
+        _controller.jumpTo(_loopWidth * (_loops ~/ 2).toDouble());
+        _ready = true;
+        _lastElapsed = Duration.zero;
+        _ticker?.start();
+      } else {
+        _ready = false;
+      }
     });
   }
 
@@ -125,12 +135,15 @@ class _AutoMarqueeState extends State<AutoMarquee>
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
           padding: widget.padding,
-          itemCount: widget.itemCount <= 0 ? 0 : widget.itemCount * _loops,
+          itemCount:
+              widget.itemCount <= 0 ? 0 : widget.itemCount * _effectiveLoops,
           itemBuilder: (context, index) {
             final i = index % widget.itemCount;
             return Padding(
               padding: EdgeInsets.only(
-                right: index == widget.itemCount * _loops - 1 ? 0 : widget.gap,
+                right: index == widget.itemCount * _effectiveLoops - 1
+                    ? 0
+                    : widget.gap,
               ),
               child: SizedBox(
                 width: widget.itemExtent,

@@ -26,6 +26,7 @@ class Course {
     required this.lessons,
     required this.coverLabel,
     required this.coverColors,
+    this.coverImageAsset,
     this.description = '',
     this.learn = const <String>[],
     this.communityOpen = false,
@@ -44,6 +45,8 @@ class Course {
   final int lessons;
   final String coverLabel;
   final List<int> coverColors;
+  /// Live catalog banner / thumb (preferred over gradient + instructor overlay).
+  final String? coverImageAsset;
   /// Public about copy — mirrors live `/api/catalog/courses` edit.
   final String description;
   /// “What you will learn” bullets from live catalog.

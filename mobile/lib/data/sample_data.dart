@@ -229,6 +229,7 @@ abstract final class SampleData {
       lessons: 6,
       coverLabel: 'SLINGSHOT',
       coverColors: [0xFF0B1220, 0xFF1E3A5F, 0xFFC2410C],
+      coverImageAsset: 'assets/courses/slingshot-banner.jpg',
       description:
           'Jumping in too early on a falling market often leads to avoidable losses. This course shows how the slingshot stretches, when to wait for the real shift above the 9 EMA, and how strict rules help you trade with confidence. Practice on NASDAQ and Bitcoin 5-minute charts and turn patience into your biggest edge.',
       learn: [

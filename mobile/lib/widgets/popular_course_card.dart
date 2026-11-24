@@ -23,7 +23,10 @@ class PopularCourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final photo = SampleData.photoAssetForInstructor(course.instructor);
+    final thumb = course.coverImageAsset;
+    final photo = thumb == null
+        ? SampleData.photoAssetForInstructor(course.instructor)
+        : null;
     final colors = course.coverColors.map(Color.new).toList();
 
     final body = SizedBox(
@@ -51,7 +54,14 @@ class PopularCourseCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (photo != null)
+                  if (thumb != null)
+                    Image.asset(
+                      thumb,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    )
+                  else if (photo != null)
                     Opacity(
                       opacity: 0.42,
                       child: Image.asset(
@@ -59,6 +69,20 @@ class PopularCourseCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         alignment: const Alignment(0, -0.35),
                         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  if (thumb != null)
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0x66000000),
+                            Color(0x00000000),
+                            Color(0x55000000),
+                          ],
+                        ),
                       ),
                     ),
                   Positioned(
