@@ -155,6 +155,70 @@ AdminCore.pickHostedPhoto = (raw) => {
 };
 
 /**
+ * Seeded MENTORS[] used to auto-create firstname@bizgarh.in staff rows.
+ * Those fake Sub-admins must never reappear after remove until a human adds them.
+ * Keep Rehan / owner / supers — never treat them as demo mentor seeds.
+ */
+const DEMO_MENTOR_STAFF_EMAILS = new Set([
+  "aarav@bizgarh.in",
+  "neha@bizgarh.in",
+  "vikram@bizgarh.in",
+  "ananya@bizgarh.in",
+  "kabir@bizgarh.in",
+  "rohan@bizgarh.in",
+  "priya@bizgarh.in",
+  "meera@bizgarh.in"
+]);
+
+AdminCore.demoMentorStaffEmails = () => {
+  const out = new Set(DEMO_MENTOR_STAFF_EMAILS);
+  if (typeof MENTORS !== "undefined" && Array.isArray(MENTORS)) {
+    MENTORS.forEach((m) => {
+      const first = String(m?.name || "").trim().split(/\s+/)[0];
+      if (!first) return;
+      out.add(first.toLowerCase() + "@bizgarh.in");
+    });
+  }
+  return out;
+};
+
+AdminCore.isDemoMentorStaffEmail = (email) => {
+  const e = AdminCore.brandEmail(email).toLowerCase();
+  if (!e || AdminCore.isRehanStaffEmail(e)) return false;
+  if (e === "admin@bizgarh.in") return false;
+  if (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(e)) return false;
+  return AdminCore.demoMentorStaffEmails().has(e);
+};
+
+/**
+ * Drop seeded mentor Sub-admins from local staff. Optionally push cleaned roster to KV.
+ * Returns { changed, removed }.
+ */
+AdminCore.purgeDemoMentorStaff = (opts) => {
+  const push = !opts || opts.push !== false;
+  if (typeof staffList !== "function" || typeof writeList !== "function") {
+    return { changed: false, removed: [] };
+  }
+  const before = staffList();
+  const removed = [];
+  const next = before.filter((s) => {
+    const mail = AdminCore.brandEmail(s?.email).toLowerCase();
+    if (!AdminCore.isDemoMentorStaffEmail(mail)) return true;
+    removed.push(mail);
+    return false;
+  });
+  if (!removed.length) return { changed: false, removed: [] };
+  writeList(STAFF_KEY, next);
+  if (push) {
+    if (typeof scheduleStaffPush === "function") scheduleStaffPush();
+    else if (typeof pushStaffRemote === "function") {
+      try { pushStaffRemote({ silent: true }); } catch { /* ignore */ }
+    }
+  }
+  return { changed: true, removed };
+};
+
+/**
  * Seed / refresh Rehan as creator staff using the live admin email so CRM
  * scopes match /control staff + course ownership (Slingshot → Rehan Khan).
  */
@@ -521,6 +585,8 @@ AdminCore.migrateStaff = () => {
   writeList(STAFF_KEY, list);
   // Rehan must stay linked to the live /control staff email + CRM password.
   try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+  // Never keep MENTORS[] demo Sub-admins after migrate.
+  try { AdminCore.purgeDemoMentorStaff({ push: false }); } catch { /* ignore */ }
 };
 
 AdminCore.orders = () => storeList(ORDER_KEY);

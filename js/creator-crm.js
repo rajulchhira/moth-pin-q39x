@@ -49,26 +49,12 @@
     if (typeof AdminCore !== "undefined" && AdminCore.ensureRehanCreator) {
       try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
     }
+    // Never re-seed MENTORS[] as Sub-admins / creators — purge leftovers.
+    if (typeof AdminCore !== "undefined" && AdminCore.purgeDemoMentorStaff) {
+      try { AdminCore.purgeDemoMentorStaff({ push: false }); } catch { /* ignore */ }
+    }
 
-    const mentors = typeof MENTORS !== "undefined" ? MENTORS : [];
     const staff = typeof staffList === "function" ? staffList() : [];
-    let changed = false;
-    mentors.forEach((m) => {
-      const email = (m.name.split(" ")[0] || "creator").toLowerCase() + "@bizgarh.in";
-      if (!staff.some((s) => String(s.email || "").toLowerCase() === email)) {
-        staff.push({
-          name: m.name,
-          email,
-          password: "creator123",
-          role: "creator",
-          creatorEnabled: true,
-          status: "active",
-          created: "2026-08-01T10:00:00.000Z"
-        });
-        changed = true;
-      }
-    });
-    if (changed && typeof writeList === "function") writeList(STAFF_KEY, staff);
 
     if (typeof courseOwners === "function" && typeof setCourseOwners === "function" && typeof allCourses === "function") {
       const owners = courseOwners();

@@ -1275,8 +1275,13 @@ function setRemoteStaff(doc) {
 }
 
 function buildStaffPushPayload() {
+  let staff = typeof staffList === "function" ? staffList() : [];
+  // Never write seeded MENTORS[] demo Sub-admins back to KV.
+  if (typeof AdminCore !== "undefined" && AdminCore.isDemoMentorStaffEmail) {
+    staff = staff.filter((s) => !AdminCore.isDemoMentorStaffEmail(s?.email));
+  }
   return {
-    staff: typeof staffList === "function" ? staffList() : [],
+    staff,
     grantedEmails: grantedAdminEmails()
   };
 }
@@ -1290,6 +1295,15 @@ function applyPublicStaffRoster(roster, granted) {
   roster.forEach((row) => {
     const email = normEmail(row?.email);
     if (!email) return;
+    // Never reintroduce seeded MENTORS[] Sub-admins from a stale public roster.
+    if (typeof AdminCore !== "undefined" && AdminCore.isDemoMentorStaffEmail
+      && AdminCore.isDemoMentorStaffEmail(email)) {
+      if (byEmail.has(email)) {
+        byEmail.delete(email);
+        changed = true;
+      }
+      return;
+    }
     const prev = byEmail.get(email);
     if (!prev) {
       byEmail.set(email, {
@@ -1330,6 +1344,10 @@ function applyControlStaffDoc(data) {
     writeList(STAFF_KEY, remoteStaff);
     if (typeof AdminCore !== "undefined" && AdminCore.migrateStaff) {
       try { AdminCore.migrateStaff(); } catch { /* ignore */ }
+    }
+    // Strip seeded mentor demos even if KV still has them; push happens in hydrate.
+    if (typeof AdminCore !== "undefined" && AdminCore.purgeDemoMentorStaff) {
+      try { AdminCore.purgeDemoMentorStaff({ push: false }); } catch { /* ignore */ }
     }
   }
   if (Array.isArray(data.grantedEmails)) setGrantedAdminEmails(data.grantedEmails);
@@ -1414,6 +1432,12 @@ async function hydrateStaffFromRemote() {
       || (Array.isArray(data.roster) && data.roster.length)
       || (Array.isArray(data.grantedEmails) && data.grantedEmails.length);
     if (!hasContent) {
+      if (typeof AdminCore !== "undefined" && AdminCore.purgeDemoMentorStaff) {
+        try { AdminCore.purgeDemoMentorStaff({ push: false }); } catch { /* ignore */ }
+      }
+      if (typeof AdminCore !== "undefined" && AdminCore.ensureRehanCreator) {
+        try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+      }
       const localPayload = buildStaffPushPayload();
       const localHas = (localPayload.staff || []).some((s) => {
         const role = String(s?.role || "");
@@ -1434,6 +1458,15 @@ async function hydrateStaffFromRemote() {
     // After KV roster merge, restore Rehan CRM password on the same admin email.
     if (typeof AdminCore !== "undefined" && AdminCore.ensureRehanCreator) {
       try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+    }
+    // Drop seeded mentor Sub-admins; push cleaned list to KV when signed in as staff.
+    if (typeof AdminCore !== "undefined" && AdminCore.purgeDemoMentorStaff) {
+      try {
+        const purged = AdminCore.purgeDemoMentorStaff({ push: false });
+        if (purged && purged.changed && headers["X-Staff-Email"]) {
+          await pushStaffRemote({ silent: true });
+        }
+      } catch { /* ignore */ }
     }
     __staffHydrated = true;
     return getRemoteStaff();
