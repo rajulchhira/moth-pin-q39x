@@ -168,6 +168,10 @@ AdminCore.saveStaff = (row) => {
   if (i >= 0) list[i] = { ...list[i], ...row };
   else list.push(row);
   writeList(STAFF_KEY, list);
+  if (typeof scheduleStaffPush === "function") scheduleStaffPush();
+  else if (typeof pushStaffRemote === "function") {
+    try { pushStaffRemote({ silent: true }); } catch { /* ignore */ }
+  }
 };
 
 AdminCore.deleteStaff = (email) => {
@@ -227,6 +231,10 @@ AdminCore.deleteStaff = (email) => {
   }
   if (typeof AdminCore.forceLogout === "function") AdminCore.forceLogout(mail);
   AdminCore.audit("staff_delete", mail, row.name || "", "");
+  if (typeof scheduleStaffPush === "function") scheduleStaffPush();
+  else if (typeof pushStaffRemote === "function") {
+    try { pushStaffRemote({ silent: true }); } catch { /* ignore */ }
+  }
   return true;
 };
 
@@ -646,11 +654,17 @@ AdminCore.grantGoogleAdmin = (email, name) => {
   });
   AdminCore.saveStaff(row);
   try {
-    const extra = JSON.parse(localStorage.getItem("tradeshalaGrantedAdmins") || "[]");
-    if (!extra.map((x) => String(x).toLowerCase()).includes(e)) extra.push(e);
-    localStorage.setItem("tradeshalaGrantedAdmins", JSON.stringify(extra));
+    if (typeof setGrantedAdminEmails === "function") {
+      setGrantedAdminEmails(grantedAdminEmails().concat([e]));
+    } else {
+      const extra = JSON.parse(localStorage.getItem("tradeshalaGrantedAdmins") || "[]");
+      if (!extra.map((x) => String(x).toLowerCase()).includes(e)) extra.push(e);
+      localStorage.setItem("tradeshalaGrantedAdmins", JSON.stringify(extra));
+    }
   } catch { /* ignore */ }
   AdminCore.audit("staff_grant_google", e, existing ? existing.role : "", "subadmin");
+  // saveStaff already schedules staff KV push; nudge once more after grantedEmails write.
+  if (typeof scheduleStaffPush === "function") scheduleStaffPush();
   toast("Admin access granted. They sign in with Google, then open Admin panel from their name.");
   return { ok: true };
 };

@@ -329,6 +329,11 @@ function grantedAdminEmails() {
     return [];
   }
 }
+function setGrantedAdminEmails(list) {
+  const next = Array.from(new Set((list || []).map(normEmail).filter((e) => e.includes("@"))));
+  try { localStorage.setItem("tradeshalaGrantedAdmins", JSON.stringify(next)); } catch { /* ignore */ }
+  return next;
+}
 function staffCoursePreview() {
   const qs = new URLSearchParams(location.search);
   if (qs.get("preview") !== "1") return "";
@@ -1154,6 +1159,201 @@ async function hydrateInstructorsFromRemote() {
   } catch {
     __instructorsHydrated = true;
     return getRemoteInstructors();
+  }
+}
+
+/** Shared KV staff / sub-admin roster (/control is source of truth). */
+const STAFF_API = "/api/catalog/staff";
+const STAFF_CACHE_KEY = "tradeshalaStaffRemoteCache";
+let __staffRemote = null;
+let __staffPushTimer = null;
+let __staffHydrated = false;
+
+function emptyRemoteStaff() {
+  return { version: 1, updatedAt: null, updatedBy: "", staff: [], grantedEmails: [], roster: [] };
+}
+
+function getRemoteStaff() {
+  if (__staffRemote) return __staffRemote;
+  try {
+    const cached = JSON.parse(localStorage.getItem(STAFF_CACHE_KEY) || "null");
+    if (cached && typeof cached === "object") {
+      __staffRemote = {
+        version: cached.version || 1,
+        updatedAt: cached.updatedAt || null,
+        updatedBy: cached.updatedBy || "",
+        staff: Array.isArray(cached.staff) ? cached.staff : [],
+        grantedEmails: Array.isArray(cached.grantedEmails) ? cached.grantedEmails : [],
+        roster: Array.isArray(cached.roster) ? cached.roster : []
+      };
+      return __staffRemote;
+    }
+  } catch { /* ignore */ }
+  return emptyRemoteStaff();
+}
+
+function setRemoteStaff(doc) {
+  const next = {
+    version: doc?.version || 1,
+    updatedAt: doc?.updatedAt || null,
+    updatedBy: doc?.updatedBy || "",
+    staff: Array.isArray(doc?.staff) ? doc.staff : [],
+    grantedEmails: Array.isArray(doc?.grantedEmails) ? doc.grantedEmails : [],
+    roster: Array.isArray(doc?.roster) ? doc.roster : []
+  };
+  __staffRemote = next;
+  try { localStorage.setItem(STAFF_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  return next;
+}
+
+function buildStaffPushPayload() {
+  return {
+    staff: typeof staffList === "function" ? staffList() : [],
+    grantedEmails: grantedAdminEmails()
+  };
+}
+
+function applyPublicStaffRoster(roster, granted) {
+  if (Array.isArray(granted)) setGrantedAdminEmails(granted);
+  if (!Array.isArray(roster) || !roster.length) return;
+  const local = staffList();
+  const byEmail = new Map(local.map((s) => [normEmail(s.email), s]));
+  let changed = false;
+  roster.forEach((row) => {
+    const email = normEmail(row?.email);
+    if (!email) return;
+    const prev = byEmail.get(email);
+    if (!prev) {
+      byEmail.set(email, {
+        name: row.name || email.split("@")[0],
+        email,
+        role: row.role || "subadmin",
+        status: row.status || "active",
+        googleAuth: !!row.googleAuth,
+        creatorEnabled: !!row.creatorEnabled,
+        photo: row.photo || "",
+        referralCode: row.referralCode || "",
+        creatorId: row.creatorId || ""
+      });
+      changed = true;
+      return;
+    }
+    const next = {
+      ...prev,
+      name: row.name || prev.name,
+      role: row.role || prev.role,
+      status: row.status || prev.status,
+      googleAuth: row.googleAuth != null ? !!row.googleAuth : prev.googleAuth,
+      creatorEnabled: row.creatorEnabled != null ? !!row.creatorEnabled : prev.creatorEnabled
+    };
+    if (row.photo && !String(row.photo).startsWith("data:")) next.photo = row.photo;
+    if (row.referralCode) next.referralCode = row.referralCode;
+    if (row.creatorId) next.creatorId = row.creatorId;
+    byEmail.set(email, next);
+    changed = true;
+  });
+  if (changed) writeList(STAFF_KEY, Array.from(byEmail.values()));
+}
+
+function applyControlStaffDoc(data) {
+  const remoteStaff = Array.isArray(data.staff) ? data.staff : [];
+  // /control is source of truth: replace local roster when KV has rows.
+  if (remoteStaff.length) {
+    writeList(STAFF_KEY, remoteStaff);
+    if (typeof AdminCore !== "undefined" && AdminCore.migrateStaff) {
+      try { AdminCore.migrateStaff(); } catch { /* ignore */ }
+    }
+  }
+  if (Array.isArray(data.grantedEmails)) setGrantedAdminEmails(data.grantedEmails);
+  else applyPublicStaffRoster(data.roster || [], data.grantedEmails);
+}
+
+async function pushStaffRemote(opts) {
+  const silent = !opts || opts.silent !== false;
+  if (__staffPushTimer) {
+    clearTimeout(__staffPushTimer);
+    __staffPushTimer = null;
+  }
+  const headers = typeof catalogStaffHeaders === "function"
+    ? catalogStaffHeaders()
+    : { "Content-Type": "application/json" };
+  if (!headers["X-Staff-Email"]) {
+    if (!silent) console.warn("[staff] skip push — no staff session");
+    return { ok: false, skipped: "no_staff" };
+  }
+  try {
+    const res = await fetch(STAFF_API, {
+      method: "PUT",
+      headers,
+      credentials: "same-origin",
+      body: JSON.stringify(buildStaffPushPayload())
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      if (!silent) console.warn("[staff] push failed", data?.error || res.status);
+      return { ok: false, error: data?.error || String(res.status) };
+    }
+    setRemoteStaff(data);
+    return { ok: true, data };
+  } catch (err) {
+    if (!silent) console.warn("[staff] push error", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+function scheduleStaffPush() {
+  if (__staffPushTimer) clearTimeout(__staffPushTimer);
+  __staffPushTimer = setTimeout(() => {
+    __staffPushTimer = null;
+    pushStaffRemote({ silent: true });
+  }, 400);
+}
+
+async function hydrateStaffFromRemote() {
+  try {
+    const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+    const res = await fetch(STAFF_API, {
+      method: "GET",
+      headers,
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+    });
+    if (!res.ok) {
+      __staffHydrated = true;
+      return getRemoteStaff();
+    }
+    const data = await res.json().catch(() => null);
+    if (!data || !data.ok) {
+      __staffHydrated = true;
+      return getRemoteStaff();
+    }
+    const hasContent = (Array.isArray(data.staff) && data.staff.length)
+      || (Array.isArray(data.roster) && data.roster.length)
+      || (Array.isArray(data.grantedEmails) && data.grantedEmails.length);
+    if (!hasContent) {
+      const localPayload = buildStaffPushPayload();
+      const localHas = (localPayload.staff || []).some((s) => {
+        const role = String(s?.role || "");
+        return role === "subadmin" || role === "admin" || role === "creator" || s?.creatorEnabled;
+      }) || (localPayload.grantedEmails || []).length;
+      if (localHas && headers["X-Staff-Email"]) {
+        await pushStaffRemote({ silent: true });
+      }
+      __staffHydrated = true;
+      return getRemoteStaff();
+    }
+    setRemoteStaff(data);
+    if (typeof isAdminPage === "function" && isAdminPage() && Array.isArray(data.staff) && data.staff.length) {
+      applyControlStaffDoc(data);
+    } else {
+      applyPublicStaffRoster(data.roster || [], data.grantedEmails || []);
+    }
+    __staffHydrated = true;
+    return getRemoteStaff();
+  } catch {
+    __staffHydrated = true;
+    return getRemoteStaff();
   }
 }
 
@@ -8612,6 +8812,7 @@ async function startPublicBoot() {
   // Shared KV catalog: public + control both hydrate before painting courses.
   try { await hydrateCatalogFromRemote(); } catch { /* seed fallback */ }
   try { await hydrateInstructorsFromRemote(); } catch { /* seed fallback */ }
+  try { await hydrateStaffFromRemote(); } catch { /* seed fallback */ }
 
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");

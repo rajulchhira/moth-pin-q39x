@@ -2235,6 +2235,24 @@ function bootAdminUi() {
   window.__bgAdminUi = true;
   const note = (msg) => { if (typeof toast === "function") toast(msg); };
 
+  const readyControlPlane = (async () => {
+    try {
+      if (typeof seedStaffAndAnalytics === "function") seedStaffAndAnalytics();
+      AdminCore.seedControlPlane();
+      // Shared KV staff roster: /control is source of truth across machines.
+      if (typeof hydrateStaffFromRemote === "function") {
+        await hydrateStaffFromRemote();
+      }
+      bindApp();
+      bindCourseOverlays();
+      if (typeof CourseAdmin !== "undefined") CourseAdmin.bind();
+      if (typeof MentorAdmin !== "undefined") MentorAdmin.bind();
+      if (typeof WebinarAdmin !== "undefined") WebinarAdmin.bind();
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+
   document.getElementById("staffGoogleBtn")?.addEventListener("click", () => {
     if (typeof startSocial === "function") startSocial("google");
   });
@@ -2246,10 +2264,12 @@ function bootAdminUi() {
     const who = cont.querySelector("span");
     if (who) who.textContent = existing?.email || u.email;
     cont.addEventListener("click", () => {
-      if (existing || AdminCore.adoptPublicUser()) {
-        note("Welcome");
-        showAdmin();
-      }
+      readyControlPlane.then(() => {
+        if (existing || AdminCore.adoptPublicUser()) {
+          note("Welcome");
+          showAdmin();
+        }
+      });
     });
     if (existing) {
       try {
@@ -2257,18 +2277,20 @@ function bootAdminUi() {
         const fresh = logs.some((x) => x.ok && x.email === existing.email && Date.now() - new Date(x.at).getTime() < 10 * 60 * 1000);
         if (!fresh) AdminCore.recordSession(existing, true);
       } catch (_) {}
-      showAdmin();
+      readyControlPlane.then(() => showAdmin());
     }
   }
 
   document.getElementById("staffLoginForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    if (AdminCore.session()) { showAdmin(); return; }
-    const r = AdminCore.login(e.target.email.value.trim().toLowerCase(), e.target.password.value, e.target.totp.value);
-    if (r.needTotp) { document.getElementById("totpWrap").classList.remove("hidden"); note(r.error); return; }
-    if (!r.ok) { note(r.error); return; }
-    note("Welcome");
-    showAdmin();
+    readyControlPlane.then(() => {
+      if (AdminCore.session()) { showAdmin(); return; }
+      const r = AdminCore.login(e.target.email.value.trim().toLowerCase(), e.target.password.value, e.target.totp.value);
+      if (r.needTotp) { document.getElementById("totpWrap").classList.remove("hidden"); note(r.error); return; }
+      if (!r.ok) { note(r.error); return; }
+      note("Welcome");
+      showAdmin();
+    });
   });
   document.getElementById("adminSide")?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-route]");
@@ -2292,22 +2314,6 @@ function bootAdminUi() {
     applyAdminRoute(parseAdminRoute());
     Ad.page = 1;
     paint();
-  });
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      try {
-        if (typeof seedStaffAndAnalytics === "function") seedStaffAndAnalytics();
-        AdminCore.seedControlPlane();
-        bindApp();
-        bindCourseOverlays();
-        if (typeof CourseAdmin !== "undefined") CourseAdmin.bind();
-        if (typeof MentorAdmin !== "undefined") MentorAdmin.bind();
-        if (typeof WebinarAdmin !== "undefined") WebinarAdmin.bind();
-      } catch (err) {
-        console.error(err);
-      }
-    });
   });
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootAdminUi);
