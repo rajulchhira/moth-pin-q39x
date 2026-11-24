@@ -175,9 +175,10 @@ AdminCore.ensureRehanCreator = () => {
     || AdminCore.pickHostedPhoto(prev?.photo)
     || AdminCore.pickHostedPhoto(fromRoster?.photo)
     || REHAN_STOCK_PHOTO;
-  // Preserve a changed CRM password from KV / local staff; only seed the default once.
-  const seededPassword = (fromStaff && fromStaff.password)
-    || (prev && prev.password)
+  // Prefer local staff password over remote — change-password writes local first and
+  // KV push is async; remote can briefly lag and must not clobber the new password.
+  const seededPassword = (prev && prev.password)
+    || (fromStaff && fromStaff.password)
     || REHAN_CRM_PASSWORD;
   const next = {
     ...(prev || {}),
@@ -765,7 +766,7 @@ AdminCore.staffPassword = (rowOrEmail) => {
   return "";
 };
 
-AdminCore.changeStaffPassword = (email, currentPassword, newPassword) => {
+AdminCore.changeStaffPassword = async (email, currentPassword, newPassword) => {
   const rawId = String(email || "").trim().toLowerCase();
   email = AdminCore.resolveStaffLoginId(email);
   if (email === REHAN_CANONICAL_EMAIL) {
@@ -788,6 +789,10 @@ AdminCore.changeStaffPassword = (email, currentPassword, newPassword) => {
     password: next,
     googleAuth: false
   });
+  // Push immediately so other devices / next hydrate see the new password.
+  if (typeof pushStaffRemote === "function") {
+    try { await pushStaffRemote({ silent: true }); } catch { /* local save still holds */ }
+  }
   if (AdminCore.isRehanStaffEmail(email)) AdminCore.markRehanCrmPasswordOk();
   AdminCore.audit("password_change", email, "", "ok");
   return { ok: true };
