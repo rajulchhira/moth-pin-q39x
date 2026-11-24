@@ -416,13 +416,97 @@ function courseVideosMap() {
   try { return JSON.parse(localStorage.getItem(COURSE_VIDEOS_KEY) || "{}"); } catch { return {}; }
 }
 function setCourseVideosMap(map) { return saveJson(COURSE_VIDEOS_KEY, map); }
+
+/** Inline data: URLs over this size are stripped before KV push (overview keeps titles/kinds). */
+const CURRICULUM_INLINE_MAX = 200 * 1024;
+
+function sanitizeLessonForRemote(lesson) {
+  if (!lesson || typeof lesson !== "object" || Array.isArray(lesson)) return null;
+  const out = { ...lesson };
+  for (const key of ["src", "pdf", "notes"]) {
+    const v = out[key];
+    if (typeof v !== "string") continue;
+    if (v.startsWith("data:") && v.length > CURRICULUM_INLINE_MAX) {
+      if (key === "pdf") out.pdfInline = true;
+      out[key] = "";
+    }
+  }
+  return out;
+}
+
+function sanitizeVideosMapForRemote(map) {
+  const src = map && typeof map === "object" ? map : {};
+  const out = {};
+  Object.keys(src).forEach((courseId) => {
+    const list = src[courseId];
+    if (!Array.isArray(list)) return;
+    out[courseId] = list.map(sanitizeLessonForRemote).filter(Boolean);
+  });
+  return out;
+}
+
+function sanitizeSyllabusMapForRemote(map) {
+  const src = map && typeof map === "object" ? map : {};
+  const out = {};
+  Object.keys(src).forEach((courseId) => {
+    const doc = src[courseId];
+    if (!doc || typeof doc !== "object" || !Array.isArray(doc.sections)) return;
+    out[courseId] = {
+      sections: doc.sections.map((sec) => ({
+        id: String(sec?.id || ("sec-" + courseId)),
+        title: String(sec?.title || "Lessons"),
+        items: Array.isArray(sec?.items)
+          ? sec.items.filter((it) => it && it.lessonId).map((it) => ({
+            lessonId: String(it.lessonId),
+            kind: String(it.kind || "video"),
+            published: it.published !== false
+          }))
+          : []
+      }))
+    };
+  });
+  return out;
+}
+
+function remoteVideosMap() {
+  try {
+    const remote = typeof getRemoteCatalog === "function" ? getRemoteCatalog() : null;
+    return remote && remote.videos && typeof remote.videos === "object" ? remote.videos : {};
+  } catch { return {}; }
+}
+
+function remoteSyllabusMap() {
+  try {
+    const remote = typeof getRemoteCatalog === "function" ? getRemoteCatalog() : null;
+    return remote && remote.syllabus && typeof remote.syllabus === "object" ? remote.syllabus : {};
+  } catch { return {}; }
+}
+
+/**
+ * Resolve lesson list for a course.
+ * Control: local wins (editor). Public: shared KV curriculum wins when present.
+ */
+function lessonsListForCourse(courseId) {
+  const local = courseVideosMap()[courseId];
+  const remote = remoteVideosMap()[courseId];
+  const onAdmin = typeof isAdminPage === "function" && isAdminPage();
+  if (onAdmin) {
+    if (Array.isArray(local)) return local;
+    if (Array.isArray(remote)) return remote;
+    return null;
+  }
+  if (Array.isArray(remote)) return remote;
+  if (Array.isArray(local)) return local;
+  return null;
+}
+
 function lessonsAll(courseId) {
-  const custom = courseVideosMap()[courseId];
+  const custom = lessonsListForCourse(courseId);
   const list = Array.isArray(custom) ? custom : DEFAULT_LESSONS.map((l) => ({ ...l }));
   return list.map((l, i) => ({
     ...l,
     id: l.id || (courseId + "-l" + i),
-    kind: l.kind || ((l.src || l.vdoId || l.fileKey) ? "video" : (l.pdf ? "pdf" : (l.notes ? "article" : "video"))),
+    kind: l.kind || ((l.src || l.vdoId || l.fileKey) ? "video" : ((l.pdf || l.pdfInline) ? "pdf" : (l.notes ? "article" : "video"))),
     published: l.published !== false,
     drm: (l.kind || "video") === "video" ? l.drm !== false : false
   }));
@@ -464,9 +548,23 @@ function derivedSyllabus(courseId) {
   }
   return { sections };
 }
+function syllabusDocForCourse(courseId) {
+  const local = courseSyllabusMap()[courseId];
+  const remote = remoteSyllabusMap()[courseId];
+  const onAdmin = typeof isAdminPage === "function" && isAdminPage();
+  const usable = (doc) => doc && Array.isArray(doc.sections) && doc.sections.length;
+  if (onAdmin) {
+    if (usable(local)) return local;
+    if (usable(remote)) return remote;
+    return null;
+  }
+  if (usable(remote)) return remote;
+  if (usable(local)) return local;
+  return null;
+}
 function syllabusFor(courseId) {
-  const stored = courseSyllabusMap()[courseId];
-  if (stored && Array.isArray(stored.sections) && stored.sections.length) return stored;
+  const stored = syllabusDocForCourse(courseId);
+  if (stored) return stored;
   return derivedSyllabus(courseId);
 }
 function syncLessonsFromSyllabus(courseId, syllabus) {
@@ -493,6 +591,7 @@ function setCourseSyllabus(courseId, syllabus) {
   map[courseId] = syllabus;
   saveJson(COURSE_SYLLABUS_KEY, map);
   syncLessonsFromSyllabus(courseId, syllabus);
+  if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
 }
 function ensureCourseSyllabus(courseId) {
   const lessons = lessonsAll(courseId);
@@ -1970,7 +2069,16 @@ let __catalogPushTimer = null;
 let __catalogHydrated = false;
 
 function emptyRemoteCatalog() {
-  return { version: 1, updatedAt: null, updatedBy: "", edits: {}, extras: [], hidden: [] };
+  return {
+    version: 1,
+    updatedAt: null,
+    updatedBy: "",
+    edits: {},
+    extras: [],
+    hidden: [],
+    videos: {},
+    syllabus: {}
+  };
 }
 
 function getRemoteCatalog() {
@@ -1984,7 +2092,9 @@ function getRemoteCatalog() {
         updatedBy: cached.updatedBy || "",
         edits: cached.edits && typeof cached.edits === "object" ? cached.edits : {},
         extras: Array.isArray(cached.extras) ? cached.extras : [],
-        hidden: Array.isArray(cached.hidden) ? cached.hidden : []
+        hidden: Array.isArray(cached.hidden) ? cached.hidden : [],
+        videos: cached.videos && typeof cached.videos === "object" ? cached.videos : {},
+        syllabus: cached.syllabus && typeof cached.syllabus === "object" ? cached.syllabus : {}
       };
       return __catalogRemote;
     }
@@ -1999,7 +2109,9 @@ function setRemoteCatalog(doc) {
     updatedBy: doc?.updatedBy || "",
     edits: doc?.edits && typeof doc.edits === "object" ? doc.edits : {},
     extras: Array.isArray(doc?.extras) ? doc.extras : [],
-    hidden: Array.isArray(doc?.hidden) ? doc.hidden : []
+    hidden: Array.isArray(doc?.hidden) ? doc.hidden : [],
+    videos: doc?.videos && typeof doc.videos === "object" ? doc.videos : {},
+    syllabus: doc?.syllabus && typeof doc.syllabus === "object" ? doc.syllabus : {}
   };
   __catalogRemote = next;
   try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
@@ -2073,11 +2185,35 @@ function catalogStaffHeaders() {
 }
 
 function buildCatalogPushPayload() {
+  // Merge remote ∪ local so a landing/price save on a tab that never opened
+  // Lessons cannot wipe KV curriculum. Local keys win (including explicit []).
+  const remote = getRemoteCatalog();
+  const videos = {
+    ...sanitizeVideosMapForRemote(remote.videos || {}),
+    ...sanitizeVideosMapForRemote(courseVideosMap())
+  };
+  const syllabus = {
+    ...sanitizeSyllabusMapForRemote(remote.syllabus || {}),
+    ...sanitizeSyllabusMapForRemote(courseSyllabusMap())
+  };
   return {
     edits: courseEdits(),
     extras: extraCourses(),
-    hidden: hiddenCourseIds()
+    hidden: hiddenCourseIds(),
+    videos,
+    syllabus
   };
+}
+
+function catalogHasCurriculum(doc) {
+  const videos = doc?.videos && typeof doc.videos === "object" ? doc.videos : {};
+  const syllabus = doc?.syllabus && typeof doc.syllabus === "object" ? doc.syllabus : {};
+  return Object.keys(videos).some((id) => Array.isArray(videos[id]) && videos[id].length)
+    || Object.keys(syllabus).some((id) => Array.isArray(syllabus[id]?.sections) && syllabus[id].sections.length);
+}
+
+function localHasCurriculumPayload(payload) {
+  return catalogHasCurriculum(payload || buildCatalogPushPayload());
 }
 
 async function pushCatalogRemote(opts) {
@@ -2159,13 +2295,15 @@ async function hydrateCatalogFromRemote() {
     }
     const hasContent = (data.edits && Object.keys(data.edits).length)
       || (Array.isArray(data.extras) && data.extras.length)
-      || (Array.isArray(data.hidden) && data.hidden.length);
-    // Empty KV: if this browser has control edits, seed the shared store once.
+      || (Array.isArray(data.hidden) && data.hidden.length)
+      || catalogHasCurriculum(data);
+    // Empty KV: if this browser has control edits/curriculum, seed the shared store once.
     if (!hasContent) {
       const localPayload = buildCatalogPushPayload();
       const localHas = Object.keys(localPayload.edits || {}).length
         || (localPayload.extras || []).length
-        || (localPayload.hidden || []).length;
+        || (localPayload.hidden || []).length
+        || localHasCurriculumPayload(localPayload);
       if (localHas && catalogStaffHeaders()["X-Staff-Email"]) {
         await pushCatalogRemote({ silent: true });
       }
@@ -2174,7 +2312,8 @@ async function hydrateCatalogFromRemote() {
     }
     setRemoteCatalog(data);
     // Mirror into localStorage only on control/admin so staff devices stay in sync.
-    // Public visitors apply remote via mergedCourseEdits() without writing local keys.
+    // Public visitors apply remote via mergedCourseEdits() / remote curriculum maps
+    // without writing local keys.
     if (typeof isAdminPage === "function" && isAdminPage()) {
       try {
         const local = courseEdits();
@@ -2192,6 +2331,34 @@ async function hydrateCatalogFromRemote() {
         writeList(EXTRA_COURSES_KEY, Array.from(byId.values()));
         const hidden = Array.from(new Set([].concat(hiddenCourseIds(), data.hidden || []).map(String)));
         writeList(HIDDEN_COURSES_KEY, hidden.filter((id) => !isRetiredPublicCourseId(id)));
+        // Fill missing/empty local curriculum from KV; keep non-empty local lesson edits.
+        const localVideos = courseVideosMap();
+        const remoteVideos = data.videos && typeof data.videos === "object" ? data.videos : {};
+        let videosTouched = false;
+        Object.keys(remoteVideos).forEach((id) => {
+          if (!Array.isArray(remoteVideos[id]) || !remoteVideos[id].length) return;
+          if (!Array.isArray(localVideos[id]) || !localVideos[id].length) {
+            localVideos[id] = remoteVideos[id];
+            videosTouched = true;
+          }
+        });
+        if (videosTouched) setCourseVideosMap(localVideos);
+        const localSy = courseSyllabusMap();
+        const remoteSy = data.syllabus && typeof data.syllabus === "object" ? data.syllabus : {};
+        let syTouched = false;
+        Object.keys(remoteSy).forEach((id) => {
+          const doc = remoteSy[id];
+          if (!doc || !Array.isArray(doc.sections) || !doc.sections.length) return;
+          if (!localSy[id] || !Array.isArray(localSy[id].sections) || !localSy[id].sections.length) {
+            localSy[id] = doc;
+            syTouched = true;
+          }
+        });
+        if (syTouched) saveJson(COURSE_SYLLABUS_KEY, localSy);
+        // Edits already in KV but curriculum only on this control browser → seed once.
+        if (!catalogHasCurriculum(data) && localHasCurriculumPayload() && catalogStaffHeaders()["X-Staff-Email"]) {
+          await pushCatalogRemote({ silent: true });
+        }
       } catch { /* ignore mirror errors */ }
     } else {
       // Public: drop stale local hides for courses KV marks live (same browser may have
@@ -8581,3 +8748,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk185: control course edits (pic/price) sync via KV /api/catalog/courses */
 /* cache-bust desk186: soft-deleted keep seed no longer blocks + New course (shadow filter) */
 /* cache-bust desk187: public lists live control courses (remote hidden + unpublished/deleted; Popular keeps slingshot) */
+/* cache-bust desk188: public course overview reads control curriculum (videos+syllabus) via KV */

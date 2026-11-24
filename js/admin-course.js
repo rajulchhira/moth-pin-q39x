@@ -726,11 +726,12 @@ const CourseAdmin = {
       }
     } catch {}
     try {
-      if (typeof setCourseLessons === "function") setCourseLessons(id, [], false);
+      // Keep empty arrays so the KV push clears shared curriculum for this id.
+      if (typeof setCourseLessons === "function") setCourseLessons(id, [], true);
     } catch {}
     try {
       const map = courseSyllabusMap();
-      delete map[id];
+      map[id] = { sections: [] };
       localStorage.setItem(COURSE_SYLLABUS_KEY, JSON.stringify(map));
     } catch {}
     if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
@@ -1105,7 +1106,14 @@ const CourseAdmin = {
         this.attachLesson(courseId, sec, lesson, kind);
       }
       document.getElementById("cbLessonModal")?.classList.add("hidden");
-      toast("Lesson added");
+      // Flush curriculum to shared KV so public course overview updates.
+      if (typeof pushCatalogRemote === "function") {
+        const pushed = await pushCatalogRemote({ silent: true });
+        if (!pushed?.ok && !pushed?.skipped) toast("Lesson saved locally — site sync pending");
+        else toast("Lesson added");
+      } else {
+        toast("Lesson added");
+      }
       paint();
     } catch (err) {
       toast(err.message || "Could not add lesson");
