@@ -1150,6 +1150,11 @@ function courseFilterFromCat(id) {
 function courseMatchesFilter(c, filter) {
   if (!filter || filter === "all") return true;
   if (filter === "cert") return CERT_COURSE_IDS.includes(c.id);
+  // Popular / home trending rail: keep-course stays visible even if control
+  // retagged its category (e.g. strategy) away from "trending".
+  if (filter === "trending") {
+    return c.cat === "trending" || (typeof isPublicKeepCourse === "function" && isPublicKeepCourse(c));
+  }
   return c.cat === filter;
 }
 
@@ -2008,9 +2013,22 @@ function mergedCourseEdits() {
 }
 
 function mergedHiddenCourseIds() {
-  const remote = getRemoteCatalog().hidden || [];
+  const remote = (getRemoteCatalog().hidden || []).map(String);
+  // Public site: after KV hydrate, remote hidden is authoritative. Stale local
+  // hides (from an older soft-delete on this browser) must not blank /courses
+  // while control shows the same course Live.
+  if (__catalogHydrated && typeof isAdminPage === "function" && !isAdminPage()) {
+    return remote;
+  }
   const local = hiddenCourseIds();
   return Array.from(new Set([].concat(remote, local).map(String)));
+}
+
+/** True when a merged course row should appear on the public catalog. */
+function isCoursePubliclyListed(c) {
+  if (!c || c.deleted) return false;
+  if (c.unpublished || c.status === "unlisted") return false;
+  return true;
 }
 
 function remoteExtraCourses() {
@@ -2148,6 +2166,22 @@ async function hydrateCatalogFromRemote() {
         const hidden = Array.from(new Set([].concat(hiddenCourseIds(), data.hidden || []).map(String)));
         writeList(HIDDEN_COURSES_KEY, hidden.filter((id) => !isRetiredPublicCourseId(id)));
       } catch { /* ignore mirror errors */ }
+    } else {
+      // Public: drop stale local hides for courses KV marks live (same browser may have
+      // soft-deleted earlier; mergedHiddenCourseIds already prefers remote after hydrate).
+      try {
+        const remoteHidden = new Set((data.hidden || []).map(String));
+        const remoteEdits = data.edits || {};
+        const nextHidden = hiddenCourseIds().filter((id) => {
+          if (remoteHidden.has(String(id))) return true;
+          const edit = remoteEdits[id];
+          if (edit && (edit.deleted || edit.unpublished || edit.status === "unlisted")) return true;
+          if (edit && edit.deleted === false && edit.unpublished === false && edit.status === "published") return false;
+          if (String(id) === "slingshot" && !remoteHidden.has("slingshot")) return false;
+          return true;
+        });
+        if (nextHidden.length !== hiddenCourseIds().length) writeList(HIDDEN_COURSES_KEY, nextHidden);
+      } catch { /* ignore */ }
     }
     __catalogHydrated = true;
     return getRemoteCatalog();
@@ -2298,7 +2332,12 @@ function restoreKeepSeedCourse(seed, actor) {
   if (actor?.name) prev.instructor = actor.name;
   edits[seed.id] = prev;
   setCourseEdits(edits);
-  writeList(HIDDEN_COURSES_KEY, hiddenCourseIds().filter((id) => id !== seed.id));
+  // Keep draft off the public catalog (hidden + unpublished), same as setVisibility(true).
+  const hidden = hiddenCourseIds();
+  if (!hidden.includes(seed.id)) {
+    hidden.push(seed.id);
+    writeList(HIDDEN_COURSES_KEY, hidden);
+  }
   purgeKeepTitleGhostExtras();
   if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
   return seed;
@@ -2371,9 +2410,14 @@ function allCourses() {
   const extraById = new Map();
   remoteExtras.forEach((c) => { if (c?.id) extraById.set(c.id, c); });
   localExtras.forEach((c) => { if (c?.id) extraById.set(c.id, { ...(extraById.get(c.id) || {}), ...c }); });
-  const extras = Array.from(extraById.values()).filter((c) => preview || (!c.unpublished && c.status !== "unlisted"));
-  let list = COURSES.filter((c) => preview || !hidden.includes(c.id))
+  const extras = Array.from(extraById.values()).filter((c) => preview || isCoursePubliclyListed(c));
+  let list = COURSES
     .map((c) => ({ ...c, ...(edits[c.id] || {}) }))
+    .filter((c) => {
+      if (preview) return !c.deleted;
+      if (hidden.includes(c.id)) return false;
+      return isCoursePubliclyListed(c);
+    })
     .concat(extras);
   // Learners only see keep-courses (Slingshot by id) + live extras; preview=1 keeps drafts.
   if (!preview) {
@@ -8520,3 +8564,4 @@ else setTimeout(startPublicBoot, 0);
 
 /* cache-bust desk185: control course edits (pic/price) sync via KV /api/catalog/courses */
 /* cache-bust desk186: soft-deleted keep seed no longer blocks + New course (shadow filter) */
+/* cache-bust desk187: public lists live control courses (remote hidden + unpublished/deleted; Popular keeps slingshot) */
