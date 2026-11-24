@@ -16,15 +16,19 @@ const CourseAdmin = {
 
   catalog() {
     if (typeof pruneStaleCatalogLocal === "function") pruneStaleCatalogLocal();
-    const hidden = hiddenCourseIds();
-    const edits = courseEdits();
-    // Same seed truth as the live public catalog; extras never shadow keep-courses.
+    const hidden = typeof mergedHiddenCourseIds === "function" ? mergedHiddenCourseIds() : hiddenCourseIds();
+    const edits = typeof mergedCourseEdits === "function" ? mergedCourseEdits() : courseEdits();
+    // Seed + shared KV extras; extras never shadow keep-courses.
     const extras = typeof catalogExtraCourses === "function" ? catalogExtraCourses() : extraCourses();
+    const remoteExtras = typeof remoteExtraCourses === "function" ? remoteExtraCourses() : [];
+    const extraById = new Map();
+    remoteExtras.forEach((c) => { if (c?.id) extraById.set(c.id, c); });
+    extras.forEach((c) => { if (c?.id) extraById.set(c.id, { ...(extraById.get(c.id) || {}), ...c }); });
     const list = COURSES.map((c) => ({
       ...c,
       ...(edits[c.id] || {}),
       unpublished: hidden.includes(c.id) || Boolean((edits[c.id] || {}).unpublished)
-    })).concat(extras.map((c) => ({
+    })).concat(Array.from(extraById.values()).map((c) => ({
       ...c,
       unpublished: Boolean(c.unpublished || c.status === "unlisted")
     }))).filter((c) => !c.deleted && !(typeof isRetiredPublicCourseId === "function" && isRetiredPublicCourseId(c.id)));
@@ -676,6 +680,7 @@ const CourseAdmin = {
     }
     if (!unlisted) writeList(HIDDEN_COURSES_KEY, ids.filter((id) => id !== c.id));
     applyCoursePatch(c.id, { unpublished: unlisted, status: unlisted ? "unlisted" : "published" });
+    if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
   },
 
   deleteCourse(id) {
@@ -717,6 +722,7 @@ const CourseAdmin = {
       delete map[id];
       localStorage.setItem(COURSE_SYLLABUS_KEY, JSON.stringify(map));
     } catch {}
+    if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
     AdminCore.audit("course_delete", id, c.title || "", "");
     toast("Course deleted");
     go("courses");
@@ -1097,7 +1103,7 @@ const CourseAdmin = {
     }
   },
 
-  saveSetup(form) {
+  async saveSetup(form) {
     const id = form.dataset.course;
     const c = this.byId(id);
     if (!c || !canEditCourse(c)) return;
@@ -1111,6 +1117,7 @@ const CourseAdmin = {
       format: form.format.value,
       cat: form.cat.value
     });
+    if (typeof pushCatalogRemote === "function") await pushCatalogRemote({ silent: true });
     AdminCore.audit("course_edit", id, c.title, form.title.value.trim());
     toast("Details saved");
     this.openBuilder(id, "page");
@@ -1142,6 +1149,11 @@ const CourseAdmin = {
         learn,
         bonus
       });
+      // Flush shared KV immediately so public /courses picks up pic + price.
+      if (typeof pushCatalogRemote === "function") {
+        const pushed = await pushCatalogRemote({ silent: true });
+        if (!pushed?.ok && !pushed?.skipped) toast("Saved locally — site sync pending (retry save)");
+      }
       AdminCore.audit("course_edit", id, c.title, "page");
       toast("Page saved");
       this.openBuilder(id, "lessons");
@@ -1217,6 +1229,7 @@ const CourseAdmin = {
     map[id] = s.email;
     setCourseOwners(map);
     if (typeof ensureCourseSyllabus === "function") ensureCourseSyllabus(id);
+    if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
     AdminCore.audit("course_create", id, "", title);
     toast("Draft ready. Add the details.");
     this.openBuilder(id, "setup");
@@ -1248,3 +1261,5 @@ const CourseAdmin = {
     paint();
   }
 };
+
+/* cache-bust desk6: catalog() merges shared KV course edits */
