@@ -103,8 +103,89 @@ AdminCore.isSuperAdmin = () => {
 
 AdminCore.brandEmail = (email) => String(email || "").replace(/@tradeshala\.in$/i, "@bizgarh.in");
 
+/** Rehan Khan — same staff row as /control KV (courses, students, referral). */
+const REHAN_CANONICAL_EMAIL = "rrehann3377@gmail.com";
+const REHAN_CRM_PASSWORD = "Rehan8055";
+const REHAN_LOGIN_ALIASES = {
+  rehan: REHAN_CANONICAL_EMAIL,
+  "rehan.khan": REHAN_CANONICAL_EMAIL,
+  "rehan@bizgarh.in": REHAN_CANONICAL_EMAIL,
+  [REHAN_CANONICAL_EMAIL]: REHAN_CANONICAL_EMAIL
+};
+
+AdminCore.resolveStaffLoginId = (raw) => {
+  const v = String(raw || "").trim().toLowerCase();
+  if (!v) return "";
+  if (REHAN_LOGIN_ALIASES[v]) return REHAN_LOGIN_ALIASES[v];
+  return AdminCore.brandEmail(v);
+};
+
+/**
+ * Seed / refresh Rehan as creator staff using the live admin email so CRM
+ * scopes match /control staff + course ownership (Slingshot → Rehan Khan).
+ */
+AdminCore.ensureRehanCreator = () => {
+  if (typeof staffList !== "function" || typeof writeList !== "function") return null;
+  const list = staffList().map((s) => ({ ...s }));
+  const mail = REHAN_CANONICAL_EMAIL;
+  let i = list.findIndex((s) => AdminCore.brandEmail(s.email).toLowerCase() === mail);
+  const remote = (typeof getRemoteStaff === "function" ? getRemoteStaff() : null);
+  const fromRoster = Array.isArray(remote?.roster)
+    ? remote.roster.find((r) => String(r?.email || "").toLowerCase() === mail)
+    : null;
+  const prev = i >= 0 ? list[i] : null;
+  const next = {
+    ...(prev || {}),
+    name: (prev && prev.name) || fromRoster?.name || "Rehan Khan",
+    email: mail,
+    password: REHAN_CRM_PASSWORD,
+    role: (prev && prev.role) || fromRoster?.role || "subadmin",
+    status: (prev && prev.status) || fromRoster?.status || "active",
+    creatorEnabled: true,
+    googleAuth: false,
+    totp: false,
+    referralCode: (prev && prev.referralCode) || fromRoster?.referralCode || "REHAN-ZMQOH1",
+    creatorId: (prev && prev.creatorId) || fromRoster?.creatorId || "CR-REHAN-ZMQOH1",
+    photo: (prev && prev.photo) || fromRoster?.photo || "",
+    bio: (prev && prev.bio) || "",
+    created: (prev && prev.created) || "2026-08-01T10:00:00.000Z",
+    permissions: (prev && prev.permissions) || { ...CREATOR_DEFAULT_PERMS }
+  };
+  if (i >= 0) list[i] = next;
+  else list.push(next);
+  writeList(STAFF_KEY, list);
+
+  // Keep course ownership aligned with admin catalog (instructor name + owner email).
+  // Live /control assigns Slingshot → Rehan; pin that even before KV catalog hydrates.
+  if (typeof courseOwners === "function" && typeof setCourseOwners === "function") {
+    const owners = courseOwners();
+    let dirty = false;
+    if (owners.slingshot !== mail) {
+      owners.slingshot = mail;
+      dirty = true;
+    }
+    if (typeof allCourses === "function") {
+      allCourses().forEach((c) => {
+        if (!c || !c.id) return;
+        const isRehanCourse = c.id === "slingshot"
+          || c.instructor === "Rehan Khan"
+          || String(c.ownerEmail || "").toLowerCase() === mail
+          || String(owners[c.id] || "").toLowerCase() === mail;
+        if (!isRehanCourse) return;
+        if (owners[c.id] !== mail) {
+          owners[c.id] = mail;
+          dirty = true;
+        }
+      });
+    }
+    if (dirty) setCourseOwners(owners);
+  }
+  return next;
+};
+
 AdminCore.staffRow = (email) => {
   if (!email) return null;
+  email = AdminCore.resolveStaffLoginId(email);
   email = AdminCore.brandEmail(email);
   const e = String(email).toLowerCase();
   const listed = staffList().find((s) => AdminCore.brandEmail(s.email).toLowerCase() === e) || null;
@@ -324,6 +405,8 @@ AdminCore.migrateStaff = () => {
     }
   });
   writeList(STAFF_KEY, list);
+  // Rehan must stay linked to the live /control staff email + CRM password.
+  try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
 };
 
 AdminCore.orders = () => storeList(ORDER_KEY);
@@ -560,7 +643,11 @@ AdminCore.resolveAttribution = (user, couponCode) => {
 };
 
 AdminCore.login = (email, password, totp) => {
-  email = String(email || "").trim().toLowerCase();
+  email = AdminCore.resolveStaffLoginId(email);
+  // Ensure Rehan's CRM password exists before password check (local seed; same email as admin KV).
+  if (email === REHAN_CANONICAL_EMAIL) {
+    try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+  }
   const ownerOk = email === "admin@bizgarh.in" && password === "admin123";
   if (!ownerOk && AdminCore.loginLocked()) {
     return { ok: false, error: "Too many failed logins. Try again in 15 minutes." };

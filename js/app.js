@@ -1409,6 +1409,10 @@ async function hydrateStaffFromRemote() {
     } else {
       applyPublicStaffRoster(data.roster || [], data.grantedEmails || []);
     }
+    // After KV roster merge, restore Rehan CRM password on the same admin email.
+    if (typeof AdminCore !== "undefined" && AdminCore.ensureRehanCreator) {
+      try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+    }
     __staffHydrated = true;
     return getRemoteStaff();
   } catch {
@@ -9327,6 +9331,7 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk201: Creator CRM full-bleed pastel mesh (no circle blobs) */
 /* cache-bust desk202: Creator CRM mesh motion + Public Site box + no demo login hint */
+/* cache-bust desk193: Rehan Khan instructor CRM seed linked to admin staff KV */
 /* cache-bust desk165: Become a Creator form + public demo learner seed */
 /* cache-bust desk167: Become a Creator segment multi-select + free years */
 /* cache-bust desk167: CF edge purge after desk166 app.js poison on www */
