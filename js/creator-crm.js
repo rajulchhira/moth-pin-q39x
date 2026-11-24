@@ -1326,9 +1326,9 @@
       });
       if (!commissions.length) {
         commissions = [
-          { id: "cm-demo-1", type: "Course commission", source: "Intraday Breakout Blueprint", name: "Riya Shah", email: "riya@gmail.com", course: "Intraday Breakout Blueprint", courseId: "breakout", gross: 799, rate, amount: Math.round(799 * rate / 100), status: "ACCRUED", at: "2026-11-12T10:00:00.000Z" },
-          { id: "cm-demo-2", type: "Referral income", source: staff.referralCode || "AARAV20", name: "Omkar Kale", email: "omkar@gmail.com", course: "Options from Zero", courseId: "opt-start", gross: 449, rate: 15, amount: 67, status: "ACCRUED", at: "2026-11-14T11:00:00.000Z" },
-          { id: "cm-demo-3", type: "Course commission", source: "VWAP Intraday Checklist", name: "Pooja Nair", email: "pooja@gmail.com", course: "VWAP Intraday Checklist", courseId: "vwap", gross: 249, rate, amount: Math.round(249 * rate / 100), status: "PENDING", at: "2026-11-18T09:00:00.000Z" }
+          { id: "cm-demo-1", type: "Course commission", source: "Slingshot: The 5-Minute Trading Edge", name: "Riya Shah", email: "riya@gmail.com", course: "Slingshot: The 5-Minute Trading Edge", courseId: "slingshot", gross: 999, rate, amount: Math.round(999 * rate / 100), status: "ACCRUED", at: "2026-11-12T10:00:00.000Z" },
+          { id: "cm-demo-2", type: "Referral income", source: staff.referralCode || "AARAV20", name: "Omkar Kale", email: "omkar@gmail.com", course: "Slingshot: The 5-Minute Trading Edge", courseId: "slingshot", gross: 999, rate: 15, amount: 150, status: "ACCRUED", at: "2026-11-14T11:00:00.000Z" },
+          { id: "cm-demo-3", type: "Course commission", source: "Slingshot: The 5-Minute Trading Edge", name: "Pooja Nair", email: "pooja@gmail.com", course: "Slingshot: The 5-Minute Trading Edge", courseId: "slingshot", gross: 999, rate, amount: Math.round(999 * rate / 100), status: "PENDING", at: "2026-11-18T09:00:00.000Z" }
         ];
       }
     } else {
@@ -1361,9 +1361,9 @@
       payoutRows = [
         { id: "po-2026-11", email: staff.email, amount: novPending, status: "pending", method: "upi", at: "2026-11-18T10:00:00.000Z", note: "Nov 2026 course commission", month: "Nov 2026", course: "Mixed courses" },
         { id: "po-2026-11b", email: staff.email, amount: Math.round(novPending * 0.35), status: "scheduled", method: "bank", at: "2026-11-25T10:00:00.000Z", note: "Nov 2026 referral hold", month: "Nov 2026", course: "Referral income" },
-        { id: "po-2026-10", email: staff.email, amount: octPaid, status: "paid", method: "upi", at: "2026-10-28T10:00:00.000Z", note: "Oct 2026 course commission payout", month: "Oct 2026", course: "Intraday Breakout Blueprint" },
-        { id: "po-2026-09", email: staff.email, amount: sepPaid, status: "paid", method: "upi", at: "2026-09-27T10:00:00.000Z", note: "Sep 2026 course commission payout", month: "Sep 2026", course: "Your First 30 Days in Markets" },
-        { id: "po-2026-08", email: staff.email, amount: Math.max(3900, Math.round(commissionTotal * 0.18)), status: "paid", method: "bank", at: "2026-08-26T10:00:00.000Z", note: "Aug 2026 course commission payout", month: "Aug 2026", course: "VWAP Intraday Checklist" }
+        { id: "po-2026-10", email: staff.email, amount: octPaid, status: "paid", method: "upi", at: "2026-10-28T10:00:00.000Z", note: "Oct 2026 course commission payout", month: "Oct 2026", course: "Slingshot: The 5-Minute Trading Edge" },
+        { id: "po-2026-09", email: staff.email, amount: sepPaid, status: "paid", method: "upi", at: "2026-09-27T10:00:00.000Z", note: "Sep 2026 course commission payout", month: "Sep 2026", course: "Slingshot: The 5-Minute Trading Edge" },
+        { id: "po-2026-08", email: staff.email, amount: Math.max(3900, Math.round(commissionTotal * 0.18)), status: "paid", method: "bank", at: "2026-08-26T10:00:00.000Z", note: "Aug 2026 course commission payout", month: "Aug 2026", course: "Slingshot: The 5-Minute Trading Edge" }
       ];
     }
     const mappedPayouts = payoutRows.map((p) => {
@@ -1664,6 +1664,10 @@
   }
 
   function courseThumbBlock(c) {
+    // Prefer the same thumb markup as the public catalog so pic/cover match /courses.
+    if (typeof courseThumbHTML === "function" && (!c._kind || c._kind === "course")) {
+      return `<div class="crm-course-thumb crm-course-thumb-real">${courseThumbHTML(c)}</div>`;
+    }
     const banner = typeof courseBannerOf === "function" ? courseBannerOf(c) : "";
     const art = courseCoverArt(c);
     const photo = typeof photoFor === "function" ? photoFor(c.instructor) : "/img/bizgarh-avatar.png";

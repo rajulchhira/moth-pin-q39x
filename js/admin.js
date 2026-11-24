@@ -19,12 +19,12 @@ function seedAdminDemo() {
 
   const enrolls = readList(ALL_ENROLL_KEY);
   const demoEn = [
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "breakout", at: "2026-08-12T11:00:00.000Z" },
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "opt-start", at: "2026-08-13T11:00:00.000Z" },
-    { name: "Sneha Bansal", email: "sneha@gmail.com", courseId: "hindi-ta", at: "2026-08-18T12:00:00.000Z" },
-    { name: "Aditya Menon", email: "aditya@gmail.com", courseId: "long-term", at: "2026-09-01T09:00:00.000Z" },
-    { name: "Kavya Iyer", email: "kavya@gmail.com", courseId: "income", at: "2026-09-04T14:00:00.000Z" },
-    { name: "Harsh Patel", email: "harsh@gmail.com", courseId: "first-month", at: "2026-09-08T16:00:00.000Z" }
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-08-12T11:00:00.000Z" },
+    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-08-13T11:00:00.000Z" },
+    { name: "Sneha Bansal", email: "sneha@gmail.com", courseId: "slingshot", at: "2026-08-18T12:00:00.000Z" },
+    { name: "Aditya Menon", email: "aditya@gmail.com", courseId: "slingshot", at: "2026-09-01T09:00:00.000Z" },
+    { name: "Kavya Iyer", email: "kavya@gmail.com", courseId: "slingshot", at: "2026-09-04T14:00:00.000Z" },
+    { name: "Harsh Patel", email: "harsh@gmail.com", courseId: "slingshot", at: "2026-09-08T16:00:00.000Z" }
   ];
   demoEn.forEach((e) => {
     if (!enrolls.some((x) => x.email === e.email && x.courseId === e.courseId)) enrolls.push(e);

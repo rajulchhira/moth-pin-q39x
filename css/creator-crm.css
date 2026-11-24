@@ -1815,6 +1815,36 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   background-size: cover;
   background-position: center;
 }
+/* Public catalog thumb nested inside CRM cards — same cover art as /courses */
+.crm-course-thumb-real {
+  padding: 0;
+}
+.crm-course-thumb-real .thumb {
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
+  aspect-ratio: auto;
+}
+.crm-course-thumb-real .cover-copy {
+  left: 14px;
+  top: 14px;
+  max-width: 58%;
+}
+.crm-course-thumb-real .cover-copy h3 {
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  line-height: 1.1;
+  margin: 0;
+}
+.crm-course-thumb-real .person {
+  height: 100%;
+  max-width: 62%;
+}
+.crm-course-thumb-real .brand-badge {
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+}
 .crm-course-thumb .person {
   position: absolute;
   right: 0;
