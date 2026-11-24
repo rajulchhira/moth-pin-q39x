@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk208 header DP from Control + empty studio until real rows */
+/* Creator CRM dashboard — desk209 Profile change password + show toggles */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -839,6 +839,7 @@
       file: '<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/>',
       scissors: '<circle cx="7" cy="7" r="2.5"/><circle cx="7" cy="17" r="2.5"/><path d="m10 8 10 10M10 16 20 6"/>',
       eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>',
+      eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 10.6a2.5 2.5 0 0 0 3.5 3.5"/><path d="M9.9 5.1A10.4 10.4 0 0 1 12 4.8c6.5 0 10 7.2 10 7.2a17.4 17.4 0 0 1-4.1 4.7"/><path d="M6.1 6.1C3.7 7.7 2 12 2 12s3.5 7.2 10 7.2a10.2 10.2 0 0 0 4.1-.9"/>',
       check: '<path d="m6.5 12.2 3.4 3.4 7.6-7.6"/>',
       menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
       clapper: '<path d="M4 10h16v10H4z"/><path d="m4 10 3.2-5.2 3 1.8L7 10"/><path d="m10.2 6.6 3 1.8L10.8 14"/><path d="m16.2 6.4 3.2 1.9L17 10"/><path d="M4 14h16"/>',
@@ -3610,6 +3611,67 @@
     if (msg) msg.textContent = "Name saved";
   }
 
+  function passwordFieldHTML(id, label, autocomplete) {
+    return `<div class="crm-field crm-field-password">
+      <label for="${esc(id)}">${esc(label)}</label>
+      <div class="crm-pw-wrap">
+        <input id="${esc(id)}" name="${esc(id)}" type="password" autocomplete="${esc(autocomplete)}" required minlength="4">
+        <button type="button" class="crm-pw-toggle" data-crm-pw-toggle="${esc(id)}" aria-label="Show password" aria-pressed="false" title="Show password">${icon("eye")}</button>
+      </div>
+    </div>`;
+  }
+
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input || !btn) return;
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.setAttribute("aria-pressed", show ? "true" : "false");
+    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    btn.title = show ? "Hide password" : "Show password";
+    btn.innerHTML = icon(show ? "eyeOff" : "eye");
+  }
+
+  function submitChangePassword(s, form) {
+    const msg = $("#crmPasswordMsg");
+    const setMsg = (text, ok) => {
+      if (!msg) return;
+      msg.textContent = text || "";
+      msg.style.color = ok ? "var(--crm-green)" : "var(--crm-pink, #f07178)";
+    };
+    if (!s || typeof AdminCore === "undefined" || !AdminCore.changeStaffPassword) {
+      setMsg("Password change is unavailable right now", false);
+      return;
+    }
+    const current = String(form?.crmPwCurrent?.value || "");
+    const next = String(form?.crmPwNew?.value || "");
+    const confirm = String(form?.crmPwConfirm?.value || "");
+    if (!current || !next || !confirm) {
+      setMsg("Fill in all password fields", false);
+      return;
+    }
+    if (next !== confirm) {
+      setMsg("New password and confirmation do not match", false);
+      return;
+    }
+    const r = AdminCore.changeStaffPassword(s.email, current, next);
+    if (!r?.ok) {
+      setMsg(r?.error || "Could not change password", false);
+      return;
+    }
+    form.reset();
+    $$("[data-crm-pw-toggle]", form).forEach((btn) => {
+      const id = btn.getAttribute("data-crm-pw-toggle");
+      const input = id ? document.getElementById(id) : null;
+      if (input) input.type = "password";
+      btn.setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-label", "Show password");
+      btn.title = "Show password";
+      btn.innerHTML = icon("eye");
+    });
+    setMsg("Password updated — use the new password next time you sign in", true);
+  }
+
   function renderProfile(root, s, view) {
     const extras = profileExtras(s.email);
     const api = socialApiState(s.email);
@@ -3644,6 +3706,21 @@
         </div>
         <div class="crm-section-head" style="margin-top:18px">
           <div>
+            <h3>Change password</h3>
+            <p>Updates the password for this CRM login (same Control-linked staff account).</p>
+          </div>
+        </div>
+        <form class="crm-password-form" id="crmChangePasswordForm" action="#" method="post" autocomplete="off">
+          ${passwordFieldHTML("crmPwCurrent", "Current password", "current-password")}
+          ${passwordFieldHTML("crmPwNew", "New password", "new-password")}
+          ${passwordFieldHTML("crmPwConfirm", "Confirm new password", "new-password")}
+          <div class="crm-password-actions">
+            <button type="submit" class="crm-btn crm-btn-primary" style="width:auto;padding:10px 18px">Update password</button>
+            <p id="crmPasswordMsg" class="crm-err" style="margin:0"></p>
+          </div>
+        </form>
+        <div class="crm-section-head" style="margin-top:18px">
+          <div>
             <h3>Social API install</h3>
             <p>Opt in to connect YouTube / Instagram / Facebook trackers. Platform Performance stays offline until connected.</p>
           </div>
@@ -3670,6 +3747,13 @@
       const save = () => persistProfileName(s, linked, nameInput.value);
       nameInput.addEventListener("change", save);
       nameInput.addEventListener("blur", save);
+    }
+    const pwForm = $("#crmChangePasswordForm");
+    if (pwForm) {
+      pwForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        submitChangePassword(s, pwForm);
+      });
     }
   }
 
@@ -3728,11 +3812,7 @@
       if (err) err.textContent = "Wrong email or password";
       return false;
     }
-    // Hard gate: Rehan CRM never opens without the exact password.
-    if (email === "rehan@bizgarh.in" && password !== "Rehan8055") {
-      if (err) err.textContent = "Wrong email or password";
-      return false;
-    }
+    // Password checked against Control-linked staff store (AdminCore.login).
     const r = AdminCore.login(email, password, ($("#crmTotp")?.value || ""));
     if (r?.needTotp) {
       $("#crmTotpWrap")?.classList.remove("crm-hidden");
@@ -3797,6 +3877,12 @@
     document.addEventListener("click", (e) => {
       const t = e.target;
       if (!t || !t.closest) return;
+      const pwToggle = t.closest("[data-crm-pw-toggle]");
+      if (pwToggle) {
+        e.preventDefault();
+        togglePasswordVisibility(pwToggle.getAttribute("data-crm-pw-toggle"), pwToggle);
+        return;
+      }
       if (t.closest("#crmPassBtn")) {
         tryLogin(e);
         return;

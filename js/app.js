@@ -9526,3 +9526,5 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk207: Rehan CRM control-sync (read-only production, real thumbs, no demo fill) */
 
 /* cache-bust desk208: CRM header DP from Control staff + empty Editing Queue (purge V1 demo seeds) */
+
+/* cache-bust desk209: Creator CRM Profile change password + show toggles */
