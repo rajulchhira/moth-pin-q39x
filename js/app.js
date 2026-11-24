@@ -19,6 +19,7 @@ function brandMarkSVG() {
       </linearGradient>
       <clipPath id="${clip}"><circle cx="23" cy="25.4" r="16.35"/></clipPath>
     </defs>
+    <circle cx="23" cy="25.4" r="20.35" fill="#fff"/>
     <circle cx="23" cy="25.4" r="20.35" fill="none" stroke="url(#${g})" stroke-width="1.75"/>
     <circle cx="23" cy="25.4" r="16.55" fill="url(#${g})"/>
     <ellipse cx="18.4" cy="20" rx="8.4" ry="5.8" fill="url(#${glass})"/>
@@ -34,10 +35,10 @@ function brandMarkSVG() {
   </svg></span>`;
 }
 
-const BRAND_MARK_SRC = "/img/bizgarh-mark.svg?v=logo3";
+const BRAND_MARK_SRC = "/img/bizgarh-mark.svg?v=logo4";
 
 function brandLogoHTML() {
-  // Same asset file for header + footer (and any other site logos that call this).
+  // Same circular badge asset for header + footer (white underlay keeps ring gap solid on dark bg).
   return `<span class="logo-mark" aria-hidden="true"><img src="${BRAND_MARK_SRC}" width="40" height="40" alt=""></span><span class="logo-word">Bizgarh</span>`;
 }
 
@@ -8201,3 +8202,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk177: CDN re-bust after desk56 immutable poison /css/style.css?v=desk57 */
 /* cache-bust desk178: light-only site — remove Theme menu + header My Learning /css/style.css?v=desk58 */
 /* cache-bust desk179: Edit Profile DOB dd-mm-yyyy + footer/header shared mark img /css/style.css?v=desk59 */
+/* cache-bust desk180: circular badge mark white underlay so footer matches header /css/style.css?v=desk60 */
