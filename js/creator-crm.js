@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk206 Rehan login/DP/admin-link fixes */
+/* Creator CRM dashboard — desk207 control-sync: read-only production, no demo fill */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -73,35 +73,63 @@
       setCourseOwners(owners);
     }
 
-    // Demo analytics enrolls if empty for creators
-    if (typeof seedStaffAndAnalytics === "function") seedStaffAndAnalytics();
-    else if (!localStorage.getItem("tradeshalaAnalyticsV2") && typeof readList === "function" && typeof writeList === "function") {
-      // minimal enroll seed so metrics are non-zero after first login
-      const names = [
-        ["Riya Shah", "riya@gmail.com"],
-        ["Omkar Kale", "omkar@gmail.com"],
-        ["Pooja Nair", "pooja@gmail.com"],
-        ["Sahil Khan", "sahil@gmail.com"]
-      ];
-      const users = readList(USERS_KEY);
-      names.forEach(([name, email]) => {
-        if (!users.some((u) => u.email === email)) {
-          users.push({ name, email, created: new Date(Date.now() - 20 * 86400000).toISOString(), status: "active" });
+    // Never seed fake analytics/enrolls — CRM shows real control/KV data only.
+    try { purgeCrmDemoFill(); } catch { /* ignore */ }
+  }
+
+  const CRM_DEMO_EMAILS = new Set([
+    "riya@gmail.com", "omkar@gmail.com", "pooja@gmail.com", "sahil@gmail.com",
+    "dev@gmail.com", "mehul@gmail.com", "ananya.b@gmail.com", "kabir.s@gmail.com",
+    "nisha.b@gmail.com", "vikram.g@gmail.com", "ankit.rao@gmail.com", "sneha.p@gmail.com",
+    "karan.m@gmail.com", "divya.i@gmail.com", "ritesh@gmail.com", "kavya@gmail.com"
+  ]);
+
+  function isCrmDemoOrder(o) {
+    if (!o) return false;
+    if (CRM_DEMO_EMAILS.has(String(o.email || "").toLowerCase())) return true;
+    const id = String(o.id || o.orderId || "");
+    const tx = String(o.tx || "");
+    return /^ord-demo/i.test(id) || /^TXNDEMO/i.test(tx) || /^out-/i.test(id);
+  }
+
+  function purgeCrmDemoFill() {
+    try {
+      if (localStorage.getItem("crmDemoFillPurgedV2") === "1") return;
+    } catch { /* ignore */ }
+    const isDemo = (email) => CRM_DEMO_EMAILS.has(String(email || "").toLowerCase());
+    if (typeof readList === "function" && typeof writeList === "function") {
+      try {
+        if (typeof USERS_KEY !== "undefined") {
+          writeList(USERS_KEY, readList(USERS_KEY).filter((u) => !isDemo(u.email)));
         }
-      });
-      writeList(USERS_KEY, users);
-      const enrolls = readList(ALL_ENROLL_KEY);
-      const courses = typeof allCourses === "function" ? allCourses() : [];
-      courses.slice(0, 6).forEach((c, i) => {
-        const person = names[i % names.length];
-        const at = new Date(Date.now() - (i + 2) * 86400000).toISOString();
-        if (!enrolls.some((e) => e.email === person[1] && e.courseId === c.id)) {
-          enrolls.push({ name: person[0], email: person[1], courseId: c.id, at });
+      } catch { /* ignore */ }
+      try {
+        if (typeof ALL_ENROLL_KEY !== "undefined") {
+          writeList(ALL_ENROLL_KEY, readList(ALL_ENROLL_KEY).filter((e) => !isDemo(e.email)));
         }
-      });
-      writeList(ALL_ENROLL_KEY, enrolls);
-      localStorage.setItem("tradeshalaAnalyticsV2", "1");
+      } catch { /* ignore */ }
     }
+    if (typeof AdminCore !== "undefined" && AdminCore.orders && typeof saveStore === "function") {
+      try {
+        const orders = AdminCore.orders().filter((o) => !isDemo(o.email) && !String(o.id || "").startsWith("out-"));
+        const key = (typeof ORDER_KEY !== "undefined" && ORDER_KEY) || "tradeshalaOrders";
+        saveStore(key, orders);
+      } catch { /* ignore */ }
+    }
+    if (typeof AdminCore !== "undefined" && AdminCore.tickets && typeof saveStore === "function") {
+      try {
+        const tickets = AdminCore.tickets().filter((t) => !isDemo(t.email) && !String(t.id || "").startsWith("crm-st-"));
+        const key = (typeof TICKET_KEY !== "undefined" && TICKET_KEY) || "tradeshalaTickets";
+        saveStore(key, tickets);
+      } catch { /* ignore */ }
+    }
+    try {
+      localStorage.removeItem(STUDENTS_DEMO_KEY);
+      localStorage.removeItem("crmAnalyticsOutstandingV1");
+      localStorage.removeItem("tradeshalaAnalyticsV2");
+      // Allow one more purge pass if demo LMS seeds reappear after staff hydrate.
+      localStorage.setItem("crmDemoFillPurgedV2", "1");
+    } catch { /* ignore */ }
   }
 
   function session() {
@@ -132,7 +160,7 @@
     }
     const face = s?.faceKey || (typeof instructorSlug === "function" ? instructorSlug(s?.name || "") : "");
     if (face === "rehan-khan" || (s?.name === "Rehan Khan")) {
-      return "/img/instructors/rehan-khan.jpg?v=desk206";
+      return "/img/instructors/rehan-khan.jpg?v=desk207";
     }
     if (face) return `/img/instructors/${face}.jpg`;
     const mentors = typeof MENTORS !== "undefined" ? MENTORS : [];
@@ -152,7 +180,7 @@
   function creatorEnrolls(staff) {
     const mine = new Set(ownedCourseIds(staff));
     const all = typeof readList === "function" ? readList(ALL_ENROLL_KEY) : [];
-    return all.filter((e) => mine.has(e.courseId));
+    return all.filter((e) => mine.has(e.courseId) && !CRM_DEMO_EMAILS.has(String(e.email || "").toLowerCase()));
   }
 
   function uniqueStudents(enrolls) {
@@ -260,17 +288,7 @@
         else if (t >= Date.now() - days * 2 * 86400000) prevRevenue += amt;
       });
     }
-    if (!revenue) {
-      const priceOf = (id) => {
-        const c = typeof allCourses === "function" ? allCourses().find((x) => x.id === id) : null;
-        return Number(c?.price || 0);
-      };
-      enrolls.forEach((e) => {
-        const amt = priceOf(e.courseId);
-        if (inLastDays(e.at, days)) revenue += amt;
-        else if (inLastDays(e.at, days * 2) && !inLastDays(e.at, days)) prevRevenue += amt;
-      });
-    }
+    // No enroll-price inventing — revenue stays 0 until real paid orders / commissions exist.
 
     const pct = (cur, prev) => {
       if (!prev) return cur ? 100 : 0;
@@ -367,19 +385,11 @@
   }
 
   function productionStore(email) {
-    try {
-      const all = JSON.parse(localStorage.getItem(PROD_KEY) || "{}");
-      return all[email] || { scriptsPending: 12, inEditing: 8, awaitingApproval: 5, videosDelivered: 24 };
-    } catch {
-      return { scriptsPending: 12, inEditing: 8, awaitingApproval: 5, videosDelivered: 24 };
+    // Source of truth: /control staff.contentProduction (admin-editable). CRM is read-only.
+    if (typeof AdminCore !== "undefined" && AdminCore.creatorProduction) {
+      return AdminCore.creatorProduction(email);
     }
-  }
-
-  function saveProduction(email, row) {
-    let all = {};
-    try { all = JSON.parse(localStorage.getItem(PROD_KEY) || "{}"); } catch { all = {}; }
-    all[email] = row;
-    localStorage.setItem(PROD_KEY, JSON.stringify(all));
+    return { scriptsPending: 0, inEditing: 0, awaitingApproval: 0, videosDelivered: 0 };
   }
 
   function studioUid(prefix) {
@@ -444,110 +454,31 @@
     return (v / (1024 * 1024)).toFixed(1).replace(/\.0$/, "") + " MB";
   }
 
-  function seedStudioScripts(email) {
-    const rows = [
-      { id: "script_demo_1", name: "Module-1-Opening-Script.pdf", size: 48200, mime: "application/pdf", uploadedAt: "2026-11-12T09:10:00.000Z", demo: true },
-      { id: "script_demo_2", name: "Live-Session-Talking-Points.docx", size: 31800, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", uploadedAt: "2026-11-14T14:22:00.000Z", demo: true }
-    ];
-    rows.forEach((r) => ensureDemoBlob(r.id, r.name, r.mime, `Demo script\n${r.name}\n`));
-    writeStudioBucket(STUDIO_SCRIPTS_KEY, email, rows);
-    return rows;
-  }
-
-  function seedStudioRecordings(email) {
-    const rows = [
-      { id: "rec_demo_1", name: "Take-A-Intro-Hook.mp4", size: 18400000, mime: "video/mp4", uploadedAt: "2026-11-15T11:05:00.000Z", demo: true },
-      { id: "rec_demo_2", name: "Take-B-Chart-Walkthrough.webm", size: 22100000, mime: "video/webm", uploadedAt: "2026-11-16T16:40:00.000Z", demo: true }
-    ];
-    rows.forEach((r) => ensureDemoBlob(r.id, r.name, r.mime, `Demo video placeholder for ${r.name}`));
-    writeStudioBucket(STUDIO_RECORDINGS_KEY, email, rows);
-    return rows;
-  }
-
-  function seedStudioQueue(email) {
-    const rows = [
-      { id: "eq_demo_1", title: "Price Action Mastery — Episode 12", status: "Under Review" },
-      { id: "eq_demo_2", title: "Options Weekly Recap", status: "Editing" },
-      { id: "eq_demo_3", title: "Risk Rules for Beginners", status: "Revision" },
-      { id: "eq_demo_4", title: "Index Futures Warm-up", status: "Completed" }
-    ];
-    writeStudioBucket(STUDIO_QUEUE_KEY, email, rows);
-    return rows;
-  }
-
-  function seedStudioLibrary(email) {
-    const rows = [
-      {
-        id: "lib_demo_1",
-        title: "Opening Range Breakout Explained",
-        caption: "A calm walkthrough of ORB setups with risk notes for new traders.",
-        pdfName: "ORB-cheat-sheet.pdf",
-        pdfId: "lib_demo_1_pdf",
-        videoName: "orb-explained.mp4",
-        thumb: "",
-        uploadedAt: "2026-11-10T08:00:00.000Z",
-        demo: true
-      },
-      {
-        id: "lib_demo_2",
-        title: "Position Sizing in 8 Minutes",
-        caption: "Practical sizing rules — never risk more than you can sleep with.",
-        pdfName: "position-sizing.pdf",
-        pdfId: "lib_demo_2_pdf",
-        videoName: "position-sizing.mp4",
-        thumb: "",
-        uploadedAt: "2026-11-13T12:30:00.000Z",
-        demo: true
-      }
-    ];
-    rows.forEach((r) => {
-      ensureDemoBlob(r.id, r.videoName, "video/mp4", `Demo library video: ${r.title}`);
-      ensureDemoBlob(r.pdfId, r.pdfName, "application/pdf", `Demo PDF for ${r.title}`);
-    });
-    writeStudioBucket(STUDIO_LIBRARY_KEY, email, rows);
-    return rows;
+  function studioRealRows(key, email) {
+    const existing = readStudioBucket(key, email);
+    if (!existing) {
+      writeStudioBucket(key, email, []);
+      return [];
+    }
+    const real = existing.filter((r) => r && !r.demo);
+    if (real.length !== existing.length) writeStudioBucket(key, email, real);
+    return real;
   }
 
   function studioScripts(email) {
-    const existing = readStudioBucket(STUDIO_SCRIPTS_KEY, email);
-    if (existing) {
-      existing.forEach((r) => {
-        if (r.demo) ensureDemoBlob(r.id, r.name, r.mime, `Demo script\n${r.name}\n`);
-      });
-      return existing;
-    }
-    return seedStudioScripts(email);
+    return studioRealRows(STUDIO_SCRIPTS_KEY, email);
   }
 
   function studioRecordings(email) {
-    const existing = readStudioBucket(STUDIO_RECORDINGS_KEY, email);
-    if (existing) {
-      existing.forEach((r) => {
-        if (r.demo) ensureDemoBlob(r.id, r.name, r.mime, `Demo video placeholder for ${r.name}`);
-      });
-      return existing;
-    }
-    return seedStudioRecordings(email);
+    return studioRealRows(STUDIO_RECORDINGS_KEY, email);
   }
 
   function studioQueue(email) {
-    const existing = readStudioBucket(STUDIO_QUEUE_KEY, email);
-    if (existing) return existing;
-    return seedStudioQueue(email);
+    return studioRealRows(STUDIO_QUEUE_KEY, email);
   }
 
   function studioLibrary(email) {
-    const existing = readStudioBucket(STUDIO_LIBRARY_KEY, email);
-    if (existing) {
-      existing.forEach((r) => {
-        if (r.demo) {
-          ensureDemoBlob(r.id, r.videoName || `${r.title}.mp4`, "video/mp4", `Demo library video: ${r.title}`);
-          if (r.pdfId) ensureDemoBlob(r.pdfId, r.pdfName || "notes.pdf", "application/pdf", `Demo PDF for ${r.title}`);
-        }
-      });
-      return existing;
-    }
-    return seedStudioLibrary(email);
+    return studioRealRows(STUDIO_LIBRARY_KEY, email);
   }
 
   function downloadStudioBlob(id, fallbackName) {
@@ -1062,8 +993,7 @@
         items: [
           { id: "courses", label: "Courses" },
           { id: "mentorship", label: "Mentorship" },
-          { id: "webinars", label: "Webinars" },
-          { id: "study-materials", label: "Study materials" }
+          { id: "webinars", label: "Webinars" }
         ]
       },
       {
@@ -1220,7 +1150,6 @@
       else if (view === "courses") sub.textContent = "Your course cards — open for overview (no Buy Now)";
       else if (view === "mentorship") sub.textContent = "Your mentorship desks";
       else if (view === "webinars") sub.textContent = "Your live webinars";
-      else if (view === "study-materials") sub.textContent = "Upload and manage study files";
       else if (view === "tickets") sub.textContent = "Raise and track support tickets";
       else if (view === "queries") sub.textContent = "Creator FAQs";
       else sub.textContent = "Creator CRM module";
@@ -1290,20 +1219,15 @@
     writeStudioBucket(STUDY_KEY, email, rows);
   }
 
-  function seedStudyMaterials(email) {
-    const rows = [
-      { id: studioUid("study"), name: "Portfolio-Checklist.pdf", size: 842112, uploadedAt: "2026-11-12T10:00:00.000Z", demo: true },
-      { id: studioUid("study"), name: "SIP-Worksheet.xlsx", size: 256000, uploadedAt: "2026-11-14T12:30:00.000Z", demo: true },
-      { id: studioUid("study"), name: "Module-1-Slides.pptx", size: 1843200, uploadedAt: "2026-11-16T09:15:00.000Z", demo: true }
-    ];
-    writeStudyBucket(email, rows);
-    return rows;
-  }
-
   function studyMaterials(email) {
     const existing = readStudyBucket(email);
-    if (Array.isArray(existing)) return existing;
-    return seedStudyMaterials(email);
+    if (!Array.isArray(existing)) {
+      writeStudyBucket(email, []);
+      return [];
+    }
+    const real = existing.filter((r) => r && !r.demo);
+    if (real.length !== existing.length) writeStudyBucket(email, real);
+    return real;
   }
 
   function readTickets(email) {
@@ -1345,32 +1269,25 @@
       commissions = AdminCore.commissions().filter((c) => c.creatorEmail === staff.email);
     }
     if (!commissions.length) {
-      commissions = paid.slice(0, 18).map((o, i) => {
+      // Derive only from real paid orders — no invented referral/demo lines.
+      commissions = paid.map((o, i) => {
         const gross = Number(o.net || o.amount || 0);
         const amount = Math.round(gross * (rate / 100));
-        const isRef = i % 4 === 0;
         return {
           id: "cm-" + (o.id || i),
-          type: isRef ? "Referral income" : "Course commission",
-          source: isRef ? (o.referralCode || staff.referralCode || "REF") : courseTitle(o.courseId),
+          type: "Course commission",
+          source: courseTitle(o.courseId),
           name: o.name || "—",
           email: o.email || "—",
           course: courseTitle(o.courseId),
           courseId: o.courseId,
           gross,
-          rate: isRef ? Math.max(5, rate - 5) : rate,
-          amount: isRef ? Math.round(amount * 0.6) : amount,
-          status: i % 5 === 0 ? "PENDING" : "ACCRUED",
+          rate,
+          amount,
+          status: "ACCRUED",
           at: o.at
         };
       });
-      if (!commissions.length) {
-        commissions = [
-          { id: "cm-demo-1", type: "Course commission", source: "Slingshot: The 5-Minute Trading Edge", name: "Riya Shah", email: "riya@gmail.com", course: "Slingshot: The 5-Minute Trading Edge", courseId: "slingshot", gross: 999, rate, amount: Math.round(999 * rate / 100), status: "ACCRUED", at: "2026-11-12T10:00:00.000Z" },
-          { id: "cm-demo-2", type: "Referral income", source: staff.referralCode || "AARAV20", name: "Omkar Kale", email: "omkar@gmail.com", course: "Slingshot: The 5-Minute Trading Edge", courseId: "slingshot", gross: 999, rate: 15, amount: 150, status: "ACCRUED", at: "2026-11-14T11:00:00.000Z" },
-          { id: "cm-demo-3", type: "Course commission", source: "Slingshot: The 5-Minute Trading Edge", name: "Pooja Nair", email: "pooja@gmail.com", course: "Slingshot: The 5-Minute Trading Edge", courseId: "slingshot", gross: 999, rate, amount: Math.round(999 * rate / 100), status: "PENDING", at: "2026-11-18T09:00:00.000Z" }
-        ];
-      }
     } else {
       commissions = commissions.map((c, i) => ({
         id: c.id || c.orderId || ("cm-" + i),
@@ -1394,18 +1311,7 @@
     if (typeof payouts === "function") {
       payoutRows = payouts().filter((p) => String(p.email || "").toLowerCase() === String(staff.email || "").toLowerCase());
     }
-    if (!payoutRows.length) {
-      const novPending = Math.max(4200, Math.round(commissionTotal * 0.22));
-      const octPaid = Math.max(6800, Math.round(commissionTotal * 0.38));
-      const sepPaid = Math.max(5100, Math.round(commissionTotal * 0.28));
-      payoutRows = [
-        { id: "po-2026-11", email: staff.email, amount: novPending, status: "pending", method: "upi", at: "2026-11-18T10:00:00.000Z", note: "Nov 2026 course commission", month: "Nov 2026", course: "Mixed courses" },
-        { id: "po-2026-11b", email: staff.email, amount: Math.round(novPending * 0.35), status: "scheduled", method: "bank", at: "2026-11-25T10:00:00.000Z", note: "Nov 2026 referral hold", month: "Nov 2026", course: "Referral income" },
-        { id: "po-2026-10", email: staff.email, amount: octPaid, status: "paid", method: "upi", at: "2026-10-28T10:00:00.000Z", note: "Oct 2026 course commission payout", month: "Oct 2026", course: "Slingshot: The 5-Minute Trading Edge" },
-        { id: "po-2026-09", email: staff.email, amount: sepPaid, status: "paid", method: "upi", at: "2026-09-27T10:00:00.000Z", note: "Sep 2026 course commission payout", month: "Sep 2026", course: "Slingshot: The 5-Minute Trading Edge" },
-        { id: "po-2026-08", email: staff.email, amount: Math.max(3900, Math.round(commissionTotal * 0.18)), status: "paid", method: "bank", at: "2026-08-26T10:00:00.000Z", note: "Aug 2026 course commission payout", month: "Aug 2026", course: "Slingshot: The 5-Minute Trading Edge" }
-      ];
-    }
+    // Empty payout ledger until control / payouts store has real rows.
     const mappedPayouts = payoutRows.map((p) => {
       const at = p.at || p.created;
       const month = p.month || (at ? new Date(at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—");
@@ -1445,14 +1351,7 @@
         revenue: r.revenue,
         avgOrder: r.orders ? Math.round(r.revenue / r.orders) : 0
       }));
-    if (!monthReport.length) {
-      monthReport = [
-        { month: "Nov 2026", orders: 14, students: 11, revenue: 9840, avgOrder: 703 },
-        { month: "Oct 2026", orders: 22, students: 18, revenue: 15620, avgOrder: 710 },
-        { month: "Sep 2026", orders: 19, students: 16, revenue: 12890, avgOrder: 678 },
-        { month: "Aug 2026", orders: 17, students: 14, revenue: 11240, avgOrder: 661 }
-      ];
-    }
+    // Keep month report empty when there are no paid sales.
 
     return {
       todayRevenue,
@@ -1704,18 +1603,26 @@
   }
 
   function courseThumbBlock(c) {
-    // Prefer the same thumb markup as the public catalog so pic/cover match /courses.
-    if (typeof courseThumbHTML === "function" && (!c._kind || c._kind === "course")) {
-      return `<div class="crm-course-thumb crm-course-thumb-real">${courseThumbHTML(c)}</div>`;
+    // Always resolve the live catalog course so modal/cards share /course?id=… banner.
+    let course = c;
+    if ((!c._kind || c._kind === "course") && c?.id && typeof allCourses === "function") {
+      const live = allCourses().find((x) => x && x.id === c.id);
+      if (live) course = { ...live, ...c, banner: live.banner || c.banner || "" };
     }
-    const banner = typeof courseBannerOf === "function" ? courseBannerOf(c) : "";
-    const art = courseCoverArt(c);
-    const photo = typeof photoFor === "function" ? photoFor(c.instructor) : "/img/bizgarh-avatar.png";
-    if (banner) {
-      return `<div class="crm-course-thumb has-banner" style="background-image:url('${esc(banner)}')">
-        <span class="brand-badge">B</span>
+    const banner = (typeof courseBannerOf === "function" ? courseBannerOf(course) : "") || String(course?.banner || "").trim();
+    if (banner && (!course._kind || course._kind === "course")) {
+      return `<div class="crm-course-thumb crm-course-thumb-real has-banner">
+        <div class="thumb has-banner">
+          <img class="thumb-banner" src="${esc(banner)}" alt="">
+          <span class="brand-badge" aria-hidden="true">B</span>
+        </div>
       </div>`;
     }
+    if (typeof courseThumbHTML === "function" && (!course._kind || course._kind === "course")) {
+      return `<div class="crm-course-thumb crm-course-thumb-real">${courseThumbHTML(course)}</div>`;
+    }
+    const art = courseCoverArt(course);
+    const photo = typeof photoFor === "function" ? photoFor(course.instructor) : "/img/bizgarh-avatar.png";
     return `<div class="crm-course-thumb" style="background:${esc(art.bg)}">
       <div class="cover-copy">${art.title}</div>
       <img class="person" src="${esc(photo)}" alt="">
@@ -1933,7 +1840,7 @@
     { q: "How do I see today's revenue?", a: "Open Finance → Today Revenue. View detail opens the nested spreadsheet of paid orders since midnight." },
     { q: "When do payouts land?", a: "Pending Payout shows amounts awaiting approval or the next window. Paid rows appear under Payout once the desk marks them paid." },
     { q: "How is commission calculated?", a: "Commission uses your creator rate on attributed paid orders. Open Finance → Commission for line-level detail." },
-    { q: "Where do I upload study PDFs?", a: "Courses & Learning → Study materials. Drag-drop PDF, DOC, images, or other files; Download / Delete from the list." },
+    { q: "Where did Study materials go?", a: "Study materials was removed from Creator CRM. Course files stay on the public classroom; Creator Studio holds scripts and recordings." },
     { q: "Why is Mentorship empty?", a: "Mentorship and Webinar only list programs attributed to your creator name. If you have none, the section stays blank by design." },
     { q: "How do Platform Performance counts work?", a: "Connect YouTube / Instagram / Facebook under Settings → Profile (API install). Until connected, dashboard counts stay offline." },
     { q: "Can I edit my Creator ID or referral code?", a: "No. Those are admin-side only. You can edit display name and profile fields; ID and referral stay locked." },
@@ -2053,7 +1960,10 @@
     if (view === "courses") return renderCourses(root, s);
     if (view === "mentorship") return renderMentorship(root, s);
     if (view === "webinars") return renderWebinars(root, s);
-    if (view === "study-materials") return renderStudyMaterials(root, s);
+    if (view === "study-materials") {
+      location.hash = "courses";
+      return renderCourses(root, s);
+    }
     if (view === "tickets") return renderTickets(root, s);
     if (view === "queries") return renderQueries(root);
     if (view !== "dashboard") {
@@ -2117,33 +2027,33 @@
           <div class="crm-section-head">
             <div>
               <h3>Content Production</h3>
-              <p>Track your video production workflow — counts save for this creator.</p>
+              <p>Read-only workflow counts set by Bizgarh admin on Control for this creator.</p>
             </div>
-            <a href="#dashboard" id="crmProdSaveHint">Auto-saves</a>
+            <span class="crm-prod-ro-hint" id="crmProdSaveHint">Admin-controlled</span>
           </div>
-          <div class="crm-prod">
+          <div class="crm-prod crm-prod-readonly">
             <div class="crm-prod-card pending">
               <div class="crm-prod-ico">${icon("file")}</div>
               <label>Scripts Pending</label>
-              <input type="number" min="0" data-prod="scriptsPending" value="${Number(prod.scriptsPending) || 0}">
+              <b class="crm-prod-value">${Number(prod.scriptsPending) || 0}</b>
               <small>Waiting for shooting</small>
             </div>
             <div class="crm-prod-card editing">
               <div class="crm-prod-ico">${icon("scissors")}</div>
               <label>In Editing</label>
-              <input type="number" min="0" data-prod="inEditing" value="${Number(prod.inEditing) || 0}">
+              <b class="crm-prod-value">${Number(prod.inEditing) || 0}</b>
               <small>Being edited by team</small>
             </div>
             <div class="crm-prod-card approval">
               <div class="crm-prod-ico">${icon("eye")}</div>
               <label>Awaiting Approval</label>
-              <input type="number" min="0" data-prod="awaitingApproval" value="${Number(prod.awaitingApproval) || 0}">
+              <b class="crm-prod-value">${Number(prod.awaitingApproval) || 0}</b>
               <small>Action required</small>
             </div>
             <div class="crm-prod-card delivered">
               <div class="crm-prod-ico">${icon("check")}</div>
               <label>Videos Delivered</label>
-              <input type="number" min="0" data-prod="videosDelivered" value="${Number(prod.videosDelivered) || 0}">
+              <b class="crm-prod-value">${Number(prod.videosDelivered) || 0}</b>
               <small>Ready to download</small>
             </div>
           </div>
@@ -2248,69 +2158,15 @@
     let orders = [];
     if (typeof AdminCore !== "undefined" && AdminCore.orders) {
       orders = AdminCore.orders().filter((o) =>
-        o.creatorEmail === staff.email || mine.has(o.courseId)
+        (o.creatorEmail === staff.email || mine.has(o.courseId)) && !isCrmDemoOrder(o)
       );
     }
-    if (!orders.length) {
-      // Fallback: synthesize from enrolls × course price so analytics stays populated offline
-      orders = creatorEnrolls(staff).map((e, i) => ({
-        id: "syn-" + i + "-" + (e.email || "").slice(0, 6),
-        email: e.email,
-        name: e.name,
-        courseId: e.courseId,
-        amount: coursePrice(e.courseId),
-        net: coursePrice(e.courseId),
-        status: "PAID",
-        method: "upi",
-        tx: "TXN" + String(1000 + i),
-        at: e.at
-      }));
-    }
+    // Do not synthesize paid orders from enrolls — empty until real sales exist.
     return orders;
   }
 
-  function ensureOutstandingDemo(staff) {
-    if (typeof AdminCore === "undefined" || !AdminCore.orders || typeof saveStore !== "function") return;
-    try {
-      if (localStorage.getItem("crmAnalyticsOutstandingV1")) return;
-      const orders = AdminCore.orders();
-      const courseIds = ownedCourseIds(staff);
-      if (!courseIds.length) return;
-      const demo = [
-        { name: "Ankit Rao", email: "ankit.rao@gmail.com", days: 9, status: "PENDING" },
-        { name: "Sneha Patel", email: "sneha.p@gmail.com", days: 18, status: "PENDING" },
-        { name: "Vikram Gill", email: "vikram.g@gmail.com", days: 27, status: "FAILED" },
-        { name: "Nisha Bhatt", email: "nisha.b@gmail.com", days: 5, status: "PENDING" },
-        { name: "Karan Malhotra", email: "karan.m@gmail.com", days: 35, status: "PENDING" },
-        { name: "Divya Iyer", email: "divya.i@gmail.com", days: 12, status: "PENDING" }
-      ];
-      demo.forEach((d, i) => {
-        const cid = courseIds[i % courseIds.length];
-        const price = coursePrice(cid);
-        if (!price) return;
-        if (orders.some((o) => o.email === d.email && o.courseId === cid && o.status !== "PAID")) return;
-        orders.push({
-          id: "out-" + (i + 1),
-          email: d.email,
-          name: d.name,
-          courseId: cid,
-          amount: price,
-          discount: 0,
-          tax: 0,
-          net: price,
-          status: d.status,
-          coupon: "",
-          creatorEmail: staff.email,
-          referralCode: "",
-          tx: d.status === "FAILED" ? "TXNFAIL" + (i + 1) : "",
-          at: new Date(Date.now() - d.days * 86400000).toISOString()
-        });
-      });
-      if (typeof saveStore === "function" && typeof ORDER_KEY !== "undefined") saveStore(ORDER_KEY, orders);
-      else if (typeof writeList === "function") writeList("tradeshalaOrders", orders);
-      else localStorage.setItem("tradeshalaOrders", JSON.stringify(orders));
-      localStorage.setItem("crmAnalyticsOutstandingV1", "1");
-    } catch { /* ignore */ }
+  function ensureOutstandingDemo() {
+    // Intentionally empty — analytics must not invent outstanding payment rows.
   }
 
   function studentSeries(enrolls, days, uniqueOnly) {
@@ -2393,15 +2249,7 @@
         };
       });
     }
-    // If all zero (sparse demo), lightly distribute owned revenue so charts still read
-    if (buckets.every((b) => !b.revenue)) {
-      const m = computeMetrics(staff, DEFAULT_PERIOD);
-      const base = Math.max(m.revenue, courseIds.length * 99) / buckets.length;
-      return buckets.map((b, i) => ({
-        ...b,
-        revenue: Math.round(base * (0.55 + (i % 5) * 0.18))
-      }));
-    }
+    // Keep zeros when there are no paid sales — do not invent chart values.
     return buckets;
   }
 
@@ -2507,19 +2355,6 @@
         status: pct >= 100 ? "Completed" : pct >= 40 ? "In progress" : "Started"
       });
     });
-    // Seed light progress for demo when store is empty so completion rate isn't always 0
-    if (completionRows.every((r) => !r.progress)) {
-      completionRows.forEach((r, i) => {
-        r.progress = [0, 25, 48, 72, 100, 36, 88, 12][i % 8];
-        r.status = r.progress >= 100 ? "Completed" : r.progress >= 40 ? "In progress" : "Started";
-      });
-      // Mirror seeded progress onto student summary rows
-      studentRows.forEach((s) => {
-        const mine = completionRows.filter((r) => String(r.email || "").toLowerCase() === String(s.email || "").toLowerCase());
-        if (!mine.length) return;
-        s.progress = Math.round(mine.reduce((a, r) => a + Number(r.progress || 0), 0) / mine.length);
-      });
-    }
     const completionRate = completionRows.length
       ? Math.round((completionRows.reduce((a, r) => a + Number(r.progress || 0), 0) / completionRows.length) * 10) / 10
       : 0;
@@ -3104,122 +2939,8 @@
     return base[(hash + (i || 0)) % base.length];
   }
 
-  function ensureStudentsDemo(staff) {
-    if (!staff) return;
-    try {
-      if (localStorage.getItem(STUDENTS_DEMO_KEY)) return;
-    } catch { /* ignore */ }
-
-    const courseIds = ownedCourseIds(staff);
-    if (!courseIds.length) return;
-
-    const demoPeople = [
-      ["Riya Shah", "riya@gmail.com", "9876543210"],
-      ["Omkar Kale", "omkar@gmail.com", "9823012345"],
-      ["Pooja Nair", "pooja@gmail.com", "9811122233"],
-      ["Sahil Khan", "sahil@gmail.com", "9988776655"],
-      ["Dev Joshi", "dev@gmail.com", "9765432109"],
-      ["Mehul Shah", "mehul@gmail.com", "9898989898"],
-      ["Ananya Bose", "ananya.b@gmail.com", "9123456780"],
-      ["Kabir Singh", "kabir.s@gmail.com", "9001122334"],
-      ["Nisha Bhatt", "nisha.b@gmail.com", "9876500011"],
-      ["Vikram Gill", "vikram.g@gmail.com", "9811100099"]
-    ];
-
-    if (typeof readList === "function" && typeof writeList === "function") {
-      const users = readList(USERS_KEY);
-      let usersChanged = false;
-      demoPeople.forEach(([name, email, phone], i) => {
-        const hit = users.find((u) => String(u.email || "").toLowerCase() === email);
-        if (!hit) {
-          users.push({
-            name,
-            email,
-            phone,
-            created: new Date(Date.now() - (45 - i * 3) * 86400000).toISOString(),
-            status: "active"
-          });
-          usersChanged = true;
-        } else if (!hit.phone) {
-          hit.phone = phone;
-          usersChanged = true;
-        }
-      });
-      if (usersChanged) writeList(USERS_KEY, users);
-
-      const enrolls = readList(ALL_ENROLL_KEY);
-      let enrollChanged = false;
-      demoPeople.forEach(([name, email], i) => {
-        const cid = courseIds[i % courseIds.length];
-        if (enrolls.some((e) => String(e.email || "").toLowerCase() === email && e.courseId === cid)) return;
-        enrolls.push({
-          name,
-          email,
-          courseId: cid,
-          at: new Date(Date.now() - (38 - i * 2) * 86400000).toISOString()
-        });
-        enrollChanged = true;
-      });
-      // Second course for a few learners so multi-enroll shows in profile
-      [0, 2, 4, 6].forEach((i) => {
-        if (courseIds.length < 2) return;
-        const [name, email] = demoPeople[i];
-        const cid = courseIds[(i + 1) % courseIds.length];
-        if (enrolls.some((e) => String(e.email || "").toLowerCase() === email && e.courseId === cid)) return;
-        enrolls.push({
-          name,
-          email,
-          courseId: cid,
-          at: new Date(Date.now() - (20 - i) * 86400000).toISOString()
-        });
-        enrollChanged = true;
-      });
-      if (enrollChanged) writeList(ALL_ENROLL_KEY, enrolls);
-    }
-
-    if (typeof AdminCore !== "undefined" && AdminCore.tickets && typeof saveStore === "function") {
-      const tickets = AdminCore.tickets().slice();
-      const supportSeed = [
-        { email: "riya@gmail.com", name: "Riya Shah", title: "Quiz unlock delay", body: "Module 3 quiz stays locked after finishing lessons.", courseId: courseIds[0], status: "OPEN", days: 4 },
-        { email: "omkar@gmail.com", name: "Omkar Kale", title: "Invoice copy", body: "Need GST invoice for company reimbursement.", courseId: courseIds[0], status: "RESOLVED", days: 18 },
-        { email: "pooja@gmail.com", name: "Pooja Nair", title: "Refund request — Mutual Funds", body: "Bought by mistake.", courseId: courseIds[1 % courseIds.length], status: "OPEN", days: 9 },
-        { email: "sahil@gmail.com", name: "Sahil Khan", title: "Live session link", body: "Missed the WhatsApp link for tonight's desk.", courseId: courseIds[0], status: "OPEN", days: 1 },
-        { email: "ananya.b@gmail.com", name: "Ananya Bose", title: "Certificate pending", body: "Finished course — certificate not showing.", courseId: courseIds[2 % courseIds.length], status: "RESOLVED", days: 22 },
-        { email: "kabir.s@gmail.com", name: "Kabir Singh", title: "Playback stutter", body: "Lesson 5 buffers on mobile Chrome.", courseId: courseIds[1 % courseIds.length], status: "OPEN", days: 6 }
-      ];
-      let ticketChanged = false;
-      supportSeed.forEach((s, i) => {
-        if (tickets.some((t) => String(t.email || "").toLowerCase() === s.email && t.title === s.title)) return;
-        tickets.push({
-          id: "crm-st-" + (i + 1),
-          title: s.title,
-          body: s.body,
-          email: s.email,
-          name: s.name,
-          courseId: s.courseId,
-          status: s.status,
-          assignee: s.status === "OPEN" ? staff.email : "",
-          replies: s.status === "RESOLVED"
-            ? [{ by: staff.email, body: "Resolved from creator desk.", at: new Date(Date.now() - (s.days - 1) * 86400000).toISOString() }]
-            : [],
-          at: new Date(Date.now() - s.days * 86400000).toISOString()
-        });
-        ticketChanged = true;
-      });
-      if (ticketChanged) {
-        const key = (typeof TICKET_KEY !== "undefined" && TICKET_KEY) || "tradeshalaTickets";
-        try { saveStore(key, tickets); }
-        catch {
-          try { localStorage.setItem(key, JSON.stringify(tickets)); } catch { /* ignore */ }
-        }
-      }
-    }
-
-    if (typeof AdminCore !== "undefined" && AdminCore.syncOrdersFromEnrolls) {
-      try { AdminCore.syncOrdersFromEnrolls(); } catch { /* ignore */ }
-    }
-
-    try { localStorage.setItem(STUDENTS_DEMO_KEY, "1"); } catch { /* ignore */ }
+  function ensureStudentsDemo() {
+    // Intentionally empty — do not invent students / enrollments for the CRM desk.
   }
 
   function studentTickets(email) {
@@ -3256,13 +2977,7 @@
     const orders = creatorOrders(staff);
     const students = uniqueStudents(enrolls);
 
-    // Seed progress display when store empty (same idea as analytics)
-    const progressSeed = [0, 25, 48, 72, 100, 36, 88, 12, 55, 67];
-    let useSeed = true;
-    students.forEach((s) => {
-      enrolls.filter((e) => String(e.email || "").toLowerCase() === String(s.email || "").toLowerCase())
-        .forEach((e) => { if (progressPct(e.email, e.courseId)) useSeed = false; });
-    });
+    const useSeed = false;
 
     const rows = students.map((s, idx) => {
       const mail = String(s.email || "").toLowerCase();
@@ -3286,7 +3001,6 @@
 
       const progressRows = mine.map((e, i) => {
         let pct = progressPct(e.email, e.courseId);
-        if (!pct && useSeed) pct = progressSeed[(idx + i) % progressSeed.length];
         const total = lessonCount(e.courseId);
         return {
           courseId: e.courseId,
@@ -3724,18 +3438,7 @@
         renderDashboard($("#crmView"), s);
       };
     }
-    $$("[data-prod]").forEach((input) => {
-      input.addEventListener("change", () => {
-        const row = productionStore(s.email);
-        row[input.dataset.prod] = Math.max(0, Number(input.value) || 0);
-        saveProduction(s.email, row);
-        const hint = $("#crmProdSaveHint");
-        if (hint) {
-          hint.textContent = "Saved";
-          setTimeout(() => { hint.textContent = "Auto-saves"; }, 1200);
-        }
-      });
-    });
+    // Content Production is admin-controlled on /control — no CRM steppers.
   }
 
   async function loadPlatforms(s) {
@@ -3849,23 +3552,36 @@
   function renderProfile(root, s, view) {
     const extras = profileExtras(s.email);
     const api = socialApiState(s.email);
-    const staffRow = (typeof AdminCore !== "undefined" && AdminCore.normalizeStaff)
-      ? AdminCore.normalizeStaff(s)
-      : s;
-    const displayName = extras.name || staffRow.name || s.name || "";
-    const creatorId = staffRow.creatorId || s.creatorId || "—";
-    const referral = staffRow.referralCode || s.referralCode || "—";
+    const linked = (typeof AdminCore !== "undefined" && AdminCore.staffRow)
+      ? AdminCore.normalizeStaff(AdminCore.staffRow(s.email) || s)
+      : ((typeof AdminCore !== "undefined" && AdminCore.normalizeStaff) ? AdminCore.normalizeStaff(s) : s);
+    const displayName = extras.name || linked.name || s.name || "";
+    const creatorId = linked.creatorId || s.creatorId || "—";
+    const referral = linked.referralCode || s.referralCode || "—";
+    const bio = linked.bio || "";
+    const loginId = (typeof AdminCore !== "undefined" && AdminCore.isRehanStaffEmail && AdminCore.isRehanStaffEmail(s.email))
+      ? "rehan@bizgarh.in"
+      : (s.email || "");
     root.innerHTML = `
       <div class="crm-panel-view crm-section">
         <div class="crm-section-head">
           <div>
             <h3>${view === "settings" ? "Settings" : "Profile"}</h3>
-            <p>Editable display name · Creator ID / referral locked · social API install for Platform Performance.</p>
+            <p>Linked to Control Sub-admin · photo / bio / referral from that staff row.</p>
+          </div>
+        </div>
+        <div class="crm-profile-hero">
+          <img class="crm-profile-dp" src="${esc(creatorAvatar(linked))}" alt="">
+          <div>
+            <b>${esc(linked.name || displayName || "Creator")}</b>
+            <small>${esc(loginId)}</small>
+            ${bio ? `<p class="crm-profile-bio">${esc(bio)}</p>` : `<p class="crm-profile-bio muted">Bio is set on Control → Staff for this sub-admin.</p>`}
           </div>
         </div>
         <div class="crm-form-grid">
           <div class="crm-field"><label for="crmProfileName">Display name</label><input id="crmProfileName" value="${esc(displayName)}"></div>
-          <div class="crm-field"><label>Email / Bizgarh ID</label><input value="${esc(s.email || "")}" disabled></div>
+          <div class="crm-field"><label>CRM login ID</label><input value="${esc(loginId)}" disabled></div>
+          <div class="crm-field"><label>Staff email (Control)</label><input value="${esc(linked.email || s.email || "")}" disabled></div>
           <div class="crm-field crm-locked-field"><label>Creator ID</label><input value="${esc(creatorId)}" disabled><p class="crm-locked-hint">Admin-side only</p></div>
           <div class="crm-field crm-locked-field"><label>Referral code</label><input value="${esc(referral)}" disabled><p class="crm-locked-hint">Admin-side only</p></div>
         </div>
@@ -3894,7 +3610,7 @@
 
     const nameInput = $("#crmProfileName");
     if (nameInput) {
-      const save = () => persistProfileName(s, staffRow, nameInput.value);
+      const save = () => persistProfileName(s, linked, nameInput.value);
       nameInput.addEventListener("change", save);
       nameInput.addEventListener("blur", save);
     }

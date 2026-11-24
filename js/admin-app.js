@@ -1120,6 +1120,15 @@ function staffDrawer(email) {
       <label>Phone</label><input name="phone" value="${adEsc(s.phone)}">
       <label>Password reset</label><input name="password" placeholder="Leave blank to keep">
       <label>Creator functionality</label><select name="creatorEnabled"><option value="1" ${s.creatorEnabled?"selected":""}>Enabled</option><option value="0" ${!s.creatorEnabled?"selected":""}>Disabled</option></select>
+      ${s.creatorEnabled ? (() => {
+        const prod = AdminCore.normalizeContentProduction(s.contentProduction);
+        return `<h4>Content Production (Creator CRM)</h4>
+      <p class="muted">CRM dashboard shows these counts read-only for this creator. Edit here only.</p>
+      <label>Scripts Pending</label><input name="prodScriptsPending" type="number" min="0" step="1" value="${prod.scriptsPending}">
+      <label>In Editing</label><input name="prodInEditing" type="number" min="0" step="1" value="${prod.inEditing}">
+      <label>Awaiting Approval</label><input name="prodAwaitingApproval" type="number" min="0" step="1" value="${prod.awaitingApproval}">
+      <label>Videos Delivered</label><input name="prodVideosDelivered" type="number" min="0" step="1" value="${prod.videosDelivered}">`;
+      })() : ""}
       <label>Student scope</label><select name="studentScope"><option value="own" ${s.studentScope==="own"?"selected":""}>Own referrals/courses</option><option value="all" ${s.studentScope==="all"?"selected":""}>All students</option></select>
       <label>Commission type</label><select name="ctype"><option value="percent" ${s.commission.type==="percent"?"selected":""}>Percent</option><option value="fixed" ${s.commission.type==="fixed"?"selected":""}>Fixed ₹</option></select>
       <label>New sale</label><input name="newSale" type="number" value="${s.commission.newSale||20}">
@@ -1681,7 +1690,13 @@ function bindApp() {
           commission: { type: f.ctype.value, newSale: Number(f.newSale.value), renewal: Number(f.renewal.value), start: row.commission?.start || "", end: row.commission?.end || "" },
           referralCode: row.referralCode || (creatorEnabled ? makeCode(name.slice(0,5).toUpperCase()) : row.referralCode),
           creatorId: row.creatorId || (creatorEnabled ? "CR-" + (row.referralCode || "") : row.creatorId),
-          photoInlineDropped: false
+          photoInlineDropped: false,
+          contentProduction: creatorEnabled ? {
+            scriptsPending: f.prodScriptsPending?.value,
+            inEditing: f.prodInEditing?.value,
+            awaitingApproval: f.prodAwaitingApproval?.value,
+            videosDelivered: f.prodVideosDelivered?.value
+          } : (row.contentProduction || {})
         });
         AdminCore.saveStaff(next);
         syncStaffInstructor(next, face);

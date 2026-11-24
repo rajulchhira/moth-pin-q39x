@@ -1824,6 +1824,64 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   min-height: 0;
   border-radius: 0;
   aspect-ratio: auto;
+  position: relative;
+  overflow: hidden;
+}
+/* creator.html does not load public style.css — mirror .thumb-banner so KV covers show full frame */
+.crm-course-thumb .thumb-banner,
+.crm-course-thumb-real .thumb-banner,
+.crm-course-hero .thumb-banner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 1;
+  display: block;
+}
+.crm-prod-readonly .crm-prod-value {
+  display: block;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 4px 0 2px;
+}
+.crm-prod-ro-hint {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--crm-muted);
+}
+.crm-profile-hero {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--crm-line);
+  border-radius: 14px;
+  background: var(--crm-panel-2);
+}
+.crm-profile-dp {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: #0b1220;
+}
+.crm-profile-hero b {
+  display: block;
+  font-size: 1.05rem;
+}
+.crm-profile-hero small {
+  color: var(--crm-muted);
+}
+.crm-profile-bio {
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--crm-muted);
 }
 .crm-course-thumb-real .cover-copy {
   left: 14px;

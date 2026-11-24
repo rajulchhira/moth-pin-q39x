@@ -1476,7 +1476,7 @@ function photoFor(name) {
     if (row && row.photo && !String(row.photo).startsWith("data:")) return row.photo;
   } catch {}
   const slug = typeof instructorSlug === "function" ? instructorSlug(name) : "";
-  if (slug === "rehan-khan" || name === "Rehan Khan") return "/img/instructors/rehan-khan.jpg?v=desk206";
+  if (slug === "rehan-khan" || name === "Rehan Khan") return "/img/instructors/rehan-khan.jpg?v=desk207";
   return "/img/bizgarh-avatar.png";
 }
 function instructorSlug(name) {
@@ -9514,3 +9514,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk187: public lists live control courses (remote hidden + unpublished/deleted; Popular keeps slingshot) */
 /* cache-bust desk189: richer-wins curriculum sync — placeholders never wipe Lesson 2–4 */
 /* cache-bust desk192: Slingshot Community unlock — YouTube + Telegram open links + KV rooms */
+/* cache-bust desk207: Rehan CRM control-sync (read-only production, real thumbs, no demo fill) */
