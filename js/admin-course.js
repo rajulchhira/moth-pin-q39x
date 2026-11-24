@@ -425,6 +425,10 @@ const CourseAdmin = {
 
   syllabusHTML(c) {
     if (typeof ensureCourseSyllabus === "function") ensureCourseSyllabus(c.id);
+    // Authored local curriculum (Intro / Lesson 2–4) → KV as soon as Lessons opens.
+    if (typeof syncRicherCurriculumToRemote === "function") {
+      syncRicherCurriculumToRemote({ silent: true }).catch(() => {});
+    }
     const sy = syllabusFor(c.id);
     const lessons = lessonsAll(c.id);
     const byId = Object.fromEntries(lessons.map((l) => [l.id, l]));
@@ -675,6 +679,9 @@ const CourseAdmin = {
 
   openBuilder(id, tab) {
     if (typeof ensureCourseSyllabus === "function") ensureCourseSyllabus(id);
+    if (typeof syncRicherCurriculumToRemote === "function") {
+      syncRicherCurriculumToRemote({ silent: true }).catch(() => {});
+    }
     const c = this.byId(id);
     go("courseBuilder", { courseId: id, tab: tab || (c ? this.firstTab(c) : "setup") });
   },

@@ -593,10 +593,128 @@ function setCourseSyllabus(courseId, syllabus) {
   syncLessonsFromSyllabus(courseId, syllabus);
   if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
 }
+/** Suppress KV pushes while materializing local placeholder curriculum. */
+let __suppressCatalogPush = 0;
+function withoutCatalogPush(fn) {
+  __suppressCatalogPush += 1;
+  try { return fn(); }
+  finally { __suppressCatalogPush -= 1; }
+}
+
+const PLACEHOLDER_SECTION_TITLES = new Set([
+  "introduction", "core ideas", "the setup", "risk & journal", "managing trades", "lessons", "new chapter"
+]);
+const PLACEHOLDER_LESSON_TITLES = new Set(DEFAULT_LESSONS.map((l) => String(l.t || "").toLowerCase()));
+
+function isSampleMediaUrl(url) {
+  const s = String(url || "");
+  return !s || /flower\.mp4/i.test(s) || /interactive-examples\.mdn\.mozilla\.net/i.test(s);
+}
+
+function isPlaceholderLessonList(list) {
+  if (!Array.isArray(list) || !list.length) return true;
+  return list.every((l) => {
+    const title = String(l?.t || "").toLowerCase();
+    const kind = String(l?.kind || "video").toLowerCase();
+    if (kind === "pdf" || l?.pdf || l?.pdfInline) return false;
+    if (l?.vdoId || l?.fileKey) return false;
+    if (!PLACEHOLDER_LESSON_TITLES.has(title)) return false;
+    return isSampleMediaUrl(l?.src);
+  });
+}
+
+function isPlaceholderSyllabusDoc(doc) {
+  const sections = doc && Array.isArray(doc.sections) ? doc.sections : [];
+  if (!sections.length) return true;
+  return sections.every((sec) => PLACEHOLDER_SECTION_TITLES.has(String(sec?.title || "").toLowerCase()));
+}
+
+/** Higher score = authored control curriculum (Lesson 2–4, PDFs, VdoCipher, …). */
+function curriculumVideosScore(list) {
+  if (!Array.isArray(list) || !list.length) return 0;
+  if (isPlaceholderLessonList(list)) return 1;
+  let score = list.length * 2;
+  list.forEach((l) => {
+    const title = String(l?.t || "").toLowerCase();
+    if (!PLACEHOLDER_LESSON_TITLES.has(title)) score += 4;
+    if (String(l?.kind || "") === "pdf" || l?.pdf || l?.pdfInline) score += 6;
+    if (l?.vdoId || l?.fileKey) score += 5;
+    if (l?.src && !isSampleMediaUrl(l.src)) score += 3;
+  });
+  return score;
+}
+
+function curriculumSyllabusScore(doc) {
+  const sections = doc && Array.isArray(doc.sections) ? doc.sections : [];
+  if (!sections.length) return 0;
+  if (isPlaceholderSyllabusDoc(doc)) return 1;
+  let score = sections.length * 2;
+  sections.forEach((sec) => {
+    const title = String(sec?.title || "");
+    if (/^lesson\s*\d+/i.test(title)) score += 8;
+    if (!PLACEHOLDER_SECTION_TITLES.has(title.toLowerCase())) score += 4;
+    score += (Array.isArray(sec?.items) ? sec.items.length : 0);
+  });
+  return score;
+}
+
+function pickRicherCourseVideos(localList, remoteList) {
+  // Explicit local array wins (including [] on delete), except placeholders
+  // must not wipe authored remote Intro / Lesson 2–4 maps.
+  if (Array.isArray(localList)) {
+    if (localList.length && isPlaceholderLessonList(localList) && curriculumVideosScore(remoteList) > 1) {
+      return remoteList;
+    }
+    return localList;
+  }
+  if (Array.isArray(remoteList)) return remoteList;
+  return [];
+}
+
+function pickRicherCourseSyllabus(localDoc, remoteDoc) {
+  if (localDoc && Array.isArray(localDoc.sections)) {
+    const localEmpty = !localDoc.sections.length;
+    if (!localEmpty && isPlaceholderSyllabusDoc(localDoc) && curriculumSyllabusScore(remoteDoc) > 1) {
+      return remoteDoc;
+    }
+    return localDoc;
+  }
+  if (remoteDoc && Array.isArray(remoteDoc.sections)) return remoteDoc;
+  return { sections: [] };
+}
+
+function localCurriculumRicherThanRemote() {
+  const remote = typeof getRemoteCatalog === "function" ? getRemoteCatalog() : null;
+  const remoteVideos = remote && remote.videos && typeof remote.videos === "object" ? remote.videos : {};
+  const remoteSy = remote && remote.syllabus && typeof remote.syllabus === "object" ? remote.syllabus : {};
+  const localVideos = courseVideosMap();
+  const localSy = courseSyllabusMap();
+  const ids = new Set([
+    ...Object.keys(localVideos),
+    ...Object.keys(localSy),
+    ...Object.keys(remoteVideos),
+    ...Object.keys(remoteSy)
+  ]);
+  for (const id of ids) {
+    if (curriculumVideosScore(localVideos[id]) > curriculumVideosScore(remoteVideos[id])) return true;
+    if (curriculumSyllabusScore(localSy[id]) > curriculumSyllabusScore(remoteSy[id])) return true;
+  }
+  return false;
+}
+
 function ensureCourseSyllabus(courseId) {
-  const lessons = lessonsAll(courseId);
-  if (!courseVideosMap()[courseId]?.length) setCourseLessons(courseId, lessons, true);
-  if (!courseSyllabusMap()[courseId]) setCourseSyllabus(courseId, derivedSyllabus(courseId));
+  // Materializing DEFAULT_LESSONS is editor UX only — never auto-push placeholders to KV
+  // (a fresh control browser used to wipe authored Intro / Lesson 2–4 curriculum).
+  withoutCatalogPush(() => {
+    const lessons = lessonsAll(courseId);
+    if (!courseVideosMap()[courseId]?.length) setCourseLessons(courseId, lessons, true);
+    if (!courseSyllabusMap()[courseId]) {
+      const map = courseSyllabusMap();
+      map[courseId] = derivedSyllabus(courseId);
+      saveJson(COURSE_SYLLABUS_KEY, map);
+      syncLessonsFromSyllabus(courseId, map[courseId]);
+    }
+  });
   return syllabusFor(courseId);
 }
 function videoDb() {
@@ -2185,17 +2303,25 @@ function catalogStaffHeaders() {
 }
 
 function buildCatalogPushPayload() {
-  // Merge remote ∪ local so a landing/price save on a tab that never opened
-  // Lessons cannot wipe KV curriculum. Local keys win (including explicit []).
+  // Per-course richer-wins merge: authored local (Intro / Lesson 2–4, PDFs, Vdo)
+  // beats placeholder DEFAULT; richer remote is preserved when this tab only has defaults.
   const remote = getRemoteCatalog();
-  const videos = {
-    ...sanitizeVideosMapForRemote(remote.videos || {}),
-    ...sanitizeVideosMapForRemote(courseVideosMap())
-  };
-  const syllabus = {
-    ...sanitizeSyllabusMapForRemote(remote.syllabus || {}),
-    ...sanitizeSyllabusMapForRemote(courseSyllabusMap())
-  };
+  const remoteVideos = sanitizeVideosMapForRemote(remote.videos || {});
+  const localVideos = sanitizeVideosMapForRemote(courseVideosMap());
+  const remoteSy = sanitizeSyllabusMapForRemote(remote.syllabus || {});
+  const localSy = sanitizeSyllabusMapForRemote(courseSyllabusMap());
+  const videoIds = new Set([...Object.keys(remoteVideos), ...Object.keys(localVideos)]);
+  const videos = {};
+  videoIds.forEach((id) => {
+    const picked = pickRicherCourseVideos(localVideos[id], remoteVideos[id]);
+    if (Array.isArray(picked)) videos[id] = picked;
+  });
+  const syIds = new Set([...Object.keys(remoteSy), ...Object.keys(localSy)]);
+  const syllabus = {};
+  syIds.forEach((id) => {
+    const picked = pickRicherCourseSyllabus(localSy[id], remoteSy[id]);
+    if (picked && Array.isArray(picked.sections)) syllabus[id] = picked;
+  });
   return {
     edits: courseEdits(),
     extras: extraCourses(),
@@ -2210,6 +2336,13 @@ function catalogHasCurriculum(doc) {
   const syllabus = doc?.syllabus && typeof doc.syllabus === "object" ? doc.syllabus : {};
   return Object.keys(videos).some((id) => Array.isArray(videos[id]) && videos[id].length)
     || Object.keys(syllabus).some((id) => Array.isArray(syllabus[id]?.sections) && syllabus[id].sections.length);
+}
+
+function catalogHasAuthoredCurriculum(doc) {
+  const videos = doc?.videos && typeof doc.videos === "object" ? doc.videos : {};
+  const syllabus = doc?.syllabus && typeof doc.syllabus === "object" ? doc.syllabus : {};
+  return Object.keys(videos).some((id) => curriculumVideosScore(videos[id]) > 1)
+    || Object.keys(syllabus).some((id) => curriculumSyllabusScore(syllabus[id]) > 1);
 }
 
 function localHasCurriculumPayload(payload) {
@@ -2247,7 +2380,25 @@ async function pushCatalogRemote(opts) {
   }
 }
 
+/** Push when this control browser holds authored curriculum richer than KV. */
+async function syncRicherCurriculumToRemote(opts) {
+  const silent = !opts || opts.silent !== false;
+  if (!catalogStaffHeaders()["X-Staff-Email"]) {
+    return { ok: false, skipped: "no_staff" };
+  }
+  const localDoc = { videos: courseVideosMap(), syllabus: courseSyllabusMap() };
+  // Never auto-seed DEFAULT_LESSONS / flower.mp4 placeholders into KV.
+  if (!catalogHasAuthoredCurriculum(localDoc)) {
+    return { ok: true, skipped: "local_placeholder_only" };
+  }
+  if (!localCurriculumRicherThanRemote()) {
+    return { ok: true, skipped: "local_not_richer" };
+  }
+  return pushCatalogRemote({ silent });
+}
+
 function scheduleCatalogPush() {
+  if (__suppressCatalogPush > 0) return;
   if (__catalogPushTimer) clearTimeout(__catalogPushTimer);
   __catalogPushTimer = setTimeout(() => {
     __catalogPushTimer = null;
@@ -2331,13 +2482,16 @@ async function hydrateCatalogFromRemote() {
         writeList(EXTRA_COURSES_KEY, Array.from(byId.values()));
         const hidden = Array.from(new Set([].concat(hiddenCourseIds(), data.hidden || []).map(String)));
         writeList(HIDDEN_COURSES_KEY, hidden.filter((id) => !isRetiredPublicCourseId(id)));
-        // Fill missing/empty local curriculum from KV; keep non-empty local lesson edits.
+        // Fill missing/empty OR placeholder local from richer KV; never clobber authored local.
         const localVideos = courseVideosMap();
         const remoteVideos = data.videos && typeof data.videos === "object" ? data.videos : {};
         let videosTouched = false;
         Object.keys(remoteVideos).forEach((id) => {
           if (!Array.isArray(remoteVideos[id]) || !remoteVideos[id].length) return;
-          if (!Array.isArray(localVideos[id]) || !localVideos[id].length) {
+          const localList = localVideos[id];
+          const localEmpty = !Array.isArray(localList) || !localList.length;
+          const remoteRicher = curriculumVideosScore(remoteVideos[id]) > curriculumVideosScore(localList);
+          if (localEmpty || (isPlaceholderLessonList(localList) && remoteRicher)) {
             localVideos[id] = remoteVideos[id];
             videosTouched = true;
           }
@@ -2349,16 +2503,17 @@ async function hydrateCatalogFromRemote() {
         Object.keys(remoteSy).forEach((id) => {
           const doc = remoteSy[id];
           if (!doc || !Array.isArray(doc.sections) || !doc.sections.length) return;
-          if (!localSy[id] || !Array.isArray(localSy[id].sections) || !localSy[id].sections.length) {
+          const localDoc = localSy[id];
+          const localEmpty = !localDoc || !Array.isArray(localDoc.sections) || !localDoc.sections.length;
+          const remoteRicher = curriculumSyllabusScore(doc) > curriculumSyllabusScore(localDoc);
+          if (localEmpty || (isPlaceholderSyllabusDoc(localDoc) && remoteRicher)) {
             localSy[id] = doc;
             syTouched = true;
           }
         });
         if (syTouched) saveJson(COURSE_SYLLABUS_KEY, localSy);
-        // Edits already in KV but curriculum only on this control browser → seed once.
-        if (!catalogHasCurriculum(data) && localHasCurriculumPayload() && catalogStaffHeaders()["X-Staff-Email"]) {
-          await pushCatalogRemote({ silent: true });
-        }
+        // Authored local (Intro / Lesson 2–4) always wins over empty or placeholder KV.
+        await syncRicherCurriculumToRemote({ silent: true });
       } catch { /* ignore mirror errors */ }
     } else {
       // Public: drop stale local hides for courses KV marks live (same browser may have
@@ -8748,4 +8903,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk185: control course edits (pic/price) sync via KV /api/catalog/courses */
 /* cache-bust desk186: soft-deleted keep seed no longer blocks + New course (shadow filter) */
 /* cache-bust desk187: public lists live control courses (remote hidden + unpublished/deleted; Popular keeps slingshot) */
-/* cache-bust desk188: public course overview reads control curriculum (videos+syllabus) via KV */
+/* cache-bust desk189: richer-wins curriculum sync — placeholders never wipe Lesson 2–4 */
