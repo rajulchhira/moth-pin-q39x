@@ -1,9 +1,10 @@
 (function () {
   try {
-    var siteTheme = localStorage.getItem("bizgarhTheme");
-    var theme = siteTheme === "dark" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", theme);
-    document.documentElement.style.colorScheme = theme;
+    localStorage.removeItem("bizgarhTheme");
+  } catch (e) { /* ignore */ }
+  try {
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.style.colorScheme = "light";
   } catch (e) { /* keep default light */ }
 
   try {

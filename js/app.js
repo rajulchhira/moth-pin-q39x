@@ -1148,35 +1148,13 @@ function iconSvg(name) {
 }
 
 const SITE_THEME_KEY = "bizgarhTheme";
-function getSiteTheme() {
-  try {
-    return localStorage.getItem(SITE_THEME_KEY) === "dark" ? "dark" : "light";
-  } catch {
-    return "light";
-  }
-}
-function applySiteTheme(theme) {
-  const next = theme === "dark" ? "dark" : "light";
-  try { localStorage.setItem(SITE_THEME_KEY, next); } catch { /* ignore */ }
-  document.documentElement.setAttribute("data-theme", next);
-  document.documentElement.style.colorScheme = next;
-  document.querySelectorAll(".site-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
+/** Public site is light-only — clear any leftover dark preference. */
+function forceSiteLightTheme() {
+  try { localStorage.removeItem(SITE_THEME_KEY); } catch { /* ignore */ }
+  document.documentElement.removeAttribute("data-theme");
+  document.documentElement.style.colorScheme = "light";
   const meta = document.querySelector('meta[name="color-scheme"]');
-  if (meta) meta.setAttribute("content", next);
-}
-function siteThemeToggleHTML() {
-  const t = getSiteTheme();
-  return `<button type="button" class="site-theme-toggle" data-theme="${t}" aria-label="Theme Light or Dark" title="Switch theme">
-    <span class="site-theme-knob" aria-hidden="true"></span>
-    <span class="site-theme-opt" data-val="light">Light</span>
-    <span class="site-theme-opt" data-val="dark">Dark</span>
-  </button>`;
-}
-function siteThemeMenuHTML() {
-  return `<div class="acct-theme" role="none">
-    <div class="acct-theme-label">${iconSvg("moon")} Theme</div>
-    <div class="acct-theme-row">${siteThemeToggleHTML()}</div>
-  </div>`;
+  if (meta) meta.setAttribute("content", "light");
 }
 
 const CATEGORIES = [
@@ -3735,11 +3713,9 @@ function headerAuthHTML(place) {
       <a class="btn btn-primary" href="/learning">My Learning</a>
       <a class="btn btn-ghost" href="/account">My Profile</a>
       ${role ? `<a class="btn btn-primary js-open-admin" href="/control">Admin panel</a>` : ""}
-      ${siteThemeMenuHTML()}
       <button class="btn btn-ghost js-logout" type="button">Logout</button>`;
   }
-  return `<a class="btn btn-ghost hdr-learn" href="/learning">My Learning</a>
-    ${noteBellHTML()}
+  return `${noteBellHTML()}
     <div class="acct-wrap">
       <button class="${avatarClass}" type="button" aria-haspopup="true" aria-expanded="false" aria-label="${first}">${avatarInner}</button>
       <div class="acct-menu" role="menu">
@@ -3748,7 +3724,6 @@ function headerAuthHTML(place) {
         <a href="/account">${iconSvg("users")} My Profile</a>
         ${role ? `<a class="js-open-admin" href="/control">${iconSvg("lock")} Admin panel</a>` : ""}
         <a href="/contact">${iconSvg("headset")} Help</a>
-        ${siteThemeMenuHTML()}
         <button type="button" class="js-logout">${iconSvg("share")} Logout</button>
       </div>
     </div>`;
@@ -3955,7 +3930,7 @@ function bindChromeOnce(el, type, fn, opts) {
 }
 
 function bindChrome() {
-  applySiteTheme(getSiteTheme());
+  forceSiteLightTheme();
   bindChromeOnce(document.getElementById("menuToggle"), "click", () => {
     setMobileNav(!document.getElementById("mobileNav")?.classList.contains("open"));
   });
@@ -4067,18 +4042,6 @@ function bindChrome() {
     if (noteItem) {
       const id = noteItem.getAttribute("data-note-id");
       notesSave(notesAll().map((n) => n.id === id ? { ...n, read: true } : n));
-    }
-    const themeBtn = e.target.closest(".site-theme-toggle");
-    if (themeBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      const opt = e.target.closest(".site-theme-opt");
-      let next = getSiteTheme() === "light" ? "dark" : "light";
-      if (opt) next = opt.getAttribute("data-val") || next;
-      else if (themeBtn.getAttribute("data-theme") === "light") next = "dark";
-      else next = "light";
-      applySiteTheme(next);
-      return;
     }
     const acctBtn = e.target.closest(".acct-btn");
     if (acctBtn) {
@@ -8137,3 +8100,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk173: Soften public site dark theme (charcoal / light black) /css/style.css?v=desk53 */
 
 /* cache-bust desk177: CDN re-bust after desk56 immutable poison /css/style.css?v=desk57 */
+/* cache-bust desk178: light-only site — remove Theme menu + header My Learning /css/style.css?v=desk58 */
