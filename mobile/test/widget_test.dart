@@ -95,63 +95,21 @@ void main() {
     expect(live.top, greaterThan(-40));
   });
 
-  testWidgets('Popular Categories open matching Search libraries',
-      (tester) async {
+  testWidgets('Search shows Slingshot as the only classroom', (tester) async {
     await pumpApp(tester);
-
-    Future<void> expectLibrary({
-      required String tile,
-      required String libraryTitle,
-      required String sampleCourse,
-    }) async {
-      await tester.tap(find.text('Home'));
-      await tester.pump(const Duration(milliseconds: 250));
-      await tester.ensureVisible(find.text(tile));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.tap(find.text(tile));
-      await tester.pump(const Duration(milliseconds: 450));
-      expect(find.text('Courses, mentors, options…'), findsOneWidget);
-      expect(find.text('$libraryTitle library'), findsOneWidget);
-      expect(find.text(sampleCourse), findsOneWidget);
-    }
-
-    await expectLibrary(
-      tile: 'Stock Market Investing',
-      libraryTitle: 'Stock Market Investing',
-      sampleCourse: 'How to Build a 10-Year Stock Portfolio',
-    );
-    await expectLibrary(
-      tile: 'Option Trading',
-      libraryTitle: 'Option Trading',
-      sampleCourse: 'Options from Zero',
-    );
-    await expectLibrary(
-      tile: 'Stock Market Basics',
-      libraryTitle: 'Stock Market Basics',
-      sampleCourse: 'Your First 30 Days in Markets',
-    );
-    await expectLibrary(
-      tile: 'Technical Analysis',
-      libraryTitle: 'Technical Analysis',
-      sampleCourse: 'Candlestick Context Course',
-    );
-    await expectLibrary(
-      tile: 'Crypto',
-      libraryTitle: 'Crypto',
-      sampleCourse: 'Crypto Spot & Risk Basics',
-    );
-    await expectLibrary(
-      tile: 'Trading Strategies',
-      libraryTitle: 'Trading Strategies',
-      sampleCourse: 'EMA Pullback Swing System',
-    );
+    await tester.tap(find.text('Search'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Courses, mentors, options…'), findsOneWidget);
+    expect(find.text('Slingshot: The 5-Minute Trading Edge'), findsWidgets);
+    expect(find.text('Intraday Breakout Blueprint'), findsNothing);
+    expect(find.text('Options from Zero'), findsNothing);
   });
 
   testWidgets('Search course card opens classroom detail', (tester) async {
     await pumpApp(tester);
     await tester.tap(find.text('Search'));
     await tester.pump(const Duration(milliseconds: 300));
-    final course = find.text('Intraday Breakout Blueprint').hitTestable();
+    final course = find.text('Slingshot: The 5-Minute Trading Edge').hitTestable();
     expect(course, findsOneWidget);
     await tester.tap(course);
     await tester.pump();
@@ -170,7 +128,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Download'), findsOneWidget);
     expect(
-      find.text('Your First 30 Days in Markets').hitTestable(),
+      find.text('Slingshot: The 5-Minute Trading Edge').hitTestable(),
       findsOneWidget,
     );
   });
@@ -183,11 +141,11 @@ void main() {
     await tester.tap(find.text('My Purchases').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Options from Zero').hitTestable());
+    await tester.tap(find.text('Slingshot: The 5-Minute Trading Edge').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Transaction ID'), findsOneWidget);
-    expect(find.text('TXNDEMOOPTST02'), findsOneWidget);
+    expect(find.text('TXNDEMOSLING01'), findsOneWidget);
     expect(find.text('Amount'), findsOneWidget);
     expect(find.text('Date of purchase'), findsOneWidget);
   });
