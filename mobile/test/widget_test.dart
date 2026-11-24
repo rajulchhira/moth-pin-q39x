@@ -175,17 +175,40 @@ void main() {
     );
   });
 
-  testWidgets('Profile purchases open invoice detail', (tester) async {
+  testWidgets('Profile purchases open purchase detail with TXN', (tester) async {
     await pumpApp(tester);
     await tester.tap(find.text('Profile'));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('Purchases & Invoices').hitTestable());
+    expect(find.text('Edit Profile'), findsOneWidget);
+    await tester.tap(find.text('My Purchases').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('Options from Zero').hitTestable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Amount paid'), findsOneWidget);
+    expect(find.text('Transaction ID'), findsOneWidget);
+    expect(find.text('TXNDEMOOPTST02'), findsOneWidget);
+    expect(find.text('Amount'), findsOneWidget);
+    expect(find.text('Date of purchase'), findsOneWidget);
+  });
+
+  testWidgets('Edit Profile shows dd-mm-yyyy DOB and no retired fields',
+      (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Profile'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Edit Profile').hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Account info'), findsOneWidget);
+    expect(find.text('dd-mm-yyyy'), findsOneWidget);
+    expect(find.text('15-07-1998'), findsOneWidget);
+    expect(find.text('Male'), findsOneWidget);
+    expect(find.text('Female'), findsOneWidget);
+    expect(find.text('Prefer not to say'), findsNothing);
+    expect(find.text('Interested in'), findsNothing);
+    expect(find.text('Experience in the market'), findsNothing);
+    expect(find.textContaining('Theme'), findsNothing);
   });
 
   testWidgets('Profile Help & FAQs opens FAQ list', (tester) async {

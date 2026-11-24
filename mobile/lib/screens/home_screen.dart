@@ -4,6 +4,7 @@ import '../data/sample_data.dart';
 import '../models/course.dart';
 import '../state/app_nav.dart';
 import '../state/auth_state.dart';
+import '../state/profile_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/auto_marquee.dart';
@@ -126,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
+    final profile = ProfileScope.of(context);
     final nav = AppNavScope.of(context);
     final popular = SampleData.popularCourses();
     const live = SampleData.upcomingLive;
@@ -135,8 +137,10 @@ class _HomeScreenState extends State<HomeScreen>
       end: Offset.zero,
     ).animate(fade);
 
-    final firstName =
-        SampleData.user.name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+    final firstName = profile.name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty);
     final welcome = auth.isSignedIn
         ? 'Welcome back, ${firstName.isEmpty ? 'trader' : firstName.first}'
         : 'Welcome!';

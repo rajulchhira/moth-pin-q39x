@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../theme/bg_text.dart';
-
 import '../theme/colors.dart';
 
+/// Circular Bizgarh mark + optional wordmark (matches site header/footer badge).
 class BrandMark extends StatelessWidget {
   const BrandMark({
     super.key,
@@ -21,8 +21,7 @@ class BrandMark extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(size * 0.28),
+        ClipOval(
           child: Image.asset(
             'assets/bizgarh-icon.png',
             width: size,

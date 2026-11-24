@@ -34,12 +34,24 @@ class EnrolledCourse {
     required this.progress,
     required this.nextLesson,
     required this.status,
+    this.txnId,
+    this.orderId,
+    this.purchasedAt,
+    this.amount,
+    this.paymentMethod,
   });
 
   final Course course;
   final double progress;
   final String nextLesson;
   final String status;
+  /// Purchase detail — mirrors website My Purchases expand panel.
+  final String? txnId;
+  final String? orderId;
+  /// ISO-8601 purchase timestamp.
+  final String? purchasedAt;
+  final int? amount;
+  final String? paymentMethod;
 }
 
 class Mentor {
@@ -92,6 +104,7 @@ class SampleUser {
   final String joined;
   final String initials;
 }
+
 
 class CourseMenuItem {
   const CourseMenuItem({
