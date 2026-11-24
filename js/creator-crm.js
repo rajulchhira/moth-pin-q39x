@@ -1,4 +1,4 @@
-/* Creator CRM dashboard — desk209 Profile change password + show toggles */
+/* Creator CRM dashboard — desk210 Profile change password + show toggles */
 (function () {
   const PROD_KEY = "tradeshalaCreatorProduction";
   const SOCIAL_KEY = "tradeshalaCreatorSocialLinks";
@@ -3632,7 +3632,7 @@
     btn.innerHTML = icon(show ? "eyeOff" : "eye");
   }
 
-  function submitChangePassword(s, form) {
+  async function submitChangePassword(s, form) {
     const msg = $("#crmPasswordMsg");
     const setMsg = (text, ok) => {
       if (!msg) return;
@@ -3654,7 +3654,16 @@
       setMsg("New password and confirmation do not match", false);
       return;
     }
-    const r = AdminCore.changeStaffPassword(s.email, current, next);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    setMsg("Updating password…", true);
+    let r;
+    try {
+      r = await AdminCore.changeStaffPassword(s.email, current, next);
+    } catch (err) {
+      r = { ok: false, error: String(err?.message || err || "Could not change password") };
+    }
+    if (submitBtn) submitBtn.disabled = false;
     if (!r?.ok) {
       setMsg(r?.error || "Could not change password", false);
       return;
