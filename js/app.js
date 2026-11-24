@@ -2119,6 +2119,24 @@ function scheduleCatalogPush() {
   }, 400);
 }
 
+function healPublicHiddenFromRemoteDoc(doc) {
+  if (typeof isAdminPage === "function" && isAdminPage()) return;
+  if (!doc) return;
+  try {
+    const remoteHidden = new Set((doc.hidden || []).map(String));
+    const remoteEdits = doc.edits || {};
+    const nextHidden = hiddenCourseIds().filter((id) => {
+      if (remoteHidden.has(String(id))) return true;
+      const edit = remoteEdits[id];
+      if (edit && (edit.deleted || edit.unpublished || edit.status === "unlisted")) return true;
+      if (edit && edit.deleted === false && edit.unpublished === false && edit.status === "published") return false;
+      if (String(id) === "slingshot" && !remoteHidden.has("slingshot")) return false;
+      return true;
+    });
+    if (nextHidden.length !== hiddenCourseIds().length) writeList(HIDDEN_COURSES_KEY, nextHidden);
+  } catch { /* ignore */ }
+}
+
 async function hydrateCatalogFromRemote() {
   try {
     const res = await fetch(CATALOG_API, {
@@ -2127,9 +2145,18 @@ async function hydrateCatalogFromRemote() {
       cache: "no-store",
       signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
     });
-    if (!res.ok) return getRemoteCatalog();
+    if (!res.ok) {
+      // Prefer cached remote (if any) over stale local hides when API is down.
+      healPublicHiddenFromRemoteDoc(getRemoteCatalog());
+      __catalogHydrated = true;
+      return getRemoteCatalog();
+    }
     const data = await res.json().catch(() => null);
-    if (!data || !data.ok) return getRemoteCatalog();
+    if (!data || !data.ok) {
+      healPublicHiddenFromRemoteDoc(getRemoteCatalog());
+      __catalogHydrated = true;
+      return getRemoteCatalog();
+    }
     const hasContent = (data.edits && Object.keys(data.edits).length)
       || (Array.isArray(data.extras) && data.extras.length)
       || (Array.isArray(data.hidden) && data.hidden.length);
@@ -2169,23 +2196,12 @@ async function hydrateCatalogFromRemote() {
     } else {
       // Public: drop stale local hides for courses KV marks live (same browser may have
       // soft-deleted earlier; mergedHiddenCourseIds already prefers remote after hydrate).
-      try {
-        const remoteHidden = new Set((data.hidden || []).map(String));
-        const remoteEdits = data.edits || {};
-        const nextHidden = hiddenCourseIds().filter((id) => {
-          if (remoteHidden.has(String(id))) return true;
-          const edit = remoteEdits[id];
-          if (edit && (edit.deleted || edit.unpublished || edit.status === "unlisted")) return true;
-          if (edit && edit.deleted === false && edit.unpublished === false && edit.status === "published") return false;
-          if (String(id) === "slingshot" && !remoteHidden.has("slingshot")) return false;
-          return true;
-        });
-        if (nextHidden.length !== hiddenCourseIds().length) writeList(HIDDEN_COURSES_KEY, nextHidden);
-      } catch { /* ignore */ }
+      healPublicHiddenFromRemoteDoc(data);
     }
     __catalogHydrated = true;
     return getRemoteCatalog();
   } catch {
+    healPublicHiddenFromRemoteDoc(getRemoteCatalog());
     __catalogHydrated = true;
     return getRemoteCatalog();
   }
