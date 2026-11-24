@@ -175,11 +175,15 @@ AdminCore.ensureRehanCreator = () => {
     || AdminCore.pickHostedPhoto(prev?.photo)
     || AdminCore.pickHostedPhoto(fromRoster?.photo)
     || REHAN_STOCK_PHOTO;
+  // Preserve a changed CRM password from KV / local staff; only seed the default once.
+  const seededPassword = (fromStaff && fromStaff.password)
+    || (prev && prev.password)
+    || REHAN_CRM_PASSWORD;
   const next = {
     ...(prev || {}),
     name: (fromStaff && fromStaff.name) || (prev && prev.name) || fromRoster?.name || "Rehan Khan",
     email: mail,
-    password: REHAN_CRM_PASSWORD,
+    password: seededPassword,
     role: (fromStaff && fromStaff.role) || (prev && prev.role) || fromRoster?.role || "subadmin",
     status: (fromStaff && fromStaff.status) || (prev && prev.status) || fromRoster?.status || "active",
     creatorEnabled: true,
@@ -751,22 +755,54 @@ AdminCore.resolveAttribution = (user, couponCode) => {
   return { creator, code: creator.referralCode || code, source };
 };
 
+/** Effective CRM / staff password for a row (Rehan defaults to seed until changed). */
+AdminCore.staffPassword = (rowOrEmail) => {
+  let row = rowOrEmail;
+  if (typeof rowOrEmail === "string") row = AdminCore.staffRow(rowOrEmail);
+  const pw = String(row?.password || "");
+  if (pw) return pw;
+  if (row && AdminCore.isRehanStaffEmail(row.email)) return REHAN_CRM_PASSWORD;
+  return "";
+};
+
+AdminCore.changeStaffPassword = (email, currentPassword, newPassword) => {
+  const rawId = String(email || "").trim().toLowerCase();
+  email = AdminCore.resolveStaffLoginId(email);
+  if (email === REHAN_CANONICAL_EMAIL) {
+    try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
+    if (rawId && rawId !== REHAN_CRM_LOGIN_ID && rawId !== REHAN_CANONICAL_EMAIL) {
+      return { ok: false, error: "Wrong account" };
+    }
+  }
+  const row = AdminCore.staffRow(email);
+  if (!row) return { ok: false, error: "Account not found" };
+  const expected = AdminCore.staffPassword(row);
+  if (!currentPassword || currentPassword !== expected) {
+    return { ok: false, error: "Current password is incorrect" };
+  }
+  const next = String(newPassword || "");
+  if (next.length < 4) return { ok: false, error: "New password must be at least 4 characters" };
+  if (next === currentPassword) return { ok: false, error: "New password must be different" };
+  AdminCore.saveStaff({
+    ...row,
+    password: next,
+    googleAuth: false
+  });
+  if (AdminCore.isRehanStaffEmail(email)) AdminCore.markRehanCrmPasswordOk();
+  AdminCore.audit("password_change", email, "", "ok");
+  return { ok: true };
+};
+
 AdminCore.login = (email, password, totp) => {
   const rawId = String(email || "").trim().toLowerCase();
   email = AdminCore.resolveStaffLoginId(email);
-  // Ensure Rehan's CRM password exists before password check (local seed; same email as admin KV).
+  // Ensure Rehan staff row exists before password check (preserves changed CRM password).
   if (email === REHAN_CANONICAL_EMAIL) {
     try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
-    // Hard require the CRM password — no empty / Google / session bypass.
-    if (!password || password !== REHAN_CRM_PASSWORD) {
-      AdminCore.noteLoginFail();
-      AdminCore.recordSession({ email }, false);
-      AdminCore.clearRehanCrmPasswordOk();
-      return { ok: false, error: "Wrong email or password" };
-    }
     // CRM must use rehan@bizgarh.in only (aliases already blocked upstream).
     if (rawId && rawId !== REHAN_CRM_LOGIN_ID && rawId !== REHAN_CANONICAL_EMAIL) {
       AdminCore.noteLoginFail();
+      AdminCore.clearRehanCrmPasswordOk();
       return { ok: false, error: "Wrong email or password" };
     }
   }
@@ -777,11 +813,24 @@ AdminCore.login = (email, password, totp) => {
   const row = AdminCore.staffRow(email) || (ownerOk
     ? { name: "Platform Owner", email, role: "owner", status: "active" }
     : null);
-  if (!ownerOk && row && (row.googleAuth || !row.password) && !(row.password && password === row.password)) {
+  if (email === REHAN_CANONICAL_EMAIL) {
+    // Hard require a password match against the staff store — no empty / Google bypass.
+    const expected = AdminCore.staffPassword(row);
+    if (!password || !expected || password !== expected) {
+      AdminCore.noteLoginFail();
+      AdminCore.recordSession({ email }, false);
+      AdminCore.clearRehanCrmPasswordOk();
+      return { ok: false, error: "Wrong email or password" };
+    }
+  }
+  if (!ownerOk && row && (row.googleAuth || !row.password) && !(row.password && password === row.password)
+      && !(AdminCore.isRehanStaffEmail(email) && password === AdminCore.staffPassword(row))) {
     AdminCore.noteLoginFail();
     return { ok: false, error: "This admin signs in with Google on the public site." };
   }
-  const passOk = ownerOk || (row && row.password && row.password === password);
+  const passOk = ownerOk
+    || (row && row.password && row.password === password)
+    || (row && AdminCore.isRehanStaffEmail(email) && password === AdminCore.staffPassword(row));
   if (!row || !passOk) {
     AdminCore.noteLoginFail();
     AdminCore.recordSession({ email }, false);

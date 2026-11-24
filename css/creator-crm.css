@@ -2210,6 +2210,56 @@ html.crm-html[data-crm-theme="light"] .crm-lib-thumb {
   font-weight: 700;
 }
 
+.crm-password-form {
+  display: grid;
+  gap: 4px;
+  max-width: 420px;
+  margin-top: 4px;
+}
+.crm-pw-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.crm-pw-wrap input {
+  width: 100%;
+  padding-right: 44px;
+  box-sizing: border-box;
+}
+.crm-pw-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--crm-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+.crm-pw-toggle:hover,
+.crm-pw-toggle:focus-visible {
+  color: var(--crm-text, #e8eefc);
+  background: rgba(148, 163, 184, 0.12);
+  outline: none;
+}
+.crm-pw-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+.crm-password-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
 @media (max-width: 860px) {
   .crm-course-popup-grid { grid-template-columns: 1fr; }
   .crm-api-row { flex-direction: column; align-items: stretch; }
