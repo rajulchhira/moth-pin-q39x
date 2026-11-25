@@ -312,13 +312,27 @@ AdminCore.ensureRehanCreator = () => {
     if (dirty) setCourseOwners(owners);
   }
   // Pin local course edit so CRM cards show Rehan even before / while KV merges.
+  // Also keep Hindi as the Original language chip for Slingshot.
   if (typeof courseEdits === "function" && typeof setCourseEdits === "function") {
     try {
       const edits = courseEdits();
       const prev = edits.slingshot || {};
-      if (prev.instructor !== "Rehan Khan" || String(prev.ownerEmail || "").toLowerCase() !== mail) {
-        edits.slingshot = { ...prev, instructor: "Rehan Khan", ownerEmail: mail };
+      const langs = Array.isArray(prev.languages) ? prev.languages.map((x) => String(x || "").trim()).filter(Boolean) : [];
+      const hindiOriginal = langs.length >= 1 && String(langs[0]).toLowerCase() === "hindi";
+      const needHost = prev.instructor !== "Rehan Khan" || String(prev.ownerEmail || "").toLowerCase() !== mail;
+      const needLang = !hindiOriginal;
+      if (needHost || needLang) {
+        edits.slingshot = {
+          ...prev,
+          instructor: "Rehan Khan",
+          ownerEmail: mail,
+          languages: ["Hindi", "English"]
+        };
         setCourseEdits(edits);
+        if (needLang && typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+        else if (needLang && typeof pushCatalogRemote === "function") {
+          try { pushCatalogRemote({ silent: true }); } catch { /* ignore */ }
+        }
       }
     } catch { /* ignore */ }
   }

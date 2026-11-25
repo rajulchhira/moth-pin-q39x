@@ -29,6 +29,7 @@ class Course {
     this.coverImageAsset,
     this.description = '',
     this.learn = const <String>[],
+    this.languages = const <String>['English', 'Hindi'],
     this.communityOpen = false,
     this.communityRooms = const <CommunityRoom>[],
   });
@@ -51,9 +52,15 @@ class Course {
   final String description;
   /// “What you will learn” bullets from live catalog.
   final List<String> learn;
+  /// Display order for language chips; first entry is the Original track.
+  final List<String> languages;
   /// When true, Community links open without purchase (live Slingshot seed).
   final bool communityOpen;
   final List<CommunityRoom> communityRooms;
+
+  /// Original classroom language (first chip), matching web `courseLangs`.
+  String get originalLanguage =>
+      languages.isNotEmpty ? languages.first : 'English';
 }
 
 class EnrolledCourse {
