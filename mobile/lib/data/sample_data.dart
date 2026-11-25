@@ -239,6 +239,8 @@ abstract final class SampleData {
         'Size trades smartly so two losses stay manageable.',
         'Backtest past charts and build real trading confidence.',
       ],
+      // Hindi is Original; English is the translation (matches web courseLangs).
+      languages: ['Hindi', 'English'],
       communityOpen: true,
       communityRooms: [
         CommunityRoom(

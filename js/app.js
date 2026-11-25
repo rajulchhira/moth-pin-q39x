@@ -1054,7 +1054,22 @@ function setMentorLessons(programId, lessons) {
 }
 
 const COURSES = [
-  { id: "slingshot", title: "Slingshot: The 5-Minute Trading Edge", instructor: "Aarav Mehta", learners: "1,240", rating: "4.9", price: 999, old: 2499, cat: "trending", cover: "slingshot", hours: "5.0", lessons: 12, description: "A focused 5-minute trading edge for Indian desks — written process, invalidation, and size. Education, not tips." }
+  {
+    id: "slingshot",
+    title: "Slingshot: The 5-Minute Trading Edge",
+    instructor: "Aarav Mehta",
+    learners: "1,240",
+    rating: "4.9",
+    price: 999,
+    old: 2499,
+    cat: "trending",
+    cover: "slingshot",
+    hours: "5.0",
+    lessons: 12,
+    // Hindi is the original track; English is the translation (Original chip).
+    languages: ["Hindi", "English"],
+    description: "A focused 5-minute trading edge for Indian desks — written process, invalidation, and size. Education, not tips."
+  }
 ];
 
 const COVERS = {
@@ -3022,6 +3037,8 @@ async function hydrateCatalogFromRemote() {
         if (roomsTouched) localStorage.setItem(COURSE_ROOMS_KEY, JSON.stringify(localRooms));
         // Authored local (Intro / Lesson 2–4) always wins over empty or placeholder KV.
         await syncRicherCurriculumToRemote({ silent: true });
+        // Pin Slingshot Hindi-as-Original into catalog edits + KV when staff is signed in.
+        try { ensureSlingshotHindiOriginal({ push: true }); } catch { /* ignore */ }
       } catch { /* ignore mirror errors */ }
     } else {
       // Public: drop stale local hides for courses KV marks live (same browser may have
@@ -3035,6 +3052,45 @@ async function hydrateCatalogFromRemote() {
     __catalogHydrated = true;
     return getRemoteCatalog();
   }
+}
+
+/**
+ * Slingshot’s original classroom language is Hindi (English is the translation).
+ * Pins languages on the local catalog edit; optionally pushes to KV for all clients.
+ */
+function ensureSlingshotHindiOriginal(opts) {
+  const push = !opts || opts.push !== false;
+  if (typeof courseEdits !== "function" || typeof setCourseEdits !== "function") return false;
+  const edits = courseEdits();
+  const prev = edits.slingshot && typeof edits.slingshot === "object" ? edits.slingshot : {};
+  const langs = Array.isArray(prev.languages)
+    ? prev.languages.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  const hindiFirst = langs.length >= 1 && String(langs[0]).toLowerCase() === "hindi";
+  const hasEnglish = langs.some((l) => String(l).toLowerCase() === "english");
+  if (hindiFirst && (langs.length === 1 || hasEnglish)) return false;
+  edits.slingshot = { ...prev, languages: ["Hindi", "English"] };
+  setCourseEdits(edits);
+  // Keep merged remote cache in sync so public mergedCourseEdits sees Hindi first.
+  try {
+    const remote = typeof getRemoteCatalog === "function" ? getRemoteCatalog() : null;
+    if (remote && remote.edits && typeof remote.edits === "object") {
+      const nextEdits = {
+        ...remote.edits,
+        slingshot: { ...(remote.edits.slingshot || {}), languages: ["Hindi", "English"] }
+      };
+      if (typeof setRemoteCatalog === "function") {
+        setRemoteCatalog({ ...remote, edits: nextEdits });
+      }
+    }
+  } catch { /* ignore */ }
+  if (push) {
+    if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+    else if (typeof pushCatalogRemote === "function") {
+      try { pushCatalogRemote({ silent: true }); } catch { /* ignore */ }
+    }
+  }
+  return true;
 }
 
 function applyCoursePatch(id, fields) {
@@ -3836,7 +3892,7 @@ const FAQ_SETS = {
     { q: "What is in Bonus resources?", a: "Student access to the practice desk and community for this course, after you own it." },
     { q: "Why is Community locked?", a: "The room opens only after you enroll in this course. It is for students, not a public tip feed." },
     { q: "Can I watch on mobile?", a: "Yes. The player stays on screen on a phone. Use play, next, mute, and fullscreen from the bar." },
-    { q: "Which language is original?", a: "The first language chip is the original track. You can switch labels on the preview; the classroom follows the course language." },
+    { q: "Which language is original?", a: "The first language chip is the original track. On Slingshot that is Hindi; English is the translation. You can switch labels on the preview; the classroom follows the course language." },
     { q: "Is this investment advice?", a: "No. This classroom is education. You write your own process and size." },
     { q: "How long do I keep access?", a: "As long as the course stays on your Bizgarh account. Certificates remain available after you finish." },
     { q: "Who do I contact for playback issues?", a: "Use Contact or desk@bizgarh.com. Mention the course title, lesson name, and your login email." }
@@ -6649,8 +6705,26 @@ function courseLevel(c) {
   return "All Levels";
 }
 
+/** Normalize course language chips. First entry is marked Original in the UI. */
 function courseLangs(c) {
-  return c.cat === "hindi" ? ["Hindi", "English"] : ["English", "Hindi"];
+  const seen = new Set();
+  const fromField = [];
+  const raw = Array.isArray(c?.languages) ? c.languages : [];
+  raw.forEach((item) => {
+    const label = String(item || "").trim();
+    if (!label) return;
+    const key = label.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    // Canonical casing for the two desk languages.
+    if (key === "hindi") fromField.push("Hindi");
+    else if (key === "english") fromField.push("English");
+    else fromField.push(label);
+  });
+  if (fromField.length) return fromField;
+  // Slingshot is a Hindi-original classroom (even when cat is strategy/trending).
+  if (c?.id === "slingshot") return ["Hindi", "English"];
+  return c?.cat === "hindi" ? ["Hindi", "English"] : ["English", "Hindi"];
 }
 
 function learnPoints(c) {
@@ -9563,3 +9637,5 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk210: Creator CRM Profile change password + show toggles */
 
 /* cache-bust desk210: CF Pages re-deploy after desk209 main build failed */
+
+/* cache-bust desk212: Slingshot Hindi as Original language chip */

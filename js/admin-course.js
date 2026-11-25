@@ -308,6 +308,9 @@ const CourseAdmin = {
           ${[["trending","Trending"],["beginners","For beginners"],["options","Options"],["investing","Investing"],["ta","Charts"],["hindi","Hindi"],["crypto","Crypto"],["strategy","Strategy"]].map(([v,l]) => `<option value="${v}" ${c.cat===v?"selected":""}>${l}</option>`).join("")}
         </select>
       </label>
+      <label>Languages <small>(first = Original on the public page)</small>
+        <input name="languages" value="${adEsc((Array.isArray(c.languages) ? c.languages : (c.id === "slingshot" ? ["Hindi", "English"] : ["English", "Hindi"])).join(", "))}" ${can ? "" : "readonly"} placeholder="Hindi, English">
+      </label>
       ${can ? this.footHTML("setup") : ""}
     </form>`;
     return this.screenHTML(c, "setup", body);
@@ -1145,12 +1148,17 @@ const CourseAdmin = {
     const host = typeof deskHostOf === "function"
       ? deskHostOf(form.hostEmail?.value || c.ownerEmail, form.instructor?.value || c.instructor)
       : { name: form.instructor?.value || c.instructor, email: c.ownerEmail };
+    const langRaw = String(form.languages?.value || "").split(/[,/|]/).map((s) => s.trim()).filter(Boolean);
+    const languages = langRaw.length
+      ? langRaw
+      : (id === "slingshot" ? ["Hindi", "English"] : ["English", "Hindi"]);
     applyCoursePatch(id, {
       title: form.title.value.trim(),
       instructor: host.name,
       ownerEmail: host.email || c.ownerEmail,
       format: form.format.value,
-      cat: form.cat.value
+      cat: form.cat.value,
+      languages
     });
     if (typeof pushCatalogRemote === "function") await pushCatalogRemote({ silent: true });
     AdminCore.audit("course_edit", id, c.title, form.title.value.trim());
