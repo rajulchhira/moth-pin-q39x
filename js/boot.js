@@ -12,15 +12,6 @@
       location.replace("https://www.bizgarh.com" + location.pathname + location.search + location.hash);
       return;
     }
-    var path = (location.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
-    if (path === "/" || path === "/index") {
-      var raw = localStorage.getItem("tradeshalaUser");
-      var user = raw ? JSON.parse(raw) : null;
-      if (user && user.email) {
-        location.replace("/dashboard");
-        return;
-      }
-    }
   } catch (e) { /* stay on public home */ }
 
   var WAIT = "bgWait";

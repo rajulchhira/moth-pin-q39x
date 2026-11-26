@@ -2310,27 +2310,8 @@ function afterAuthArrive() {
   location.href = "/dashboard";
 }
 
-function sendLoggedInHomeToDashboard() {
-  if (!getUser()) return;
-  const path = pagePath();
-  if (path === "/" || path === "/index") location.replace("/dashboard");
-}
-
 function homeHref() {
-  return getUser() ? "/dashboard" : "/";
-}
-
-function isPublicHomeHref(href) {
-  const raw = String(href || "").trim();
-  if (!raw || raw.startsWith("#") || raw.startsWith("mailto:") || raw.startsWith("tel:")) return false;
-  try {
-    const u = new URL(raw, location.origin);
-    if (u.origin !== location.origin) return false;
-    const p = (u.pathname || "/").replace(/\.html$/i, "").replace(/\/$/, "") || "/";
-    return p === "/" || p === "/index";
-  } catch {
-    return raw === "/" || raw === "/index" || raw === "/index.html";
-  }
+  return "/";
 }
 
 function userInitials(name) {
@@ -5527,17 +5508,6 @@ function bindChrome() {
       location.href = "/";
     }
   });
-  document.addEventListener("click", (e) => {
-    if (!getUser()) return;
-    const a = e.target.closest("a[href]");
-    if (!a || a.classList.contains("js-logout")) return;
-    if (isPublicHomeHref(a.getAttribute("href"))) {
-      e.preventDefault();
-      location.href = "/dashboard";
-    }
-  }, true);
-    window.addEventListener("popstate", sendLoggedInHomeToDashboard);
-    window.addEventListener("pageshow", sendLoggedInHomeToDashboard);
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".search-wrap")) document.getElementById("searchPanel")?.classList.remove("open");
     });
@@ -9271,7 +9241,6 @@ async function startPublicBoot() {
   const bootQ = new URLSearchParams(location.search);
   if (bootQ.get("oauth_ticket") || bootQ.get("oauth_error")) await consumeOAuth();
   else restoreOAuthSession();
-  sendLoggedInHomeToDashboard();
 
   const typedEl = document.getElementById("typed");
   if (typedEl) {
@@ -9718,3 +9687,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk226: legal entity Bizgarh Media Ventures Pvt. Ltd */
 /* cache-bust desk227: homepage mentors from Control staff/sub-admins; no marquee clone dup */
 /* cache-bust desk228: Rehan email alias dedupe + never DOM-clone mentor strip */
+/* cache-bust desk229: logged-in logo/Home → public site /; dashboard only via profile menu */
