@@ -1692,28 +1692,52 @@ const INSTRUCTOR_PACKS = {
   }
 };
 /**
+ * Collapse Rehan CRM alias emails onto the Control canonical address so local
+ * staff leftovers (rehan@bizgarh.in + rrehann3377@gmail.com) cannot become two cards.
+ */
+function normalizeMentorEmail(email) {
+  let e = String(email || "").trim().toLowerCase();
+  if (!e) return "";
+  if (typeof AdminCore !== "undefined" && AdminCore.brandEmail) {
+    try { e = String(AdminCore.brandEmail(e) || e).trim().toLowerCase(); } catch { /* keep e */ }
+  }
+  if (e === "rehan@bizgarh.in" || e === "rehan" || e === "rehan.khan") {
+    e = "rrehann3377@gmail.com";
+  }
+  return e;
+}
+
+/**
  * Public mentor faces = Control staff/sub-admins (shared KV roster).
- * Prefer hydrated remote roster so anonymous visitors match /control.
+ * After hydrate, public pages use ONLY the remote roster — never polluted local staffList
+ * (CRM aliases / leftover demos). Control may fall back to local staffList.
  */
 function staffRosterForMentors() {
-  try {
-    const remote = typeof getRemoteStaff === "function" ? getRemoteStaff() : null;
+  let remote = null;
+  try { remote = typeof getRemoteStaff === "function" ? getRemoteStaff() : null; } catch { remote = null; }
+  if (__staffHydrated) {
     if (remote && Array.isArray(remote.roster) && remote.roster.length) {
       return remote.roster.slice();
     }
-  } catch { /* fall through */ }
-  try {
-    if (typeof staffList === "function") return staffList() || [];
-  } catch { /* ignore */ }
+    if (typeof isAdminPage === "function" && isAdminPage()) {
+      try { if (typeof staffList === "function") return staffList() || []; } catch { /* ignore */ }
+    }
+    return [];
+  }
+  if (remote && Array.isArray(remote.roster) && remote.roster.length) {
+    return remote.roster.slice();
+  }
+  try { if (typeof staffList === "function") return staffList() || []; } catch { /* ignore */ }
   return [];
 }
 
 /** Soft-deleted MENTORS[] seed Sub-admins — never list them as public faces. */
 function isDemoMentorEmail(email) {
+  const canon = normalizeMentorEmail(email);
   if (typeof AdminCore !== "undefined" && AdminCore.isDemoMentorStaffEmail) {
-    try { return !!AdminCore.isDemoMentorStaffEmail(email); } catch { /* fall through */ }
+    try { return !!AdminCore.isDemoMentorStaffEmail(canon || email); } catch { /* fall through */ }
   }
-  const e = String(email || "").trim().toLowerCase();
+  const e = canon || String(email || "").trim().toLowerCase();
   if (!e) return false;
   if (e === "rrehann3377@gmail.com" || e === "admin@bizgarh.in") return false;
   if (typeof isSuperAdminEmail === "function" && isSuperAdminEmail(e)) return false;
@@ -1739,20 +1763,19 @@ function isDemoMentorEmail(email) {
 
 /**
  * Homepage /instructors mentor list: one card per live Control sub-admin.
+ * Dedupes by canonical email, faceKey, and display-name slug so alias rows
+ * (e.g. Rehan CRM login + Control email) never render twice.
  * Does not seed from MENTORS[] — purged demo mentors stay gone.
  */
 function allMentors() {
   const out = [];
-  const seenSlug = new Set();
-  const seenMail = new Set();
-  const push = (m) => {
-    const key = m._slug || instructorSlug(m.name);
-    const mail = String(m.email || "").trim().toLowerCase();
-    if (!key || seenSlug.has(key)) return;
-    if (mail && seenMail.has(mail)) return;
-    seenSlug.add(key);
-    if (mail) seenMail.add(mail);
-    out.push(m);
+  const seen = new Set();
+  const claim = (...keys) => {
+    const clean = keys.map((k) => String(k || "").trim().toLowerCase()).filter(Boolean);
+    if (!clean.length) return false;
+    if (clean.some((k) => seen.has(k))) return false;
+    clean.forEach((k) => seen.add(k));
+    return true;
   };
   staffRosterForMentors().forEach((raw) => {
     if (!raw || !raw.name) return;
@@ -1760,17 +1783,25 @@ function allMentors() {
     if (role === "owner" || role === "superadmin") return;
     if (!(role === "subadmin" || role === "admin" || role === "creator" || raw.creatorEnabled)) return;
     if (raw.status === "suspended" || raw.status === "inactive") return;
-    if (isDemoMentorEmail(raw.email)) return;
-    const slug = raw.faceKey || instructorSlug(raw.name);
-    const e = instructorEditFor(raw.name, raw.email);
+    const mail = normalizeMentorEmail(raw.email);
+    if (isDemoMentorEmail(mail || raw.email)) return;
+    const e = instructorEditFor(raw.name, mail || raw.email);
     if (e.hidden) return;
-    push({
-      name: e.name || raw.name,
-      email: raw.email || e.email || "",
+    const displayName = e.name || raw.name;
+    const nameSlug = instructorSlug(displayName);
+    const slug = String(raw.faceKey || nameSlug || "").trim();
+    if (!claim(
+      mail && ("mail:" + mail),
+      slug && ("slug:" + slug),
+      nameSlug && ("name:" + nameSlug)
+    )) return;
+    out.push({
+      name: displayName,
+      email: mail || raw.email || e.email || "",
       role: e.title || e.role || "Mentor",
       tag: e.tag || (Array.isArray(e.tags) && e.tags[0]) || "Desk",
-      img: e.photo || raw.photo || photoFor(raw.name),
-      _slug: slug
+      img: e.photo || raw.photo || photoFor(displayName),
+      _slug: slug || nameSlug
     });
   });
   return out;
@@ -6654,31 +6685,36 @@ function bindTraderCarousel(sec, opts = {}) {
   if (!track || track.dataset.bound === "1") return;
   track.dataset.bound = "1";
   const stage = sec.querySelector(".tr-stage");
-  const useMarquee = opts.marquee !== false;
+  const count = Number(opts.count || 0);
   const rail = track.querySelector(".tr-rail");
   if (!rail) return;
-  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!useMarquee || reduce) {
-    track.classList.add("is-static");
-    if (stage) stage.classList.add("is-start", "is-end");
-    return;
-  }
+  // Never use DOM-cloned marquee rails — clones read as duplicate people.
+  track.classList.add("is-static");
   if (stage) {
-    stage.classList.add("is-marquee", "is-start", "is-end");
+    stage.classList.remove("is-marquee");
+    stage.classList.toggle("is-single", count < 2);
+    stage.classList.add("is-start", "is-end");
   }
-  const syncDuration = () => {
-    const half = rail.scrollWidth / 2;
-    if (half <= 0) return;
-    const pxPerSec = 42;
-    const secs = Math.max(18, half / pxPerSec);
-    rail.style.setProperty("--tr-marquee-duration", secs.toFixed(2) + "s");
+  const pager = sec.querySelector("#traderPager");
+  if (pager) pager.hidden = count < 2;
+  if (count < 2) return;
+
+  const syncEdges = () => {
+    if (!stage) return;
+    const max = Math.max(0, track.scrollWidth - track.clientWidth);
+    stage.classList.toggle("is-start", track.scrollLeft <= 4);
+    stage.classList.toggle("is-end", track.scrollLeft >= max - 4);
   };
-  syncDuration();
-  window.addEventListener("resize", syncDuration);
-  if ("ResizeObserver" in window) {
-    const ro = new ResizeObserver(syncDuration);
-    ro.observe(rail);
-  }
+  const scrollByCard = (dir) => {
+    const card = rail.querySelector(".tr-card");
+    const step = card ? card.getBoundingClientRect().width + 18 : 240;
+    track.scrollBy({ left: dir * step, behavior: "smooth" });
+  };
+  sec.querySelector("[data-tr-prev]")?.addEventListener("click", () => scrollByCard(-1));
+  sec.querySelector("[data-tr-next]")?.addEventListener("click", () => scrollByCard(1));
+  track.addEventListener("scroll", syncEdges, { passive: true });
+  window.addEventListener("resize", syncEdges);
+  syncEdges();
 }
 
 function bindTradersReveal(sec) {
@@ -6700,18 +6736,13 @@ function renderHomeExtras() {
   const mentorTrack = document.getElementById("mentorTrack");
   if (mentorTrack) {
     const mentors = allMentors();
-    // Marquee clones the rail for a seamless loop — only when 2+ unique people.
-    // With one sub-admin, a clone looked like a duplicate Rehan card.
-    const useMarquee = mentors.length >= 2;
+    // One DOM node per unique mentor — never clone for marquee.
     const cards = mentors.map((m, i) => traderCardHTML(m, i)).join("");
-    const clones = useMarquee
-      ? mentors.map((m, i) => traderCardHTML(m, i, { clone: true })).join("")
-      : "";
     mentorTrack.dataset.bound = "";
-    mentorTrack.innerHTML = `<div class="tr-rail">${cards}${clones}</div>`;
+    mentorTrack.innerHTML = `<div class="tr-rail">${cards}</div>`;
     const sec = document.getElementById("workingTraders");
     if (sec) {
-      bindTraderCarousel(sec, { marquee: useMarquee });
+      bindTraderCarousel(sec, { count: mentors.length });
       bindTradersReveal(sec);
     }
   }
@@ -9650,9 +9681,9 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk177: CDN re-bust after desk56 immutable poison /css/style.css?v=desk57 */
 /* cache-bust desk178: light-only site — remove Theme menu + header My Learning /css/style.css?v=desk58 */
 /* cache-bust desk179: Edit Profile DOB dd-mm-yyyy + footer/header shared mark img /css/style.css?v=desk59 */
-/* cache-bust desk180: circular badge mark white underlay so footer matches header /css/style.css?v=desk60 */
+/* cache-bust desk180: circular badge mark white underlay so footer matches header /css/style.css?v=desk228 */
 /* cache-bust desk181: CDN re-bust after desk180/logo4 immutable poison (desk181 itself got poisoned) */
-/* cache-bust desk183: CDN re-bust after desk181 immutable poison on www /css/style.css?v=desk60 mark?v=logo5 */
+/* cache-bust desk183: CDN re-bust after desk181 immutable poison on www /css/style.css?v=desk228 mark?v=logo5 */
 /* cache-bust desk183: public catalog keep only Slingshot: The 5-Minute Trading Edge */
 /* cache-bust desk184: control/CRM course list matches live public Slingshot seed (prune ghosts) */
 
@@ -9686,3 +9717,4 @@ else setTimeout(startPublicBoot, 0);
 
 /* cache-bust desk226: legal entity Bizgarh Media Ventures Pvt. Ltd */
 /* cache-bust desk227: homepage mentors from Control staff/sub-admins; no marquee clone dup */
+/* cache-bust desk228: Rehan email alias dedupe + never DOM-clone mentor strip */
