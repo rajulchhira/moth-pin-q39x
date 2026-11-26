@@ -13,7 +13,7 @@
   <script src="/js/seo.js?v=seo6" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/rehan.css?v=desk220">
+  <link rel="stylesheet" href="/css/rehan.css?v=desk221">
 </head>
 <body class="rehan-body">
   <div class="rehan-atmosphere" aria-hidden="true">
@@ -32,7 +32,7 @@
       <div class="rehan-mark-wrap">
         <img
           class="rehan-avatar"
-          src="/img/instructors/rehan-khan.jpg?v=desk220"
+          src="/img/instructors/rehan-khan.jpg?v=desk221"
           alt="Rehan Khan"
           width="112"
           height="112"
@@ -44,11 +44,28 @@
       <p class="rehan-bio">Stock Market Instructor — Forex &amp; Indian markets. Practical process, not tips.</p>
     </header>
 
-    <section class="rehan-section" aria-labelledby="rehanCoursesHeading">
-      <h2 class="rehan-section-title" id="rehanCoursesHeading">Course</h2>
-      <nav class="rehan-nav rehan-nav-courses" aria-label="Rehan Khan courses" id="rehanCoursesNav">
-        <!-- Courses hydrated by js/rehan.js from /api/catalog/courses -->
-      </nav>
+    <section class="rehan-section rehan-section-course" aria-label="Courses">
+      <button
+        type="button"
+        class="rehan-course-toggle"
+        id="rehanCourseToggle"
+        aria-expanded="false"
+        aria-controls="rehanCoursesPanel"
+        data-link-id="course-toggle"
+      >
+        <span class="rehan-course-toggle-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        </span>
+        <span class="rehan-course-toggle-label">Course</span>
+        <span class="rehan-course-toggle-chevron" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </button>
+      <div class="rehan-courses-panel" id="rehanCoursesPanel" hidden>
+        <nav class="rehan-nav rehan-nav-courses" aria-label="Rehan Khan courses" id="rehanCoursesNav">
+          <!-- Courses hydrated by js/rehan.js from /api/catalog/courses -->
+        </nav>
+      </div>
     </section>
 
     <section class="rehan-section rehan-section-social" aria-labelledby="rehanSocialHeading">
@@ -57,13 +74,9 @@
         <!-- Social buttons rendered by js/rehan.js -->
       </nav>
     </section>
-
-    <p class="rehan-foot">
-      <a href="https://www.bizgarh.com/" target="_blank" rel="noopener noreferrer" data-link-id="foot-site">www.bizgarh.com</a>
-    </p>
   </main>
 
-  <script src="/js/rehan.js?v=desk220" defer></script>
-  <script src="/js/rehan-scene.js?v=desk220" defer></script>
+  <script src="/js/rehan.js?v=desk221" defer></script>
+  <script src="/js/rehan-scene.js?v=desk221" defer></script>
 </body>
 </html>

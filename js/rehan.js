@@ -1,9 +1,10 @@
 /**
- * Rehan Khan /rehan course catalog — dynamic Control courses + socials (desk220)
+ * Rehan Khan /rehan course catalog — dynamic Control courses + socials (desk221)
  *
  * Courses load from GET /api/catalog/courses (same KV source as Control),
  * filtered to instructor Rehan Khan / his owner emails. New published courses
- * appear automatically with banner + title.
+ * appear automatically with banner + title. Course list is behind a single
+ * accordion toggle (collapsed by default).
  *
  * Tracking:
  *   - Counts in localStorage key `bizgarhLinkClicks` (shared with /links)
@@ -38,7 +39,7 @@
   var PAGE_CONFIG = {
     name: "Rehan Khan",
     bio: "Stock Market Instructor — Forex & Indian markets. Practical process, not tips.",
-    avatar: "/img/instructors/rehan-khan.jpg?v=desk220",
+    avatar: "/img/instructors/rehan-khan.jpg?v=desk221",
     socials: [
       {
         id: "social-instagram",
@@ -79,7 +80,8 @@
   ];
 
   var state = {
-    courses: FALLBACK_COURSES.slice()
+    courses: FALLBACK_COURSES.slice(),
+    coursesOpen: false
   };
 
   function escapeHtml(s) {
@@ -308,11 +310,36 @@
       .join("");
   }
 
+  function setCoursesOpen(open) {
+    state.coursesOpen = !!open;
+    var btn = document.getElementById("rehanCourseToggle");
+    var panel = document.getElementById("rehanCoursesPanel");
+    if (btn) {
+      btn.setAttribute("aria-expanded", state.coursesOpen ? "true" : "false");
+      btn.classList.toggle("is-open", state.coursesOpen);
+    }
+    if (panel) {
+      if (state.coursesOpen) panel.removeAttribute("hidden");
+      else panel.setAttribute("hidden", "");
+      panel.classList.toggle("is-open", state.coursesOpen);
+    }
+  }
+
+  function bindCourseToggle() {
+    var btn = document.getElementById("rehanCourseToggle");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var next = !state.coursesOpen;
+      setCoursesOpen(next);
+      trackClick("course-toggle", next ? "open" : "close");
+    });
+  }
+
   function bindTracking() {
     document.addEventListener(
       "click",
       function (ev) {
-        var a = ev.target && ev.target.closest ? ev.target.closest("[data-link-id]") : null;
+        var a = ev.target && ev.target.closest ? ev.target.closest("a[data-link-id]") : null;
         if (!a) return;
         var id = a.getAttribute("data-link-id");
         var url = a.getAttribute("href") || "";
@@ -350,12 +377,18 @@
     track: trackClick,
     getCounts: readCounts,
     storageKey: STORAGE_KEY,
-    refresh: hydrateCourses
+    refresh: hydrateCourses,
+    isCoursesOpen: function () {
+      return state.coursesOpen;
+    },
+    setCoursesOpen: setCoursesOpen
   };
 
   function init() {
     renderCourses(state.courses);
     renderSocials();
+    setCoursesOpen(false);
+    bindCourseToggle();
     bindTracking();
     hydrateCourses();
   }
