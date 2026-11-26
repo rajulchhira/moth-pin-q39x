@@ -13,7 +13,7 @@
   <script src="/js/seo.js?v=seo6" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/rehan.css?v=desk218">
+  <link rel="stylesheet" href="/css/rehan.css?v=desk224">
 </head>
 <body class="rehan-body">
   <div class="rehan-atmosphere" aria-hidden="true">
@@ -32,7 +32,7 @@
       <div class="rehan-mark-wrap">
         <img
           class="rehan-avatar"
-          src="/img/instructors/rehan-khan.jpg?v=desk218"
+          src="/img/instructors/rehan-khan.jpg?v=desk224"
           alt="Rehan Khan"
           width="112"
           height="112"
@@ -44,16 +44,28 @@
       <p class="rehan-bio">Stock Market Instructor — Forex &amp; Indian markets. Practical process, not tips.</p>
     </header>
 
-    <nav class="rehan-nav" aria-label="Rehan Khan courses" id="rehanCoursesNav">
-      <!-- Courses rendered by js/rehan.js from COURSES_CONFIG -->
-    </nav>
+    <div class="rehan-stage">
+      <div class="rehan-view rehan-view-home is-active" id="rehanHomeView">
+        <nav class="rehan-nav rehan-nav-home" aria-label="Rehan Khan links" id="rehanHomeNav">
+          <!-- Course + socials rendered by js/rehan.js -->
+        </nav>
+      </div>
 
-    <p class="rehan-foot">
-      <a href="https://www.bizgarh.com/" target="_blank" rel="noopener noreferrer" data-link-id="foot-site">www.bizgarh.com</a>
-    </p>
+      <div class="rehan-view rehan-view-courses" id="rehanCoursesView" hidden>
+        <div class="rehan-courses-bar">
+          <button type="button" class="rehan-back" id="rehanCoursesBack" aria-label="Back" data-link-id="courses-back">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+          <h2 class="rehan-courses-heading" id="rehanCoursesHeading">Courses</h2>
+        </div>
+        <nav class="rehan-nav rehan-nav-courses" aria-labelledby="rehanCoursesHeading" id="rehanCoursesNav">
+          <!-- Courses hydrated from /api/catalog/courses -->
+        </nav>
+      </div>
+    </div>
   </main>
 
-  <script src="/js/rehan.js?v=desk218" defer></script>
-  <script src="/js/rehan-scene.js?v=desk218" defer></script>
+  <script src="/js/rehan.js?v=desk224" defer></script>
+  <script src="/js/rehan-scene.js?v=desk224" defer></script>
 </body>
 </html>

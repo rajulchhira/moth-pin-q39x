@@ -1,5 +1,6 @@
-/* Rehan Khan /rehan — Liquid Aurora / Cyber Neon course catalog (desk218)
-   Parallel to /links. Deep canvas blurred; name + course cards stay sharp. */
+/* Rehan Khan /rehan — Liquid Aurora (desk224)
+   Home: Course + socials (same button style). Course → in-page Courses listing.
+   Course cards show the full official catalog title (wraps on mobile). */
 
 :root {
   --rehan-ink: #f8fafc;
@@ -17,6 +18,7 @@
   --rehan-max: 420px;
   --header-safe: env(safe-area-inset-top, 0px);
   --footer-safe: env(safe-area-inset-bottom, 0px);
+  --rehan-view-ms: 300ms;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,6 +39,7 @@ html {
 }
 
 a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; }
 img { display: block; max-width: 100%; }
 
 /* ——— Atmosphere ——— */
@@ -100,6 +103,47 @@ img { display: block; max-width: 100%; }
   align-items: center;
 }
 
+/* Stage swaps home links ↔ courses list; profile (DP) stays above */
+.rehan-stage {
+  position: relative;
+  width: 100%;
+  min-height: 320px;
+}
+
+.rehan-view {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition:
+    opacity var(--rehan-view-ms) ease,
+    transform var(--rehan-view-ms) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rehan-view.is-active {
+  position: relative;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.rehan-view.is-leaving {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+}
+
+.rehan-view[hidden] {
+  display: none !important;
+}
+
 .rehan-profile {
   text-align: center;
   margin-bottom: 26px;
@@ -151,14 +195,186 @@ img { display: block; max-width: 100%; }
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
-/* Course card — interaction container with live thumbnail */
+.rehan-nav-home {
+  padding-bottom: calc(16px + var(--footer-safe));
+}
+
+.rehan-empty {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+  padding: 18px 12px;
+}
+
+/* Shared home link button (Course + socials) */
+.rehan-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  border-radius: var(--rehan-radius);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--rehan-surface), var(--rehan-surface)) padding-box,
+    linear-gradient(135deg, rgba(34, 211, 238, 0.55), rgba(232, 121, 249, 0.45), rgba(139, 92, 246, 0.55)) border-box;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #f1f5f9;
+  font-family: inherit;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  opacity: 0;
+  animation: rehanFadeIn 0.55s ease forwards;
+  animation-delay: calc(0.16s + (var(--i, 0) * 0.06s));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.rehan-link:hover,
+.rehan-link:focus-visible {
+  transform: translateY(-3px);
+  background:
+    linear-gradient(var(--rehan-surface-hover), var(--rehan-surface-hover)) padding-box,
+    linear-gradient(135deg, rgba(34, 211, 238, 0.9), rgba(232, 121, 249, 0.75), rgba(139, 92, 246, 0.85)) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 24px rgba(0, 0, 0, 0.28);
+  outline: none;
+}
+
+.rehan-link:active {
+  transform: translateY(-1px);
+}
+
+.rehan-link-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  transition: background-color 0.22s ease, color 0.22s ease;
+}
+
+.rehan-link:hover .rehan-link-icon,
+.rehan-link:focus-visible .rehan-link-icon {
+  background: rgba(232, 121, 249, 0.16);
+  color: #f0abfc;
+}
+
+.rehan-link-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.rehan-link-icon svg[data-stroke="1"],
+.rehan-link[data-action="courses"] .rehan-link-icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rehan-link-label {
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+.rehan-link-arrow {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: #64748b;
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+
+.rehan-link:hover .rehan-link-arrow,
+.rehan-link:focus-visible .rehan-link-arrow {
+  color: #67e8f9;
+  transform: translateX(3px);
+}
+
+.rehan-link-arrow svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ——— Courses listing view ——— */
+.rehan-courses-bar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.rehan-back {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #e2e8f0;
+  background: rgba(12, 10, 32, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.rehan-back:hover,
+.rehan-back:focus-visible {
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  outline: none;
+  transform: translateX(-2px);
+}
+
+.rehan-back svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rehan-courses-heading {
+  font-family: var(--rehan-font-brand);
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #e2e8f0;
+}
+
+/* Horizontal course row: thumb left, copy right */
 .rehan-course {
   position: relative;
   display: grid;
-  grid-template-columns: 96px 1fr auto;
+  grid-template-columns: 132px 1fr auto;
   align-items: center;
   gap: 14px;
   width: 100%;
@@ -175,7 +391,7 @@ img { display: block; max-width: 100%; }
   cursor: pointer;
   opacity: 0;
   animation: rehanFadeIn 0.55s ease forwards;
-  animation-delay: calc(0.16s + (var(--i, 0) * 0.06s));
+  animation-delay: calc(0.08s + (var(--i, 0) * 0.06s));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transition:
     transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
@@ -199,33 +415,57 @@ img { display: block; max-width: 100%; }
   transform: translateY(-1px);
 }
 
-.rehan-course-thumb {
-  width: 96px;
-  height: 68px;
+.rehan-course-thumb-wrap {
+  position: relative;
+  width: 132px;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
-  object-fit: cover;
-  background: #0f1028;
+  overflow: hidden;
+  background: #07061a;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.rehan-course-thumb {
+  position: absolute;
+  inset: 4px 5px;
+  width: auto;
+  height: auto;
+  max-width: calc(100% - 10px);
+  max-height: calc(100% - 8px);
+  margin: auto;
+  object-fit: contain;
+  object-position: center center;
+  border-radius: 4px;
+  background: #0f1028;
 }
 
 .rehan-course-copy {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .rehan-course-title {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   font-weight: 800;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: 1.28;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 
-.rehan-course-sub {
-  font-size: 0.82rem;
+.rehan-course-desc {
+  font-size: 0.8rem;
   font-weight: 600;
   color: #94a3b8;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .rehan-course-arrow {
@@ -250,27 +490,6 @@ img { display: block; max-width: 100%; }
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.rehan-foot {
-  margin-top: auto;
-  padding-top: 36px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #64748b;
-  animation: rehanFadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
-}
-
-.rehan-foot a {
-  border-bottom: 1px solid transparent;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-
-.rehan-foot a:hover,
-.rehan-foot a:focus-visible {
-  color: #67e8f9;
-  border-bottom-color: rgba(103, 232, 249, 0.45);
-  outline: none;
 }
 
 @keyframes rehanFadeUp {
@@ -310,12 +529,21 @@ img { display: block; max-width: 100%; }
   }
 
   .rehan-course {
-    grid-template-columns: 112px 1fr auto;
+    grid-template-columns: 148px 1fr auto;
+  }
+
+  .rehan-course-thumb-wrap {
+    width: 148px;
   }
 
   .rehan-course-thumb {
-    width: 112px;
-    height: 74px;
+    inset: 5px 6px;
+    max-width: calc(100% - 12px);
+    max-height: calc(100% - 10px);
+  }
+
+  .rehan-course-title {
+    font-size: 1.06rem;
   }
 
   .rehan-scene-deep-wrap {
@@ -323,24 +551,59 @@ img { display: block; max-width: 100%; }
   }
 }
 
+@media (max-width: 380px) {
+  .rehan-course {
+    grid-template-columns: 104px 1fr auto;
+    gap: 10px;
+    align-items: start;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .rehan-course-thumb-wrap {
+    width: 104px;
+    margin-top: 2px;
+  }
+
+  .rehan-course-title {
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+
+  .rehan-course-arrow {
+    margin-top: 4px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --rehan-view-ms: 1ms;
+  }
+
   .rehan-mark-wrap,
   .rehan-avatar,
   .rehan-brand,
   .rehan-bio,
-  .rehan-course,
-  .rehan-foot {
+  .rehan-link,
+  .rehan-course {
     animation: none !important;
   }
 
+  .rehan-view,
+  .rehan-link,
   .rehan-course,
   .rehan-avatar {
     opacity: 1;
     transform: none;
+    transition: none !important;
   }
 
+  .rehan-link,
+  .rehan-link-arrow,
+  .rehan-link-icon,
   .rehan-course,
-  .rehan-course-arrow {
+  .rehan-course-arrow,
+  .rehan-back {
     transition: none;
   }
 
