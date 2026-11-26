@@ -1,5 +1,5 @@
 /**
- * Rehan Khan /rehan — home links + in-page Course Listing View (desk222)
+ * Rehan Khan /rehan — home links + in-page Course Listing View (desk223)
  *
  * Home: Course button (same style as socials) + Instagram / YouTube / Telegram / Facebook.
  * Course click → smooth in-page swap to Courses view (not accordion / not new tab).
@@ -19,7 +19,7 @@
   var REHAN_EMAILS = ["rrehann3377@gmail.com", "rehan@bizgarh.in"];
   var COURSE_URL_BASE = "https://www.bizgarh.com/course?id=";
   var SLINGSHOT_FALLBACK_THUMB = "/mobile/assets/courses/slingshot-banner.jpg";
-  var SLINGSHOT_FALLBACK_DESC = "The 5-Minute Trading Edge";
+  var SLINGSHOT_FALLBACK_TITLE = "Slingshot: The 5-Minute Trading Edge";
 
   var ARROW =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
@@ -40,7 +40,7 @@
   var PAGE_CONFIG = {
     name: "Rehan Khan",
     bio: "Stock Market Instructor — Forex & Indian markets. Practical process, not tips.",
-    avatar: "/img/instructors/rehan-khan.jpg?v=desk222",
+    avatar: "/img/instructors/rehan-khan.jpg?v=desk223",
     homeLinks: [
       { id: "link-course", label: "Course", action: "courses", icon: "course" },
       {
@@ -73,8 +73,8 @@
   var FALLBACK_COURSES = [
     {
       id: "slingshot",
-      title: "Slingshot",
-      description: SLINGSHOT_FALLBACK_DESC,
+      title: SLINGSHOT_FALLBACK_TITLE,
+      description: "",
       url: COURSE_URL_BASE + "slingshot",
       thumb: SLINGSHOT_FALLBACK_THUMB
     }
@@ -157,27 +157,32 @@
     return true;
   }
 
-  function splitTitle(full) {
-    var raw = String(full || "").trim() || "Course";
-    var idx = raw.indexOf(":");
-    if (idx > 0 && idx < raw.length - 1) {
-      return {
-        title: raw.slice(0, idx).trim(),
-        subtitle: raw.slice(idx + 1).trim()
-      };
-    }
-    return { title: raw, subtitle: "" };
+  function officialTitle(c) {
+    var raw = String(c && c.title || "").trim();
+    if (raw) return raw;
+    if (String(c && c.id) === "slingshot") return SLINGSHOT_FALLBACK_TITLE;
+    return String(c && c.id || "Course");
   }
 
-  function shortDesc(c, subtitle) {
+  /** Extra blurb only when it is not just restating / truncating the official title. */
+  function cardDescription(c, title) {
     var desc = String(c && c.description || "").replace(/\s+/g, " ").trim();
-    if (desc) {
-      if (desc.length > 96) desc = desc.slice(0, 93).trim() + "…";
-      return desc;
+    if (!desc) return "";
+    var t = String(title || "").toLowerCase();
+    var d = desc.toLowerCase();
+    if (d === t) return "";
+    if (t.indexOf(d) !== -1) return "";
+    if (d.indexOf(t) !== -1) return "";
+    /* Ignore short fragments that are just the post-colon half of the title. */
+    var colon = t.indexOf(":");
+    if (colon > 0) {
+      var after = t.slice(colon + 1).trim();
+      if (after && (d === after || after.indexOf(d) !== -1 || d.indexOf(after) !== -1)) {
+        return "";
+      }
     }
-    if (subtitle) return subtitle;
-    if (String(c && c.id) === "slingshot") return SLINGSHOT_FALLBACK_DESC;
-    return "";
+    if (desc.length > 110) desc = desc.slice(0, 107).trim() + "…";
+    return desc;
   }
 
   function bannerOf(c) {
@@ -188,14 +193,12 @@
   }
 
   function toCard(c) {
-    var parts = splitTitle(
-      c.title || (c.id === "slingshot" ? "Slingshot: The 5-Minute Trading Edge" : c.id)
-    );
+    var title = officialTitle(c);
     return {
       id: "course-" + c.id,
       courseId: c.id,
-      title: parts.title,
-      description: shortDesc(c, parts.subtitle),
+      title: title,
+      description: cardDescription(c, title),
       url: COURSE_URL_BASE + encodeURIComponent(c.id),
       thumb: bannerOf(c) || SLINGSHOT_FALLBACK_THUMB
     };
@@ -209,11 +212,10 @@
 
     byId.slingshot = {
       id: "slingshot",
-      title: "Slingshot: The 5-Minute Trading Edge",
+      title: SLINGSHOT_FALLBACK_TITLE,
       instructor: REHAN_NAME,
       ownerEmail: REHAN_EMAILS[0],
       banner: SLINGSHOT_FALLBACK_THUMB,
-      description: SLINGSHOT_FALLBACK_DESC,
       unpublished: false,
       deleted: false,
       status: "published"

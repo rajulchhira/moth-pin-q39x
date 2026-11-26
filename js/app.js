@@ -9650,3 +9650,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk220: /rehan full-width course banners (Slingshot title readable) */
 /* cache-bust desk221: /rehan Course accordion + remove bizgarh footer */
 /* cache-bust desk222: /rehan in-page Course listing view (no accordion) */
+/* cache-bust desk223: /rehan course cards show full official title */
