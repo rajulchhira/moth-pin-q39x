@@ -5223,7 +5223,7 @@ function footerHTML() {
       </div>
       <div class="footer-bar">
         <div class="footer-bottom">
-          <p>© 2026 Bizgarh Learning Pvt Ltd</p>
+          <p>© 2026 Bizgarh Media Ventures Pvt. Ltd</p>
           <p>Educational content only. Not investment advice.</p>
         </div>
         <div class="footer-follow">
@@ -8957,7 +8957,7 @@ async function paintBizgarhCertificate(canvas, { row, course }) {
 
   ctx.fillStyle = "#1e1b4b";
   ctx.font = "800 18px Nunito, Segoe UI, sans-serif";
-  fillTracked(ctx, "BIZGARH LEARNING", W / 2, 848, 6);
+  fillTracked(ctx, "BIZGARH MEDIA VENTURES", W / 2, 848, 6);
   ctx.fillStyle = "#E11D74";
   ctx.font = "700 16px Nunito, Segoe UI, sans-serif";
   ctx.fillText("Classroom instructor", W / 2, 878);

@@ -248,7 +248,7 @@ function digestHtml(row) {
           <tr>
             <td style="padding:22px 36px 32px 36px;border-top:1px solid #eadfd4;">
               <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#94a3b8;line-height:1.7;">
-                Bizgarh Learning Pvt Ltd · bizgarh.com<br>
+                Bizgarh Media Ventures Pvt. Ltd · bizgarh.com<br>
                 You received this because at least one seat sold in a classroom assigned to you.
               </div>
             </td>

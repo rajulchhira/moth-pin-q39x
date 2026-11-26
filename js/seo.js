@@ -137,7 +137,7 @@
       "@type": ["EducationalOrganization", "Organization"],
       "@id": ORIGIN + "/#org",
       name: "Bizgarh",
-      legalName: "Bizgarh Learning Pvt Ltd",
+      legalName: "Bizgarh Media Ventures Pvt. Ltd",
       url: ORIGIN + "/",
       logo: { "@type": "ImageObject", url: ICON },
       image: IMG,
@@ -350,7 +350,7 @@
     upsert("name", "google-site-verification", "Sd1V3IA8UHbg7EO0ROMnjlC0RZZ_Y8mQN3KOXKmsxnQ");
     upsert("name", "robots", info.robots);
     upsert("name", "googlebot", info.robots);
-    upsert("name", "author", "Bizgarh Learning Pvt Ltd");
+    upsert("name", "author", "Bizgarh Media Ventures Pvt. Ltd");
     upsert("name", "theme-color", "#4f46e5");
     upsert("name", "application-name", BRAND);
     upsert("name", "apple-mobile-web-app-title", BRAND);
