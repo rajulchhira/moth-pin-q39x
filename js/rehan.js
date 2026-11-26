@@ -1,10 +1,9 @@
 /**
- * Rehan Khan /rehan course catalog — dynamic Control courses + socials (desk221)
+ * Rehan Khan /rehan — home links + in-page Course Listing View (desk222)
  *
- * Courses load from GET /api/catalog/courses (same KV source as Control),
- * filtered to instructor Rehan Khan / his owner emails. New published courses
- * appear automatically with banner + title. Course list is behind a single
- * accordion toggle (collapsed by default).
+ * Home: Course button (same style as socials) + Instagram / YouTube / Telegram / Facebook.
+ * Course click → smooth in-page swap to Courses view (not accordion / not new tab).
+ * Courses hydrate from GET /api/catalog/courses (Control KV), filtered to Rehan.
  *
  * Tracking:
  *   - Counts in localStorage key `bizgarhLinkClicks` (shared with /links)
@@ -20,11 +19,14 @@
   var REHAN_EMAILS = ["rrehann3377@gmail.com", "rehan@bizgarh.in"];
   var COURSE_URL_BASE = "https://www.bizgarh.com/course?id=";
   var SLINGSHOT_FALLBACK_THUMB = "/mobile/assets/courses/slingshot-banner.jpg";
+  var SLINGSHOT_FALLBACK_DESC = "The 5-Minute Trading Edge";
 
   var ARROW =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
   var ICONS = {
+    course:
+      '<svg viewBox="0 0 24 24" aria-hidden="true" data-stroke="1"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     instagram:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.3 4h7.4A4.3 4.3 0 0 1 20 8.3v7.4A4.3 4.3 0 0 1 15.7 20H8.3A4.3 4.3 0 0 1 4 15.7V8.3A4.3 4.3 0 0 1 8.3 4zm7.4 1.6H8.3A2.7 2.7 0 0 0 5.6 8.3v7.4a2.7 2.7 0 0 0 2.7 2.7h7.4a2.7 2.7 0 0 0 2.7-2.7V8.3a2.7 2.7 0 0 0-2.7-2.7zM12 8.5A3.5 3.5 0 1 1 8.5 12 3.5 3.5 0 0 1 12 8.5zm0 1.5A2 2 0 1 0 14 12a2 2 0 0 0-2-2zm4.1-2.7a.85.85 0 1 1-.85.85.85.85 0 0 1 .85-.85z"/></svg>',
     youtube:
@@ -35,12 +37,12 @@
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.6 8.4h-1.5c-.6 0-.9.3-.9.9v1.5h2.3l-.3 2.4h-2V20H10v-6.8H8.2v-2.4H10V9c0-2 1.2-3.5 3.4-3.5.7 0 1.5.1 1.7.1v2.8z"/></svg>'
   };
 
-  /** Static profile + socials; courses hydrate from Control catalog. */
   var PAGE_CONFIG = {
     name: "Rehan Khan",
     bio: "Stock Market Instructor — Forex & Indian markets. Practical process, not tips.",
-    avatar: "/img/instructors/rehan-khan.jpg?v=desk221",
-    socials: [
+    avatar: "/img/instructors/rehan-khan.jpg?v=desk222",
+    homeLinks: [
+      { id: "link-course", label: "Course", action: "courses", icon: "course" },
       {
         id: "social-instagram",
         label: "Instagram",
@@ -68,12 +70,11 @@
     ]
   };
 
-  /** Offline / API-failure seed — same Slingshot catalog id as Control. */
   var FALLBACK_COURSES = [
     {
       id: "slingshot",
       title: "Slingshot",
-      subtitle: "The 5-Minute Trading Edge",
+      description: SLINGSHOT_FALLBACK_DESC,
       url: COURSE_URL_BASE + "slingshot",
       thumb: SLINGSHOT_FALLBACK_THUMB
     }
@@ -81,7 +82,8 @@
 
   var state = {
     courses: FALLBACK_COURSES.slice(),
-    coursesOpen: false
+    view: "home",
+    transitioning: false
   };
 
   function escapeHtml(s) {
@@ -150,7 +152,6 @@
     if (!c || !c.id) return false;
     if (c.deleted) return false;
     if (c.unpublished || c.status === "unlisted") return false;
-    /* Ignore empty stub edits (e.g. lessons-only rows without a title). */
     var title = String(c.title || "").trim();
     if (!title && String(c.id) !== "slingshot") return false;
     return true;
@@ -168,9 +169,18 @@
     return { title: raw, subtitle: "" };
   }
 
+  function shortDesc(c, subtitle) {
+    var desc = String(c && c.description || "").replace(/\s+/g, " ").trim();
+    if (desc) {
+      if (desc.length > 96) desc = desc.slice(0, 93).trim() + "…";
+      return desc;
+    }
+    if (subtitle) return subtitle;
+    if (String(c && c.id) === "slingshot") return SLINGSHOT_FALLBACK_DESC;
+    return "";
+  }
+
   function bannerOf(c) {
-    /* Prefer packaged Slingshot asset (same bytes as Control KV) so the
-       full-width contain thumb stays cacheable and title-readable. */
     if (String(c && c.id) === "slingshot") return SLINGSHOT_FALLBACK_THUMB;
     var b = String(c && c.banner || "").trim();
     if (b) return b;
@@ -178,12 +188,14 @@
   }
 
   function toCard(c) {
-    var parts = splitTitle(c.title || (c.id === "slingshot" ? "Slingshot: The 5-Minute Trading Edge" : c.id));
+    var parts = splitTitle(
+      c.title || (c.id === "slingshot" ? "Slingshot: The 5-Minute Trading Edge" : c.id)
+    );
     return {
       id: "course-" + c.id,
       courseId: c.id,
       title: parts.title,
-      subtitle: parts.subtitle,
+      description: shortDesc(c, parts.subtitle),
       url: COURSE_URL_BASE + encodeURIComponent(c.id),
       thumb: bannerOf(c) || SLINGSHOT_FALLBACK_THUMB
     };
@@ -201,6 +213,7 @@
       instructor: REHAN_NAME,
       ownerEmail: REHAN_EMAILS[0],
       banner: SLINGSHOT_FALLBACK_THUMB,
+      description: SLINGSHOT_FALLBACK_DESC,
       unpublished: false,
       deleted: false,
       status: "published"
@@ -233,6 +246,50 @@
       .map(toCard);
   }
 
+  function renderHome() {
+    var nav = document.getElementById("rehanHomeNav");
+    if (!nav) return;
+
+    nav.innerHTML = PAGE_CONFIG.homeLinks
+      .map(function (item, i) {
+        var icon = ICONS[item.icon] || ICONS.course;
+        var isCourse = item.action === "courses";
+        var tag = isCourse ? "button" : "a";
+        var open =
+          tag === "a"
+            ? ' href="' +
+              escapeHtml(item.url) +
+              '" target="_blank" rel="noopener noreferrer"'
+            : ' type="button"';
+        return (
+          "<" +
+          tag +
+          ' class="rehan-link" style="--i:' +
+          i +
+          '"' +
+          open +
+          ' data-link-id="' +
+          escapeHtml(item.id) +
+          '"' +
+          (isCourse ? ' data-action="courses"' : "") +
+          ">" +
+          '<span class="rehan-link-icon">' +
+          icon +
+          "</span>" +
+          '<span class="rehan-link-label">' +
+          escapeHtml(item.label) +
+          "</span>" +
+          '<span class="rehan-link-arrow">' +
+          ARROW +
+          "</span>" +
+          "</" +
+          tag +
+          ">"
+        );
+      })
+      .join("");
+  }
+
   function renderCourses(list) {
     var nav = document.getElementById("rehanCoursesNav");
     if (!nav) return;
@@ -245,8 +302,8 @@
 
     nav.innerHTML = list
       .map(function (item, i) {
-        var sub = item.subtitle
-          ? '<span class="rehan-course-sub">' + escapeHtml(item.subtitle) + "</span>"
+        var desc = item.description
+          ? '<span class="rehan-course-desc">' + escapeHtml(item.description) + "</span>"
           : "";
         return (
           '<a class="rehan-course" style="--i:' +
@@ -261,84 +318,100 @@
           escapeHtml(item.thumb) +
           '" alt="' +
           escapeHtml(item.title) +
-          '" width="800" height="450" loading="lazy" decoding="async">' +
+          '" width="160" height="90" loading="lazy" decoding="async">' +
           "</span>" +
-          '<span class="rehan-course-body">' +
           '<span class="rehan-course-copy">' +
           '<span class="rehan-course-title">' +
           escapeHtml(item.title) +
           "</span>" +
-          sub +
+          desc +
           "</span>" +
           '<span class="rehan-course-arrow">' +
           ARROW +
           "</span>" +
-          "</span>" +
           "</a>"
         );
       })
       .join("");
   }
 
-  function renderSocials() {
-    var nav = document.getElementById("rehanSocialNav");
-    if (!nav) return;
-
-    nav.innerHTML = PAGE_CONFIG.socials
-      .map(function (item, i) {
-        var icon = ICONS[item.icon] || ICONS.instagram;
-        return (
-          '<a class="rehan-social" style="--i:' +
-          i +
-          '" href="' +
-          escapeHtml(item.url) +
-          '" target="_blank" rel="noopener noreferrer" data-link-id="' +
-          escapeHtml(item.id) +
-          '">' +
-          '<span class="rehan-social-icon">' +
-          icon +
-          "</span>" +
-          '<span class="rehan-social-label">' +
-          escapeHtml(item.label) +
-          "</span>" +
-          '<span class="rehan-social-arrow">' +
-          ARROW +
-          "</span>" +
-          "</a>"
-        );
-      })
-      .join("");
-  }
-
-  function setCoursesOpen(open) {
-    state.coursesOpen = !!open;
-    var btn = document.getElementById("rehanCourseToggle");
-    var panel = document.getElementById("rehanCoursesPanel");
-    if (btn) {
-      btn.setAttribute("aria-expanded", state.coursesOpen ? "true" : "false");
-      btn.classList.toggle("is-open", state.coursesOpen);
-    }
-    if (panel) {
-      if (state.coursesOpen) panel.removeAttribute("hidden");
-      else panel.setAttribute("hidden", "");
-      panel.classList.toggle("is-open", state.coursesOpen);
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) {
+      return false;
     }
   }
 
-  function bindCourseToggle() {
-    var btn = document.getElementById("rehanCourseToggle");
-    if (!btn) return;
-    btn.addEventListener("click", function () {
-      var next = !state.coursesOpen;
-      setCoursesOpen(next);
-      trackClick("course-toggle", next ? "open" : "close");
-    });
+  function setView(view) {
+    if (state.transitioning) return;
+    var next = view === "courses" ? "courses" : "home";
+    if (state.view === next) return;
+
+    var home = document.getElementById("rehanHomeView");
+    var courses = document.getElementById("rehanCoursesView");
+    if (!home || !courses) return;
+
+    state.transitioning = true;
+    state.view = next;
+    document.body.classList.toggle("rehan-on-courses", next === "courses");
+
+    var show = next === "courses" ? courses : home;
+    var hide = next === "courses" ? home : courses;
+
+    hide.classList.remove("is-active");
+    hide.classList.add("is-leaving");
+
+    show.removeAttribute("hidden");
+    /* force reflow so enter transition runs */
+    void show.offsetWidth;
+    show.classList.add("is-active");
+    show.classList.remove("is-leaving");
+
+    var done = function () {
+      hide.setAttribute("hidden", "");
+      hide.classList.remove("is-leaving");
+      state.transitioning = false;
+      if (next === "courses") {
+        var back = document.getElementById("rehanCoursesBack");
+        if (back) back.focus();
+      }
+    };
+
+    if (prefersReducedMotion()) {
+      done();
+      return;
+    }
+
+    window.setTimeout(done, 320);
   }
 
-  function bindTracking() {
+  function bindUI() {
     document.addEventListener(
       "click",
       function (ev) {
+        var courseBtn =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-action="courses"]')
+            : null;
+        if (courseBtn) {
+          ev.preventDefault();
+          trackClick(courseBtn.getAttribute("data-link-id") || "link-course", "courses");
+          setView("courses");
+          return;
+        }
+
+        var back =
+          ev.target && ev.target.closest
+            ? ev.target.closest("#rehanCoursesBack")
+            : null;
+        if (back) {
+          ev.preventDefault();
+          trackClick("courses-back", "home");
+          setView("home");
+          return;
+        }
+
         var a = ev.target && ev.target.closest ? ev.target.closest("a[data-link-id]") : null;
         if (!a) return;
         var id = a.getAttribute("data-link-id");
@@ -374,22 +447,34 @@
     getCourses: function () {
       return state.courses.slice();
     },
+    getView: function () {
+      return state.view;
+    },
+    setView: setView,
     track: trackClick,
     getCounts: readCounts,
     storageKey: STORAGE_KEY,
-    refresh: hydrateCourses,
-    isCoursesOpen: function () {
-      return state.coursesOpen;
-    },
-    setCoursesOpen: setCoursesOpen
+    refresh: hydrateCourses
   };
 
   function init() {
+    renderHome();
     renderCourses(state.courses);
-    renderSocials();
-    setCoursesOpen(false);
-    bindCourseToggle();
-    bindTracking();
+    state.view = "home";
+    state.transitioning = false;
+    document.body.classList.remove("rehan-on-courses");
+    var home = document.getElementById("rehanHomeView");
+    var courses = document.getElementById("rehanCoursesView");
+    if (home) {
+      home.classList.add("is-active");
+      home.classList.remove("is-leaving");
+      home.removeAttribute("hidden");
+    }
+    if (courses) {
+      courses.classList.remove("is-active", "is-leaving");
+      courses.setAttribute("hidden", "");
+    }
+    bindUI();
     hydrateCourses();
   }
 

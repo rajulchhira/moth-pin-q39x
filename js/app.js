@@ -9649,3 +9649,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk219: /rehan dynamic Control courses + socials + 16:9 thumbs */
 /* cache-bust desk220: /rehan full-width course banners (Slingshot title readable) */
 /* cache-bust desk221: /rehan Course accordion + remove bizgarh footer */
+/* cache-bust desk222: /rehan in-page Course listing view (no accordion) */
