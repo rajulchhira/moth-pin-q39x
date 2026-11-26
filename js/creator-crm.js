@@ -181,7 +181,7 @@
     }
     const face = linked?.faceKey || (typeof instructorSlug === "function" ? instructorSlug(linked?.name || "") : "");
     if (face === "rehan-khan" || linked?.name === "Rehan Khan") {
-      return "/img/instructors/rehan-khan.jpg?v=desk208";
+      return "/img/instructors/rehan-khan.jpg?v=desk218";
     }
     if (face) return `/img/instructors/${face}.jpg`;
     const mentors = typeof MENTORS !== "undefined" ? MENTORS : [];
