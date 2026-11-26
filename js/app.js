@@ -1533,7 +1533,7 @@ function photoFor(name) {
     if (fromStaff) return fromStaff;
   } catch {}
   const slug = typeof instructorSlug === "function" ? instructorSlug(name) : "";
-  if (slug === "rehan-khan" || name === "Rehan Khan") return "/img/instructors/rehan-khan.jpg?v=desk208";
+  if (slug === "rehan-khan" || name === "Rehan Khan") return "/img/instructors/rehan-khan.jpg?v=desk218";
   return "/img/bizgarh-avatar.png";
 }
 function instructorSlug(name) {
@@ -9645,3 +9645,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk215: /links continuous canvas 3D backdrop (blurred) */
 /* cache-bust desk216: /links dark nebula + crystals (user reference) */
 /* cache-bust desk217: Rehan Khan /rehan Liquid Aurora course catalog */
+/* cache-bust desk218: /rehan DP = Control instructors KV Rehan face */

@@ -1,4 +1,4 @@
-/* Rehan Khan /rehan — Liquid Aurora / Cyber Neon course catalog (desk217)
+/* Rehan Khan /rehan — Liquid Aurora / Cyber Neon course catalog (desk218)
    Parallel to /links. Deep canvas blurred; name + course cards stay sharp. */
 
 :root {
@@ -117,7 +117,7 @@ img { display: block; max-width: 100%; }
   height: 112px;
   border-radius: 50%;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
   background: #12102a;
   border: 2px solid rgba(255, 255, 255, 0.55);
   box-shadow:

@@ -1,5 +1,5 @@
 /**
- * Rehan Khan /rehan course catalog — config + click tracking (desk217)
+ * Rehan Khan /rehan course catalog — config + click tracking (desk218)
  *
  * Parallel to /links. Customize:
  *   - COURSES_CONFIG.courses → titles / urls / thumbs
@@ -22,7 +22,8 @@
   var COURSES_CONFIG = {
     name: "Rehan Khan",
     bio: "Stock Market Instructor — Forex & Indian markets. Practical process, not tips.",
-    avatar: "/img/instructors/rehan-khan.jpg?v=desk208",
+    /* Same bytes as Control instructors KV edits.rehan-khan.photo */
+    avatar: "/img/instructors/rehan-khan.jpg?v=desk218",
     courses: [
       {
         id: "course-slingshot",
