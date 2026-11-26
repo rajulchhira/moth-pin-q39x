@@ -28,38 +28,40 @@
   </div>
 
   <main class="rehan-main">
-    <div class="rehan-view rehan-view-home is-active" id="rehanHomeView">
-      <header class="rehan-profile">
-        <div class="rehan-mark-wrap">
-          <img
-            class="rehan-avatar"
-            src="/img/instructors/rehan-khan.jpg?v=desk222"
-            alt="Rehan Khan"
-            width="112"
-            height="112"
-            decoding="async"
-            fetchpriority="high"
-          >
-        </div>
-        <h1 class="rehan-brand">Rehan Khan</h1>
-        <p class="rehan-bio">Stock Market Instructor — Forex &amp; Indian markets. Practical process, not tips.</p>
-      </header>
-
-      <nav class="rehan-nav rehan-nav-home" aria-label="Rehan Khan links" id="rehanHomeNav">
-        <!-- Course + socials rendered by js/rehan.js -->
-      </nav>
-    </div>
-
-    <div class="rehan-view rehan-view-courses" id="rehanCoursesView" hidden>
-      <div class="rehan-courses-bar">
-        <button type="button" class="rehan-back" id="rehanCoursesBack" aria-label="Back" data-link-id="courses-back">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
-        </button>
-        <h2 class="rehan-courses-heading" id="rehanCoursesHeading">Courses</h2>
+    <header class="rehan-profile">
+      <div class="rehan-mark-wrap">
+        <img
+          class="rehan-avatar"
+          src="/img/instructors/rehan-khan.jpg?v=desk222"
+          alt="Rehan Khan"
+          width="112"
+          height="112"
+          decoding="async"
+          fetchpriority="high"
+        >
       </div>
-      <nav class="rehan-nav rehan-nav-courses" aria-labelledby="rehanCoursesHeading" id="rehanCoursesNav">
-        <!-- Courses hydrated from /api/catalog/courses -->
-      </nav>
+      <h1 class="rehan-brand">Rehan Khan</h1>
+      <p class="rehan-bio">Stock Market Instructor — Forex &amp; Indian markets. Practical process, not tips.</p>
+    </header>
+
+    <div class="rehan-stage">
+      <div class="rehan-view rehan-view-home is-active" id="rehanHomeView">
+        <nav class="rehan-nav rehan-nav-home" aria-label="Rehan Khan links" id="rehanHomeNav">
+          <!-- Course + socials rendered by js/rehan.js -->
+        </nav>
+      </div>
+
+      <div class="rehan-view rehan-view-courses" id="rehanCoursesView" hidden>
+        <div class="rehan-courses-bar">
+          <button type="button" class="rehan-back" id="rehanCoursesBack" aria-label="Back" data-link-id="courses-back">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+          <h2 class="rehan-courses-heading" id="rehanCoursesHeading">Courses</h2>
+        </div>
+        <nav class="rehan-nav rehan-nav-courses" aria-labelledby="rehanCoursesHeading" id="rehanCoursesNav">
+          <!-- Courses hydrated from /api/catalog/courses -->
+        </nav>
+      </div>
     </div>
   </main>
 

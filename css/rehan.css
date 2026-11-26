@@ -97,6 +97,16 @@ img { display: block; max-width: 100%; }
   margin: 0 auto;
   padding: calc(40px + var(--header-safe)) 0 calc(32px + var(--footer-safe));
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Stage swaps home links ↔ courses list; profile (DP) stays above */
+.rehan-stage {
+  position: relative;
+  width: 100%;
+  min-height: 320px;
 }
 
 .rehan-view {
@@ -123,7 +133,7 @@ img { display: block; max-width: 100%; }
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(40px + var(--header-safe));
+  top: 0;
   opacity: 0;
   transform: translateY(-12px);
   pointer-events: none;
