@@ -1,5 +1,5 @@
 /**
- * Rehan Khan /rehan — home links + in-page Course Listing View (desk223)
+ * Rehan Khan /rehan — home links + in-page Course Listing View (desk224)
  *
  * Home: Course button (same style as socials) + Instagram / YouTube / Telegram / Facebook.
  * Course click → smooth in-page swap to Courses view (not accordion / not new tab).
@@ -40,7 +40,7 @@
   var PAGE_CONFIG = {
     name: "Rehan Khan",
     bio: "Stock Market Instructor — Forex & Indian markets. Practical process, not tips.",
-    avatar: "/img/instructors/rehan-khan.jpg?v=desk223",
+    avatar: "/img/instructors/rehan-khan.jpg?v=desk224",
     homeLinks: [
       { id: "link-course", label: "Course", action: "courses", icon: "course" },
       {
@@ -162,6 +162,11 @@
     if (raw) return raw;
     if (String(c && c.id) === "slingshot") return SLINGSHOT_FALLBACK_TITLE;
     return String(c && c.id || "Course");
+  }
+
+  /** Keep hyphenated tokens (e.g. 5-Minute) together when the title wraps. */
+  function displayTitle(title) {
+    return String(title || "").replace(/(\w)-(\w)/g, "$1\u2011$2");
   }
 
   /** Extra blurb only when it is not just restating / truncating the official title. */
@@ -324,7 +329,7 @@
           "</span>" +
           '<span class="rehan-course-copy">' +
           '<span class="rehan-course-title">' +
-          escapeHtml(item.title) +
+          escapeHtml(displayTitle(item.title)) +
           "</span>" +
           desc +
           "</span>" +
