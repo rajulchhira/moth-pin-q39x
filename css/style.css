@@ -1798,29 +1798,43 @@ body.nav-dim::before {
 .tr-all:hover { color: #7c3aed; }
 .tr-stage { position: relative; }
 .tr-stage.is-marquee .tr-arrow,
-.tr-stage.is-marquee + .tr-pager {
+.tr-stage.is-marquee + .tr-pager,
+.tr-stage.is-single .tr-arrow,
+.tr-stage.is-single + .tr-pager {
   display: none;
 }
 .tr-track {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding: 28px 0 22px;
   margin: 0 -4px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.tr-track::-webkit-scrollbar { display: none; }
 /* cache-bust desk42: no mentor edge fade masks */
+/* cache-bust desk228: no marquee DOM clones; scroll rail instead */
 .tr-rail {
   display: flex;
   gap: 18px;
   width: max-content;
   will-change: transform;
+  animation: none;
+}
+.tr-track:not(.is-static) .tr-rail {
   animation: trMarquee var(--tr-marquee-duration, 36s) linear infinite;
 }
-.tr-track:hover .tr-rail,
-.tr-track:focus-within .tr-rail {
+.tr-track:not(.is-static):hover .tr-rail,
+.tr-track:not(.is-static):focus-within .tr-rail {
   animation-play-state: paused;
 }
 .tr-track.is-static .tr-rail {
   animation: none;
   flex-wrap: nowrap;
+}
+.tr-track.is-static .tr-card {
+  scroll-snap-align: start;
 }
 .tr-card {
   position: relative;
