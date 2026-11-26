@@ -1,5 +1,5 @@
 /**
- * Bizgarh /links hub — config + lightweight click tracking (desk214)
+ * Bizgarh /links hub — config + lightweight click tracking (desk215)
  *
  * Customize:
  *   - LINKS_CONFIG.links → labels / urls / icons

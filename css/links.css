@@ -1,24 +1,21 @@
-/* Bizgarh /links — Linktree-style hub (desk214)
-   Customize brand colors & atmosphere via :root variables below. */
+/* Bizgarh /links — Linktree-style hub (desk215)
+   Customize brand colors & atmosphere via :root variables below.
+   3D backdrop: canvas in .links-scene-wrap (blurred); content stays sharp. */
 
 :root {
   --links-ink: #0f172a;
   --links-muted: #475569;
   --links-line: #d7dee8;
-  --links-surface: rgba(255, 255, 255, 0.82);
+  --links-surface: rgba(255, 255, 255, 0.86);
   --links-surface-hover: #ffffff;
   --links-brand: #4f46e5;
   --links-brand-deep: #3730a3;
   --links-accent: #e11d74;
-  /* Light atmospheric palette — cool mist / sky, not purple-wash */
   --links-sky: #c8daf0;
   --links-mist: #e8eef6;
   --links-frost: #f5f8fc;
   --links-slate: #a8bcd4;
-  --links-blush: rgba(225, 29, 116, 0.16);
-  --links-indigo-soft: rgba(67, 56, 202, 0.14);
-  --links-cyan-soft: rgba(8, 145, 178, 0.16);
-  --links-steel: rgba(71, 85, 105, 0.12);
+  --links-scene-blur: 8px;
   --links-radius: 14px;
   --links-font-brand: Oswald, Nunito, sans-serif;
   --links-font-body: Nunito, sans-serif;
@@ -56,96 +53,48 @@ img { display: block; max-width: 100%; }
   background: var(--links-frost);
 }
 
-/* Motion 1: slow shifting light wash (premium depth) */
 .links-wash {
   position: absolute;
-  inset: -35%;
+  inset: -10%;
   background:
-    radial-gradient(ellipse 58% 48% at 18% 12%, var(--links-sky) 0%, transparent 62%),
-    radial-gradient(ellipse 52% 44% at 88% 18%, #d4dcec 0%, transparent 58%),
-    radial-gradient(ellipse 46% 40% at 70% 70%, rgba(186, 210, 230, 0.85) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 52% at 40% 100%, var(--links-slate) 0%, transparent 58%),
-    linear-gradient(155deg, var(--links-frost) 0%, var(--links-mist) 38%, #d9e4f0 100%);
-  background-size: 160% 160%;
-  animation: linksWashShift 16s ease-in-out infinite alternate;
-  will-change: background-position, transform;
+    radial-gradient(ellipse 60% 50% at 20% 15%, var(--links-sky) 0%, transparent 62%),
+    radial-gradient(ellipse 55% 45% at 85% 25%, #d5dceb 0%, transparent 58%),
+    radial-gradient(ellipse 70% 55% at 50% 100%, var(--links-slate) 0%, transparent 60%),
+    linear-gradient(160deg, var(--links-frost) 0%, var(--links-mist) 50%, #dce6f2 100%);
+  animation: linksWashShift 22s ease-in-out infinite alternate;
 }
 
-/* Soft aurora ribbons — cool slate / sky / faint brand tint */
-.links-aurora {
+/* Blurred 3D canvas layer — scaled up so blur doesn't clip edges */
+.links-scene-wrap {
   position: absolute;
-  inset: -20%;
-  opacity: 1;
+  inset: -6%;
+  display: grid;
+  place-items: stretch;
+  filter: blur(var(--links-scene-blur));
+  transform: scale(1.04);
+  opacity: 0.98;
+  will-change: filter;
+}
+
+.links-scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Soft veil so geometry stays atmospheric, not competing with CTAs */
+.links-blur-veil {
+  position: absolute;
+  inset: 0;
   background:
-    radial-gradient(ellipse 46% 32% at 28% 38%, var(--links-indigo-soft), transparent 72%),
-    radial-gradient(ellipse 40% 30% at 76% 52%, var(--links-blush), transparent 70%),
-    radial-gradient(ellipse 52% 34% at 52% 22%, var(--links-cyan-soft), transparent 74%),
-    radial-gradient(ellipse 44% 36% at 42% 78%, var(--links-steel), transparent 70%);
-  filter: blur(22px);
-  animation: linksAuroraDrift 20s ease-in-out infinite alternate;
-  will-change: transform;
+    radial-gradient(ellipse 62% 52% at 50% 34%, rgba(245, 248, 252, 0.42) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(245, 248, 252, 0.08) 0%, rgba(232, 238, 246, 0.22) 100%);
 }
 
-/* Motion 2: diagonal light beam sweep */
-.links-beam {
-  position: absolute;
-  top: -45%;
-  left: -25%;
-  width: 78%;
-  height: 190%;
-  background: linear-gradient(
-    115deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0) 34%,
-    rgba(255, 255, 255, 0.72) 50%,
-    rgba(255, 255, 255, 0) 66%,
-    transparent 100%
-  );
-  transform: rotate(18deg) translateX(-30%);
-  opacity: 0.55;
-  animation: linksBeamSweep 11s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-.links-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(42px);
-  opacity: 1;
-}
-
-.links-orb-a {
-  width: min(54vw, 380px);
-  height: min(54vw, 380px);
-  top: -6%;
-  left: -12%;
-  background: radial-gradient(circle, rgba(125, 155, 190, 0.55) 0%, transparent 70%);
-  animation: linksOrbFloatA 15s ease-in-out infinite alternate;
-}
-
-.links-orb-b {
-  width: min(58vw, 420px);
-  height: min(58vw, 420px);
-  right: -16%;
-  top: 22%;
-  background: radial-gradient(circle, rgba(67, 56, 202, 0.18) 0%, transparent 72%);
-  animation: linksOrbFloatB 18s ease-in-out infinite alternate;
-}
-
-.links-orb-c {
-  width: min(60vw, 440px);
-  height: min(60vw, 440px);
-  left: 12%;
-  bottom: -22%;
-  background: radial-gradient(circle, rgba(225, 29, 116, 0.14) 0%, transparent 70%);
-  animation: linksOrbFloatC 17s ease-in-out infinite alternate-reverse;
-}
-
-/* Fine grain for photographic depth (not loud noise) */
 .links-grain {
   position: absolute;
   inset: 0;
-  opacity: 0.34;
+  opacity: 0.26;
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
   background-size: 160px 160px;
@@ -155,57 +104,15 @@ img { display: block; max-width: 100%; }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 78% 68% at 50% 36%, transparent 42%, rgba(203, 213, 225, 0.42) 100%);
+    radial-gradient(ellipse 78% 68% at 50% 36%, transparent 40%, rgba(203, 213, 225, 0.4) 100%);
 }
 
 @keyframes linksWashShift {
-  0% {
-    background-position: 0% 20%, 100% 0%, 50% 100%, 0% 0%;
-    transform: scale(1) translate3d(0, 0, 0);
-  }
-  100% {
-    background-position: 80% 40%, 20% 60%, 40% 80%, 100% 100%;
-    transform: scale(1.06) translate3d(1.2%, -0.8%, 0);
-  }
+  0% { transform: scale(1) translate3d(0, 0, 0); }
+  100% { transform: scale(1.05) translate3d(1%, -0.8%, 0); }
 }
 
-@keyframes linksAuroraDrift {
-  0% { transform: translate3d(-2%, 1%, 0) rotate(-2deg) scale(1); }
-  100% { transform: translate3d(3%, -2%, 0) rotate(3deg) scale(1.08); }
-}
-
-@keyframes linksBeamSweep {
-  0%, 12% {
-    transform: rotate(18deg) translateX(-55%);
-    opacity: 0;
-  }
-  28% { opacity: 0.5; }
-  48% {
-    transform: rotate(18deg) translateX(55%);
-    opacity: 0.2;
-  }
-  60%, 100% {
-    transform: rotate(18deg) translateX(90%);
-    opacity: 0;
-  }
-}
-
-@keyframes linksOrbFloatA {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(28px, 36px, 0) scale(1.08); }
-}
-
-@keyframes linksOrbFloatB {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(-32px, 24px, 0) scale(1.1); }
-}
-
-@keyframes linksOrbFloatC {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(20px, -28px, 0) scale(1.06); }
-}
-
-/* ——— Content ——— */
+/* ——— Content (sharp, above blurred scene) ——— */
 .links-main {
   position: relative;
   z-index: 1;
@@ -230,7 +137,6 @@ img { display: block; max-width: 100%; }
   animation: linksFadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Motion 3: quiet logo breathe after entrance */
 .links-avatar {
   width: 112px;
   height: 112px;
@@ -420,15 +326,14 @@ img { display: block; max-width: 100%; }
   .links-bio {
     font-size: 1.02rem;
   }
+
+  .links-scene-wrap {
+    --links-scene-blur: 9px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .links-wash,
-  .links-aurora,
-  .links-beam,
-  .links-orb-a,
-  .links-orb-b,
-  .links-orb-c,
   .links-mark-wrap,
   .links-avatar,
   .links-brand,
@@ -448,5 +353,10 @@ img { display: block; max-width: 100%; }
   .links-btn-arrow,
   .links-btn-icon {
     transition: none;
+  }
+
+  /* Keep blur, but scene JS draws a static frame */
+  .links-scene-wrap {
+    filter: blur(10px);
   }
 }

@@ -11,16 +11,15 @@
   <script src="/js/seo.js?v=seo6" defer></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/links.css?v=desk214b">
+  <link rel="stylesheet" href="/css/links.css?v=desk215b">
 </head>
 <body class="links-body">
   <div class="links-atmosphere" aria-hidden="true">
     <div class="links-wash"></div>
-    <div class="links-aurora"></div>
-    <div class="links-beam"></div>
-    <div class="links-orb links-orb-a"></div>
-    <div class="links-orb links-orb-b"></div>
-    <div class="links-orb links-orb-c"></div>
+    <div class="links-scene-wrap">
+      <canvas id="linksScene" class="links-scene" width="800" height="1200"></canvas>
+    </div>
+    <div class="links-blur-veil"></div>
     <div class="links-grain"></div>
     <div class="links-vignette"></div>
   </div>
@@ -30,7 +29,7 @@
       <div class="links-mark-wrap">
         <img
           class="links-avatar"
-          src="/img/bizgarh-avatar.png?v=desk214"
+          src="/img/bizgarh-avatar.png?v=desk215"
           alt="Bizgarh"
           width="112"
           height="112"
@@ -51,6 +50,7 @@
     </p>
   </main>
 
-  <script src="/js/links.js?v=desk214" defer></script>
+  <script src="/js/links.js?v=desk215" defer></script>
+  <script src="/js/links-scene.js?v=desk215b" defer></script>
 </body>
 </html>
