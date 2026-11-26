@@ -1,5 +1,5 @@
 /**
- * Bizgarh /links hub — config + lightweight click tracking (desk225)
+ * Bizgarh /links hub — config + lightweight click tracking (desk226)
  *
  * Customize:
  *   - LINKS_CONFIG.links → labels / urls / icons
@@ -36,7 +36,7 @@
     brand: "Bizgarh",
     bio: "Creator-driven learning for Indian traders — process, risk, and journals. Not tips.",
     links: [
-      { id: "website", label: "Explore My World", url: "https://www.bizgarh.com/", icon: "website" },
+      { id: "website", label: "Official Website", url: "https://www.bizgarh.com/", icon: "website" },
       { id: "instagram", label: "Instagram", url: "https://www.instagram.com/bizgarh", icon: "instagram" },
       { id: "youtube", label: "YouTube", url: "https://www.youtube.com/@bizgarh", icon: "youtube" },
       { id: "telegram", label: "Telegram", url: "https://t.me/bizgarh", icon: "telegram" },
