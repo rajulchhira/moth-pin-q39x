@@ -1,5 +1,5 @@
 /**
- * Rehan Khan /rehan course catalog — dynamic Control courses + socials (desk219)
+ * Rehan Khan /rehan course catalog — dynamic Control courses + socials (desk220)
  *
  * Courses load from GET /api/catalog/courses (same KV source as Control),
  * filtered to instructor Rehan Khan / his owner emails. New published courses
@@ -38,7 +38,7 @@
   var PAGE_CONFIG = {
     name: "Rehan Khan",
     bio: "Stock Market Instructor — Forex & Indian markets. Practical process, not tips.",
-    avatar: "/img/instructors/rehan-khan.jpg?v=desk219",
+    avatar: "/img/instructors/rehan-khan.jpg?v=desk220",
     socials: [
       {
         id: "social-instagram",
@@ -167,9 +167,11 @@
   }
 
   function bannerOf(c) {
+    /* Prefer packaged Slingshot asset (same bytes as Control KV) so the
+       full-width contain thumb stays cacheable and title-readable. */
+    if (String(c && c.id) === "slingshot") return SLINGSHOT_FALLBACK_THUMB;
     var b = String(c && c.banner || "").trim();
     if (b) return b;
-    if (String(c && c.id) === "slingshot") return SLINGSHOT_FALLBACK_THUMB;
     return "";
   }
 
@@ -257,8 +259,9 @@
           escapeHtml(item.thumb) +
           '" alt="' +
           escapeHtml(item.title) +
-          '" width="144" height="81" loading="lazy" decoding="async">' +
+          '" width="800" height="450" loading="lazy" decoding="async">' +
           "</span>" +
+          '<span class="rehan-course-body">' +
           '<span class="rehan-course-copy">' +
           '<span class="rehan-course-title">' +
           escapeHtml(item.title) +
@@ -267,6 +270,7 @@
           "</span>" +
           '<span class="rehan-course-arrow">' +
           ARROW +
+          "</span>" +
           "</span>" +
           "</a>"
         );

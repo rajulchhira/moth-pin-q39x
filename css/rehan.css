@@ -1,6 +1,6 @@
-/* Rehan Khan /rehan — Liquid Aurora / Cyber Neon course catalog (desk219)
+/* Rehan Khan /rehan — Liquid Aurora / Cyber Neon course catalog (desk220)
    Parallel to /links. Deep canvas blurred; name + course cards stay sharp.
-   Courses first (16:9 thumbs so titles stay readable), then social links. */
+   Courses first (full-width 16:9 banners, contain + inset — no title crop), then socials. */
 
 :root {
   --rehan-ink: #f8fafc;
@@ -187,16 +187,14 @@ img { display: block; max-width: 100%; }
   padding: 18px 12px;
 }
 
-/* Course card — interaction container with live 16:9 thumbnail (no side crop) */
+/* Course card — full-width banner on top so edge titles (Slingshot) stay readable */
 .rehan-course {
   position: relative;
-  display: grid;
-  grid-template-columns: 128px 1fr auto;
-  align-items: center;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   width: 100%;
-  min-height: 92px;
-  padding: 10px 14px 10px 10px;
+  padding: 10px;
   border-radius: var(--rehan-radius);
   border: 1px solid transparent;
   background:
@@ -233,23 +231,40 @@ img { display: block; max-width: 100%; }
 }
 
 .rehan-course-thumb-wrap {
-  width: 128px;
+  position: relative;
+  width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  background: #0f1028;
+  background: #07061a;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .rehan-course-thumb {
-  width: 100%;
-  height: 100%;
+  /* Inset letterbox: keep banner title clear of radius / hard clip */
+  position: absolute;
+  inset: 8px 10px;
+  width: auto;
+  height: auto;
+  max-width: calc(100% - 20px);
+  max-height: calc(100% - 16px);
+  margin: auto;
   object-fit: contain;
   object-position: center center;
+  border-radius: 6px;
   background: #0f1028;
 }
 
+.rehan-course-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 6px 4px;
+  min-width: 0;
+}
+
 .rehan-course-copy {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -257,7 +272,7 @@ img { display: block; max-width: 100%; }
 }
 
 .rehan-course-title {
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   font-weight: 800;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -451,12 +466,14 @@ img { display: block; max-width: 100%; }
     font-size: 1.02rem;
   }
 
-  .rehan-course {
-    grid-template-columns: 144px 1fr auto;
+  .rehan-course-thumb {
+    inset: 10px 12px;
+    max-width: calc(100% - 24px);
+    max-height: calc(100% - 20px);
   }
 
-  .rehan-course-thumb-wrap {
-    width: 144px;
+  .rehan-course-title {
+    font-size: 1.12rem;
   }
 
   .rehan-scene-deep-wrap {
