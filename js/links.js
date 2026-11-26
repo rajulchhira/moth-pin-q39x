@@ -33,8 +33,7 @@
 
   /** Edit labels / URLs here — order = display order */
   var LINKS_CONFIG = {
-    /* brand omitted from visible chrome (Insta bio vibe); SEO title still names Bizgarh */
-    brand: "",
+    brand: "Bizgarh",
     bio: "Creator-driven learning for Indian traders — process, risk, and journals. Not tips.",
     links: [
       { id: "website", label: "Explore My World", url: "https://www.bizgarh.com/", icon: "website" },
