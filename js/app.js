@@ -9646,3 +9646,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk216: /links dark nebula + crystals (user reference) */
 /* cache-bust desk217: Rehan Khan /rehan Liquid Aurora course catalog */
 /* cache-bust desk218: /rehan DP = Control instructors KV Rehan face */
+/* cache-bust desk219: /rehan dynamic Control courses + socials + 16:9 thumbs */

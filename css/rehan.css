@@ -1,5 +1,6 @@
-/* Rehan Khan /rehan — Liquid Aurora / Cyber Neon course catalog (desk218)
-   Parallel to /links. Deep canvas blurred; name + course cards stay sharp. */
+/* Rehan Khan /rehan — Liquid Aurora / Cyber Neon course catalog (desk219)
+   Parallel to /links. Deep canvas blurred; name + course cards stay sharp.
+   Courses first (16:9 thumbs so titles stay readable), then social links. */
 
 :root {
   --rehan-ink: #f8fafc;
@@ -147,6 +148,26 @@ img { display: block; max-width: 100%; }
   animation: rehanFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
 }
 
+.rehan-section {
+  width: 100%;
+  margin-bottom: 22px;
+}
+
+.rehan-section-social {
+  margin-bottom: 8px;
+}
+
+.rehan-section-title {
+  font-family: var(--rehan-font-brand);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin: 0 0 12px 2px;
+  animation: rehanFadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
+}
+
 .rehan-nav {
   width: 100%;
   display: flex;
@@ -154,15 +175,27 @@ img { display: block; max-width: 100%; }
   gap: 14px;
 }
 
-/* Course card — interaction container with live thumbnail */
+.rehan-nav-social {
+  gap: 12px;
+}
+
+.rehan-empty {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+  padding: 18px 12px;
+}
+
+/* Course card — interaction container with live 16:9 thumbnail (no side crop) */
 .rehan-course {
   position: relative;
   display: grid;
-  grid-template-columns: 96px 1fr auto;
+  grid-template-columns: 128px 1fr auto;
   align-items: center;
   gap: 14px;
   width: 100%;
-  min-height: 88px;
+  min-height: 92px;
   padding: 10px 14px 10px 10px;
   border-radius: var(--rehan-radius);
   border: 1px solid transparent;
@@ -199,13 +232,21 @@ img { display: block; max-width: 100%; }
   transform: translateY(-1px);
 }
 
-.rehan-course-thumb {
-  width: 96px;
-  height: 68px;
+.rehan-course-thumb-wrap {
+  width: 128px;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
-  object-fit: cover;
+  overflow: hidden;
   background: #0f1028;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.rehan-course-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  background: #0f1028;
 }
 
 .rehan-course-copy {
@@ -243,6 +284,107 @@ img { display: block; max-width: 100%; }
 }
 
 .rehan-course-arrow svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Social / business buttons */
+.rehan-social {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  border-radius: var(--rehan-radius);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--rehan-surface), var(--rehan-surface)) padding-box,
+    linear-gradient(135deg, rgba(34, 211, 238, 0.55), rgba(232, 121, 249, 0.45), rgba(139, 92, 246, 0.55)) border-box;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #f1f5f9;
+  font-family: inherit;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  opacity: 0;
+  animation: rehanFadeIn 0.55s ease forwards;
+  animation-delay: calc(0.28s + (var(--i, 0) * 0.06s));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.rehan-social:hover,
+.rehan-social:focus-visible {
+  transform: translateY(-3px);
+  background:
+    linear-gradient(var(--rehan-surface-hover), var(--rehan-surface-hover)) padding-box,
+    linear-gradient(135deg, rgba(34, 211, 238, 0.9), rgba(232, 121, 249, 0.75), rgba(139, 92, 246, 0.85)) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 24px rgba(0, 0, 0, 0.28);
+  outline: none;
+}
+
+.rehan-social:active {
+  transform: translateY(-1px);
+}
+
+.rehan-social-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  transition: background-color 0.22s ease, color 0.22s ease;
+}
+
+.rehan-social:hover .rehan-social-icon,
+.rehan-social:focus-visible .rehan-social-icon {
+  background: rgba(232, 121, 249, 0.16);
+  color: #f0abfc;
+}
+
+.rehan-social-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.rehan-social-label {
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+.rehan-social-arrow {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: #64748b;
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+
+.rehan-social:hover .rehan-social-arrow,
+.rehan-social:focus-visible .rehan-social-arrow {
+  color: #67e8f9;
+  transform: translateX(3px);
+}
+
+.rehan-social-arrow svg {
   width: 100%;
   height: 100%;
   fill: none;
@@ -310,12 +452,11 @@ img { display: block; max-width: 100%; }
   }
 
   .rehan-course {
-    grid-template-columns: 112px 1fr auto;
+    grid-template-columns: 144px 1fr auto;
   }
 
-  .rehan-course-thumb {
-    width: 112px;
-    height: 74px;
+  .rehan-course-thumb-wrap {
+    width: 144px;
   }
 
   .rehan-scene-deep-wrap {
@@ -328,19 +469,25 @@ img { display: block; max-width: 100%; }
   .rehan-avatar,
   .rehan-brand,
   .rehan-bio,
+  .rehan-section-title,
   .rehan-course,
+  .rehan-social,
   .rehan-foot {
     animation: none !important;
   }
 
   .rehan-course,
+  .rehan-social,
   .rehan-avatar {
     opacity: 1;
     transform: none;
   }
 
   .rehan-course,
-  .rehan-course-arrow {
+  .rehan-course-arrow,
+  .rehan-social,
+  .rehan-social-arrow,
+  .rehan-social-icon {
     transition: none;
   }
 
