@@ -110,6 +110,7 @@
     "/reviews": { title: "Bizgarh Reviews | Stock Market Course Feedback from Indian Learners", desc: "520 learner notes on Bizgarh stock market courses, webinars, and mentorship desks. Honest classroom feedback, not a highlight reel." },
     "/contact": { title: "Help Centre | Stock Market Course FAQ | Bizgarh", desc: "Search 111 FAQs on enroll, live desks, certificates, and journals — or write desk@bizgarh.com. Help for Bizgarh learners." },
     "/links": { title: "Bizgarh Links | Website, Instagram, YouTube & Community", desc: "All Bizgarh links in one place — official website, Instagram, YouTube, Telegram, and Facebook. Creator-driven learning for Indian traders." },
+    "/rehan": { title: "Rehan Khan | Courses | Bizgarh", desc: "Course catalog from Rehan Khan — Stock Market Instructor. Open Slingshot Strategy and more on Bizgarh." },
     "/instructors": { title: "Instructors | Stock Market Mentors | Bizgarh", desc: "Meet Bizgarh instructors: working traders and investors who teach courses, live mentorship, and 1:1 guidance." },
     "/instructor": { title: "Instructor | Trading Mentor | Bizgarh", desc: "Open a Bizgarh instructor profile: courses, live mentorship desks, and personal guidance." },
     "/stock-market-courses": { title: "Stock Market Courses in India 2026 | Trading & Investing Classes | Bizgarh", desc: "Compare stock market courses in India: beginners, Nifty options, price action, investing, and Hindi classrooms. Start a written process on Bizgarh." },
