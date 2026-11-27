@@ -9688,3 +9688,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk227: homepage mentors from Control staff/sub-admins; no marquee clone dup */
 /* cache-bust desk228: Rehan email alias dedupe + never DOM-clone mentor strip */
 /* cache-bust desk229: logged-in logo/Home → public site /; dashboard only via profile menu */
+/* cache-bust desk230: /rehan link order Course → Community → Instagram → YouTube → Facebook */
