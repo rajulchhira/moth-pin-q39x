@@ -1,7 +1,7 @@
 /**
- * Rehan Khan /rehan — home links + in-page Course Listing View (desk224)
+ * Rehan Khan /rehan — home links + in-page Course Listing View (desk230)
  *
- * Home: Course button (same style as socials) + Instagram / YouTube / Telegram / Facebook.
+ * Home order: Course, Community (Telegram), Instagram, YouTube, Facebook.
  * Course click → smooth in-page swap to Courses view (not accordion / not new tab).
  * Courses hydrate from GET /api/catalog/courses (Control KV), filtered to Rehan.
  *
@@ -40,9 +40,15 @@
   var PAGE_CONFIG = {
     name: "Rehan Khan",
     bio: "Stock Market Instructor — Forex & Indian markets. Practical process, not tips.",
-    avatar: "/img/instructors/rehan-khan.jpg?v=desk224",
+    avatar: "/img/instructors/rehan-khan.jpg?v=desk230",
     homeLinks: [
       { id: "link-course", label: "Course", action: "courses", icon: "course" },
+      {
+        id: "social-telegram",
+        label: "Community",
+        url: "https://web.telegram.org/k/#@tradinghouseTH",
+        icon: "telegram"
+      },
       {
         id: "social-instagram",
         label: "Instagram",
@@ -54,12 +60,6 @@
         label: "YouTube",
         url: "https://www.youtube.com/@trading.house.official",
         icon: "youtube"
-      },
-      {
-        id: "social-telegram",
-        label: "Telegram",
-        url: "https://web.telegram.org/k/#@tradinghouseTH",
-        icon: "telegram"
       },
       {
         id: "social-facebook",
