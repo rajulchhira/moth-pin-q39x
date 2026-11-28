@@ -1,4 +1,5 @@
 import { publicOrigin } from "./auth.js";
+import { appendCommerceSale } from "./commerce.js";
 import { sendSmtp } from "./mail.js";
 
 function esc(s) {
@@ -163,6 +164,21 @@ export async function recordCreatorSale(env, raw) {
   prev.sent = false;
   await kv.put(key, JSON.stringify(prev));
   await kv.put(dupe, "1", { expirationTtl: 60 * 60 * 24 * 14 });
+  // Mirror into shared Control commerce ledger (cross-device Overview).
+  try {
+    await appendCommerceSale(env, {
+      creatorEmail,
+      creatorName,
+      studentEmail,
+      studentName: raw.studentName || raw.name || "",
+      courseId,
+      amount,
+      source: "course_owner",
+      at: new Date().toISOString()
+    });
+  } catch {
+    /* digest row is source of truth; commerce import can backfill */
+  }
   return prev;
 }
 

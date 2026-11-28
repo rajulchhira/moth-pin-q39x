@@ -1491,6 +1491,270 @@ async function hydrateStaffFromRemote() {
   }
 }
 
+/** Shared Control commerce ledger (orders / payments / enrolls) via KV. */
+const COMMERCE_API = "/api/catalog/commerce";
+const COMMERCE_CACHE_KEY = "tradeshalaCommerceRemoteCache";
+let __commerceRemote = null;
+let __commercePushTimer = null;
+let __commerceHydrated = false;
+
+function emptyRemoteCommerce() {
+  return {
+    version: 1,
+    updatedAt: null,
+    updatedBy: "",
+    orders: [],
+    payments: [],
+    enrolls: [],
+    refunds: [],
+    commissions: [],
+    users: [],
+    digestSummary: null
+  };
+}
+
+function getRemoteCommerce() {
+  if (__commerceRemote) return __commerceRemote;
+  try {
+    const cached = JSON.parse(localStorage.getItem(COMMERCE_CACHE_KEY) || "null");
+    if (cached && typeof cached === "object") {
+      __commerceRemote = {
+        version: cached.version || 1,
+        updatedAt: cached.updatedAt || null,
+        updatedBy: cached.updatedBy || "",
+        orders: Array.isArray(cached.orders) ? cached.orders : [],
+        payments: Array.isArray(cached.payments) ? cached.payments : [],
+        enrolls: Array.isArray(cached.enrolls) ? cached.enrolls : [],
+        refunds: Array.isArray(cached.refunds) ? cached.refunds : [],
+        commissions: Array.isArray(cached.commissions) ? cached.commissions : [],
+        users: Array.isArray(cached.users) ? cached.users : [],
+        digestSummary: cached.digestSummary || null
+      };
+      return __commerceRemote;
+    }
+  } catch { /* ignore */ }
+  return emptyRemoteCommerce();
+}
+
+function setRemoteCommerce(doc) {
+  const next = {
+    version: doc?.version || 1,
+    updatedAt: doc?.updatedAt || null,
+    updatedBy: doc?.updatedBy || "",
+    orders: Array.isArray(doc?.orders) ? doc.orders : [],
+    payments: Array.isArray(doc?.payments) ? doc.payments : [],
+    enrolls: Array.isArray(doc?.enrolls) ? doc.enrolls : [],
+    refunds: Array.isArray(doc?.refunds) ? doc.refunds : [],
+    commissions: Array.isArray(doc?.commissions) ? doc.commissions : [],
+    users: Array.isArray(doc?.users) ? doc.users : [],
+    digestSummary: doc?.digestSummary || null
+  };
+  __commerceRemote = next;
+  try { localStorage.setItem(COMMERCE_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  return next;
+}
+
+function mergeCommerceListsById(localList, remoteList, idKey) {
+  const map = new Map();
+  (Array.isArray(localList) ? localList : []).forEach((row) => {
+    if (row && row[idKey]) map.set(String(row[idKey]), row);
+  });
+  (Array.isArray(remoteList) ? remoteList : []).forEach((row) => {
+    if (!row || !row[idKey]) return;
+    const id = String(row[idKey]);
+    const prev = map.get(id);
+    map.set(id, prev ? { ...prev, ...row } : row);
+  });
+  return Array.from(map.values());
+}
+
+function mergeCommerceEnrolls(localList, remoteList) {
+  const map = new Map();
+  const keyOf = (r) => String(r.email || "").toLowerCase() + "|" + String(r.courseId || "");
+  (Array.isArray(localList) ? localList : []).forEach((row) => {
+    if (row) map.set(keyOf(row), row);
+  });
+  (Array.isArray(remoteList) ? remoteList : []).forEach((row) => {
+    if (!row) return;
+    const k = keyOf(row);
+    const prev = map.get(k);
+    map.set(k, prev ? { ...prev, ...row } : row);
+  });
+  return Array.from(map.values());
+}
+
+function mergeCommerceUsers(localList, remoteList) {
+  const map = new Map();
+  (Array.isArray(localList) ? localList : []).forEach((row) => {
+    if (row?.email) map.set(String(row.email).toLowerCase(), row);
+  });
+  (Array.isArray(remoteList) ? remoteList : []).forEach((row) => {
+    if (!row?.email) return;
+    const k = String(row.email).toLowerCase();
+    const prev = map.get(k);
+    map.set(k, prev ? { ...prev, ...row } : row);
+  });
+  return Array.from(map.values());
+}
+
+function applyCommerceDocToLocal(data) {
+  if (!data || typeof data !== "object") return { changed: false };
+  let changed = false;
+  const orderKey = "tradeshalaOrders";
+  const payKey = "tradeshalaPayments";
+  const refundKey = "tradeshalaRefunds";
+  const commissionKey = "tradeshalaCommissions";
+  const enrollKey = typeof ALL_ENROLL_KEY !== "undefined" ? ALL_ENROLL_KEY : "tradeshalaAllEnrolls";
+  const usersKey = typeof USERS_KEY !== "undefined" ? USERS_KEY : "tradeshalaUsers";
+
+  const prevOrders = readList(orderKey);
+  const nextOrders = mergeCommerceListsById(prevOrders, data.orders, "id");
+  // Also union by email+course for PAID when ids differ across devices.
+  const byPair = new Map(nextOrders.map((o) => [String(o.email || "").toLowerCase() + "|" + o.courseId, o]));
+  (data.orders || []).forEach((o) => {
+    if (!o?.email || !o.courseId) return;
+    const k = String(o.email).toLowerCase() + "|" + o.courseId;
+    const prev = byPair.get(k);
+    if (!prev) {
+      nextOrders.push(o);
+      byPair.set(k, o);
+    } else if (String(prev.status || "").toUpperCase() !== "REFUNDED"
+      && String(o.status || "").toUpperCase() === "REFUNDED") {
+      Object.assign(prev, o);
+    }
+  });
+  if (nextOrders.length !== prevOrders.length) changed = true;
+  writeList(orderKey, nextOrders);
+
+  const prevPays = readList(payKey);
+  const nextPays = mergeCommerceListsById(prevPays, data.payments, "id");
+  if (nextPays.length !== prevPays.length) changed = true;
+  writeList(payKey, nextPays);
+
+  writeList(refundKey, mergeCommerceListsById(readList(refundKey), data.refunds, "id"));
+  writeList(commissionKey, mergeCommerceListsById(readList(commissionKey), data.commissions, "id"));
+
+  const prevEnrolls = readList(enrollKey);
+  const nextEnrolls = mergeCommerceEnrolls(prevEnrolls, data.enrolls);
+  if (nextEnrolls.length !== prevEnrolls.length) changed = true;
+  writeList(enrollKey, nextEnrolls);
+
+  const prevUsers = readList(usersKey);
+  const nextUsers = mergeCommerceUsers(prevUsers, data.users);
+  if (nextUsers.length !== prevUsers.length) changed = true;
+  writeList(usersKey, nextUsers);
+
+  return { changed, digestSummary: data.digestSummary || null };
+}
+
+function buildCommercePushPayload() {
+  const demo = (row) => {
+    if (typeof AdminCore !== "undefined" && AdminCore.isDemoCommerceRecord) {
+      return AdminCore.isDemoCommerceRecord(row);
+    }
+    return false;
+  };
+  const orders = readList("tradeshalaOrders").filter((o) => !demo(o));
+  const payments = readList("tradeshalaPayments").filter((p) => !demo(p));
+  const refunds = readList("tradeshalaRefunds").filter((r) => !demo(r));
+  const commissions = readList("tradeshalaCommissions").filter((c) => !demo(c));
+  const enrolls = readList(typeof ALL_ENROLL_KEY !== "undefined" ? ALL_ENROLL_KEY : "tradeshalaAllEnrolls")
+    .filter((e) => !(typeof AdminCore !== "undefined" && AdminCore.isDemoLearnerEmail && AdminCore.isDemoLearnerEmail(e.email)));
+  const users = readList(typeof USERS_KEY !== "undefined" ? USERS_KEY : "tradeshalaUsers")
+    .filter((u) => !(typeof AdminCore !== "undefined" && AdminCore.isDemoLearnerEmail && AdminCore.isDemoLearnerEmail(u.email)))
+    .map((u) => ({ name: u.name, email: u.email, created: u.created, referredBy: u.referredBy || "" }));
+  return { orders, payments, refunds, commissions, enrolls, users };
+}
+
+async function pushCommerceRemote(opts) {
+  const silent = !opts || opts.silent !== false;
+  if (__commercePushTimer) {
+    clearTimeout(__commercePushTimer);
+    __commercePushTimer = null;
+  }
+  const headers = typeof catalogStaffHeaders === "function"
+    ? catalogStaffHeaders()
+    : { "Content-Type": "application/json" };
+  if (!headers["X-Staff-Email"]) {
+    if (!silent) console.warn("[commerce] skip push — no staff session");
+    return { ok: false, skipped: "no_staff" };
+  }
+  try {
+    const payload = buildCommercePushPayload();
+    const res = await fetch(COMMERCE_API, {
+      method: "PUT",
+      headers,
+      credentials: "same-origin",
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      if (!silent) console.warn("[commerce] push failed", data?.error || res.status);
+      return { ok: false, error: data?.error || String(res.status) };
+    }
+    setRemoteCommerce(data);
+    return { ok: true, data };
+  } catch (err) {
+    if (!silent) console.warn("[commerce] push error", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+function scheduleCommercePush() {
+  if (__commercePushTimer) clearTimeout(__commercePushTimer);
+  __commercePushTimer = setTimeout(() => {
+    __commercePushTimer = null;
+    pushCommerceRemote({ silent: true });
+  }, 500);
+}
+
+async function hydrateCommerceFromRemote() {
+  try {
+    const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+    if (!headers["X-Staff-Email"]) {
+      __commerceHydrated = true;
+      return getRemoteCommerce();
+    }
+    const res = await fetch(COMMERCE_API, {
+      method: "GET",
+      headers,
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined
+    });
+    if (!res.ok) {
+      __commerceHydrated = true;
+      return getRemoteCommerce();
+    }
+    const data = await res.json().catch(() => null);
+    if (!data || !data.ok) {
+      __commerceHydrated = true;
+      return getRemoteCommerce();
+    }
+    setRemoteCommerce(data);
+    if (typeof isAdminPage === "function" && isAdminPage()) {
+      applyCommerceDocToLocal(data);
+      // If this Control browser has local PAID rows not yet in KV, push them up.
+      const localPayload = buildCommercePushPayload();
+      const remoteIds = new Set((data.orders || []).map((o) => o.id));
+      const hasLocalOnly = (localPayload.orders || []).some((o) => o?.id && !remoteIds.has(o.id));
+      if (hasLocalOnly) {
+        await pushCommerceRemote({ silent: true });
+      }
+    }
+    __commerceHydrated = true;
+    return getRemoteCommerce();
+  } catch {
+    __commerceHydrated = true;
+    return getRemoteCommerce();
+  }
+}
+
+window.hydrateCommerceFromRemote = hydrateCommerceFromRemote;
+window.pushCommerceRemote = pushCommerceRemote;
+window.scheduleCommercePush = scheduleCommercePush;
+window.getRemoteCommerce = getRemoteCommerce;
+
 function instructorEditFor(name, email) {
   const map = mergedInstructorEdits();
   const mail = String(email || "").toLowerCase();
@@ -3007,6 +3271,24 @@ async function hydrateCatalogFromRemote() {
       return getRemoteCatalog();
     }
     setRemoteCatalog(data);
+    // Pin course ownership from KV edits so creatorShareFor / commerce attribution
+    // work on public checkout even before Control courseOwners local map exists.
+    try {
+      if (typeof courseOwners === "function" && typeof setCourseOwners === "function" && data.edits) {
+        const owners = courseOwners();
+        let dirty = false;
+        Object.keys(data.edits).forEach((id) => {
+          const oe = data.edits[id] && data.edits[id].ownerEmail;
+          if (!oe) return;
+          const mail = String(oe).trim().toLowerCase();
+          if (mail && owners[id] !== mail) {
+            owners[id] = mail;
+            dirty = true;
+          }
+        });
+        if (dirty) setCourseOwners(owners);
+      }
+    } catch { /* ignore */ }
     // Mirror into localStorage only on control/admin so staff devices stay in sync.
     // Public visitors apply remote via mergedCourseEdits() / remote curriculum maps
     // without writing local keys.
@@ -9617,3 +9899,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk229: logged-in logo/Home → public site /; dashboard only via profile menu */
 /* cache-bust desk230: /rehan link order Course → Community → Instagram → YouTube → Facebook */
 /* cache-bust desk231: Control Overview/Analytics live commerce only — no demo KPI seeds */
+/* cache-bust desk232: shared KV commerce ledger — Rehan digests → Control Overview */
