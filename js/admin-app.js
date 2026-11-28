@@ -55,9 +55,134 @@ const NAV = [
     { id: "sessions", label: "Sessions", mod: "security", act: "view" },
     { id: "audit", label: "Audit logs", mod: "security", act: "view" },
     { id: "settings", label: "Settings", mod: "settings", act: "view", owner: true },
+    { id: "theme", label: "Theme", themeSidebar: true },
     { id: "footer", label: "Footer links", owner: true }
   ]}
 ];
+
+/** Control desk theme — same localStorage pattern as CRM (`crmTheme`). */
+const CONTROL_THEME_KEY = "controlTheme";
+const CONTROL_THEME_BG = {
+  light: "/img/control-theme/bg-light.jpg?v=desk235",
+  dark: "/img/control-theme/bg-dark.jpg?v=desk235"
+};
+
+function getControlTheme() {
+  try {
+    const t = localStorage.getItem(CONTROL_THEME_KEY);
+    return t === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
+function prefersControlReduceMotion() {
+  try {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Dual-layer image + CSS mesh backdrop (login + desk).
+ * Medium-speed Ken Burns / drift — matched to CRM mesh timings (~14–18s).
+ */
+function ensureControlMesh(opts) {
+  const restart = !!(opts && opts.restart);
+  const reduce = prefersControlReduceMotion();
+  document.documentElement.setAttribute("data-control-reduce-motion", reduce ? "1" : "0");
+
+  let mesh = document.getElementById("adMesh") || document.querySelector(".ad-mesh");
+  if (!mesh) {
+    mesh = document.createElement("div");
+    mesh.className = "ad-mesh";
+    mesh.id = "adMesh";
+    mesh.setAttribute("aria-hidden", "true");
+    document.body.insertBefore(mesh, document.body.firstChild);
+  } else if (mesh.parentElement !== document.body || mesh !== document.body.firstElementChild) {
+    document.body.insertBefore(mesh, document.body.firstChild);
+  }
+
+  let layerA = mesh.querySelector(".ad-mesh-layer-a");
+  let layerB = mesh.querySelector(".ad-mesh-layer-b");
+  let photo = mesh.querySelector(".ad-mesh-photo");
+  let waves = mesh.querySelector(".ad-mesh-waves");
+  if (!photo) {
+    photo = document.createElement("div");
+    photo.className = "ad-mesh-photo";
+    mesh.appendChild(photo);
+  }
+  if (!layerA) {
+    layerA = document.createElement("div");
+    layerA.className = "ad-mesh-layer ad-mesh-layer-a";
+    mesh.appendChild(layerA);
+  }
+  if (!layerB) {
+    layerB = document.createElement("div");
+    layerB.className = "ad-mesh-layer ad-mesh-layer-b";
+    mesh.appendChild(layerB);
+  }
+  if (!waves) {
+    waves = document.createElement("div");
+    waves.className = "ad-mesh-waves";
+    waves.setAttribute("aria-hidden", "true");
+    mesh.appendChild(waves);
+  }
+
+  const theme = getControlTheme();
+  const base = theme === "dark" ? "#0c1834" : "#eef8ff";
+  document.documentElement.style.background = base;
+  mesh.style.backgroundColor = base;
+  photo.style.backgroundImage = `url("${CONTROL_THEME_BG[theme]}")`;
+
+  if (reduce) {
+    mesh.classList.remove("is-restarting");
+    return mesh;
+  }
+
+  const kick = () => {
+    mesh.classList.add("is-restarting");
+    void mesh.offsetWidth;
+    mesh.classList.remove("is-restarting");
+    [photo, layerA, layerB, waves].forEach((el) => {
+      if (!el) return;
+      el.style.animationPlayState = "running";
+    });
+  };
+
+  if (restart) kick();
+  else {
+    [photo, layerA, layerB, waves].forEach((el) => {
+      if (!el) return;
+      el.style.animationPlayState = "running";
+    });
+  }
+  return mesh;
+}
+
+function applyControlTheme(theme) {
+  const next = theme === "dark" ? "dark" : "light";
+  const prev = document.documentElement.getAttribute("data-control-theme");
+  const changed = prev !== next;
+  try { localStorage.setItem(CONTROL_THEME_KEY, next); } catch { /* ignore */ }
+  document.documentElement.setAttribute("data-control-theme", next);
+  document.documentElement.style.colorScheme = next;
+  document.documentElement.style.background = next === "dark" ? "#0c1834" : "#eef8ff";
+  const meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) meta.setAttribute("content", next);
+  document.querySelectorAll(".ad-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
+  ensureControlMesh({ restart: changed });
+}
+
+function controlThemeToggleHTML(id) {
+  const t = getControlTheme();
+  return `<button type="button" class="ad-theme-toggle" id="${adEsc(id || "")}" data-theme="${t}" aria-label="Theme toggle" title="Switch theme">
+      <span class="ad-theme-knob" aria-hidden="true"></span>
+      <span class="ad-theme-opt" data-val="dark">DARK</span>
+      <span class="ad-theme-opt" data-val="light">LIGHT</span>
+    </button>`;
+}
 
 function adEsc(s) { return escapeHtml(String(s ?? "")); }
 function deskFaceHTML(name, photo) {
@@ -259,6 +384,7 @@ function visibleNav() {
   return NAV.map((g) => ({
     ...g,
     items: g.items.filter((it) => {
+      if (it.themeSidebar) return true;
       if (it.owner && !AdminCore.isOwner()) return false;
       if (it.id === "dashboard") return true;
       if (it.id === "performance" || it.id === "referrals" || it.id === "commissions" || it.id === "payouts") {
@@ -302,6 +428,8 @@ function parseAdminRoute(hash) {
     return { route: "webinarBuilder", webinarId: decodeURIComponent(parts[1]), tab: mapWebinarTab(parts[2] || "") };
   }
   if (parts[0] === "webinar") return { route: "webinars", webinarId: "", tab: "" };
+  // Theme is sidebar-only (CRM pattern) — never a main view
+  if (raw === "theme" || raw === "settings/theme") return { route: "dashboard", courseId: "", tab: "" };
   return { route: VIEWS[raw] ? raw : "dashboard", courseId: "", tab: "" };
 }
 function applyAdminRoute(parsed) {
@@ -347,7 +475,15 @@ function renderSide() {
     <div class="ad-who">${adEsc(s.name)}<br>${AdminCore.isSuperAdmin() ? "Super Admin" : (AdminCore.isOwner() ? "Owner" : (s.creatorEnabled ? "Admin · Creator" : "Admin"))}</div>
     <nav class="ad-nav">${visibleNav().map((g) => `
       <div class="ad-nav-label">${g.group}</div>
-      ${g.items.map((it) => `<button type="button" data-route="${it.id}" class="${Ad.route===it.id || (it.id==="courses" && Ad.route==="courseBuilder") || (it.id==="mentors" && Ad.route==="mentorBuilder") || (it.id==="webinars" && Ad.route==="webinarBuilder")?"on":""}">${it.label}</button>`).join("")}
+      ${g.items.map((it) => {
+        if (it.themeSidebar || it.id === "theme") {
+          return `<div class="ad-nav-theme-wrap">
+            <div class="ad-nav-theme-label"><span>${adEsc(it.label)}</span></div>
+            <div class="ad-nav-theme-row">${controlThemeToggleHTML("adThemeSide")}</div>
+          </div>`;
+        }
+        return `<button type="button" data-route="${it.id}" class="${Ad.route===it.id || (it.id==="courses" && Ad.route==="courseBuilder") || (it.id==="mentors" && Ad.route==="mentorBuilder") || (it.id==="webinars" && Ad.route==="webinarBuilder")?"on":""}">${it.label}</button>`;
+      }).join("")}
     `).join("")}</nav>
     <div class="ad-side-foot">
       <button type="button" id="staffLogout">Logout</button>
@@ -365,6 +501,11 @@ function closeAdminNav() { setAdminNav(false); }
 
 function go(route, extra) {
   closeAdminNav();
+  // Theme is sidebar-only — never open a main Theme panel (CRM pattern)
+  if (route === "theme") {
+    applyControlTheme(getControlTheme());
+    return;
+  }
   Ad.page = 1;
   Ad.q = "";
   Ad.drawer = null;
@@ -416,6 +557,7 @@ function go(route, extra) {
 }
 
 function paint() {
+  applyControlTheme(getControlTheme());
   let s = null;
   try { s = AdminCore.session(); } catch (_) { s = null; }
   if (!s) {
@@ -2277,6 +2419,7 @@ function showAdmin() {
   const app = document.getElementById("adminApp");
   login && login.classList.add("hidden");
   app && app.classList.remove("hidden");
+  applyControlTheme(getControlTheme());
   try {
     applyAdminRoute(parseAdminRoute());
     paint();
@@ -2294,6 +2437,7 @@ function bootAdminUi() {
   if (window.__bgAdminUi) return;
   window.__bgAdminUi = true;
   const note = (msg) => { if (typeof toast === "function") toast(msg); };
+  applyControlTheme(getControlTheme());
 
   const readyControlPlane = (async () => {
     try {
@@ -2391,6 +2535,19 @@ function bootAdminUi() {
     });
   });
   document.getElementById("adminSide")?.addEventListener("click", (e) => {
+    const themeBtn = e.target.closest(".ad-theme-toggle");
+    if (themeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const opt = e.target.closest(".ad-theme-opt");
+      let next = getControlTheme() === "light" ? "dark" : "light";
+      if (opt && opt.getAttribute("data-val")) next = opt.getAttribute("data-val") === "light" ? "light" : "dark";
+      else if (themeBtn.getAttribute("data-theme") === "light") next = "dark";
+      else next = "light";
+      applyControlTheme(next);
+      document.querySelectorAll(".ad-theme-toggle").forEach((el) => el.setAttribute("data-theme", next));
+      return;
+    }
     const btn = e.target.closest("[data-route]");
     if (btn) go(btn.dataset.route);
     if (e.target.id === "staffLogout" || e.target.closest("#staffLogout")) { AdminCore.logout(); location.reload(); }
