@@ -1389,3 +1389,4 @@ const CourseAdmin = {
 /* cache-bust desk6: catalog() merges shared KV course edits */
 /* cache-bust desk7: createCourse restores soft-deleted keep seed; byId reads raw extras */
 /* cache-bust desk10: Community open-without-purchase + push rooms to catalog KV */
+/* cache-bust desk245: Control saves auto-flush to public KV */

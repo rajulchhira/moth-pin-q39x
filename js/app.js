@@ -260,6 +260,8 @@ function setCourseRooms(courseId, next) {
   }
   all[courseId] = out;
   localStorage.setItem(COURSE_ROOMS_KEY, JSON.stringify(all));
+  // Any caller (builder or overlay) must reach public /course Community.
+  if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
   return out;
 }
 function remoteRoomsMap() {
@@ -340,11 +342,26 @@ function setWebinarRooms(webinarId, next) {
   });
   all[webinarId] = out;
   localStorage.setItem(WEBINAR_ROOMS_KEY, JSON.stringify(all));
+  if (typeof scheduleWebinarsPush === "function") scheduleWebinarsPush();
   return out;
 }
+function remoteWebinarRoomsMap() {
+  try {
+    const remote = typeof getRemoteWebinars === "function" ? getRemoteWebinars() : null;
+    return remote && remote.rooms && typeof remote.rooms === "object" ? remote.rooms : {};
+  } catch { return {}; }
+}
 function webinarRoomsOf(webinarId) {
-  const own = webinarRoomsMap()[webinarId];
-  if (own && typeof own === "object") return own;
+  const local = webinarRoomsMap()[webinarId];
+  const remote = remoteWebinarRoomsMap()[webinarId];
+  const onAdmin = typeof isAdminPage === "function" && isAdminPage();
+  if (onAdmin) {
+    if (local && typeof local === "object") return local;
+    if (remote && typeof remote === "object") return remote;
+  } else {
+    if (remote && typeof remote === "object") return remote;
+    if (local && typeof local === "object") return local;
+  }
   return deskRoomsMap();
 }
 function visibleDeskRooms(roomsMap) {
@@ -833,6 +850,15 @@ function isPlaceholderSyllabusDoc(doc) {
   return sections.every((sec) => PLACEHOLDER_SECTION_TITLES.has(String(sec?.title || "").toLowerCase()));
 }
 
+function countLessonVdoIds(list) {
+  if (!Array.isArray(list)) return 0;
+  let n = 0;
+  list.forEach((l) => {
+    if (l && String(l.vdoId || "").trim()) n += 1;
+  });
+  return n;
+}
+
 /** Higher score = authored control curriculum (Lesson 2–4, PDFs, VdoCipher, …). */
 function curriculumVideosScore(list) {
   if (!Array.isArray(list) || !list.length) return 0;
@@ -842,7 +868,9 @@ function curriculumVideosScore(list) {
     const title = String(l?.t || "").toLowerCase();
     if (!PLACEHOLDER_LESSON_TITLES.has(title)) score += 4;
     if (String(l?.kind || "") === "pdf" || l?.pdf || l?.pdfInline) score += 6;
-    if (l?.vdoId || l?.fileKey) score += 5;
+    // VdoCipher DRM ids outrank IndexedDB/R2 fileKey for public play.
+    if (l?.vdoId) score += 12;
+    else if (l?.fileKey) score += 5;
     if (l?.src && !isSampleMediaUrl(l.src)) score += 3;
     if (String(l?.src || "").startsWith("/api/media/")) score += 4;
   });
@@ -868,6 +896,13 @@ function pickRicherCourseVideos(localList, remoteList) {
   // must not wipe authored remote Intro / Lesson 2–4 maps.
   if (Array.isArray(localList)) {
     if (localList.length && isPlaceholderLessonList(localList) && curriculumVideosScore(remoteList) > 1) {
+      return remoteList;
+    }
+    // Prefer the list with more playable VdoCipher ids (fileKey-only loses to DRM).
+    if (
+      countLessonVdoIds(remoteList) > countLessonVdoIds(localList)
+      && curriculumVideosScore(remoteList) >= curriculumVideosScore(localList)
+    ) {
       return remoteList;
     }
     return localList;
@@ -1471,6 +1506,10 @@ async function addClassroomLesson(courseId, fields, onProgress) {
   if (fields.pdf) lesson.pdf = String(fields.pdf || "").trim();
   if (fields.pdfName) lesson.pdfName = String(fields.pdfName || "").trim();
   setCourseLessons(courseId, (courseVideosMap()[courseId] || []).concat(lesson));
+  // Immediate KV flush so public classroom sees vdoId without waiting on debounce.
+  if (typeof pushCatalogRemote === "function") {
+    try { await pushCatalogRemote({ silent: true }); } catch { /* schedule still pending via applyCoursePatch */ }
+  }
   return lesson;
 }
 
@@ -1933,7 +1972,7 @@ let __webinarsPushTimer = null;
 let __webinarsHydrated = false;
 
 function emptyRemoteWebinars() {
-  return { version: 1, updatedAt: null, updatedBy: "", webinars: [], deleted: DEMO_WEBINAR_IDS.slice() };
+  return { version: 1, updatedAt: null, updatedBy: "", webinars: [], deleted: DEMO_WEBINAR_IDS.slice(), rooms: {} };
 }
 
 function getRemoteWebinars() {
@@ -1946,7 +1985,8 @@ function getRemoteWebinars() {
         updatedAt: cached.updatedAt || null,
         updatedBy: cached.updatedBy || "",
         webinars: Array.isArray(cached.webinars) ? cached.webinars : [],
-        deleted: Array.isArray(cached.deleted) ? cached.deleted : DEMO_WEBINAR_IDS.slice()
+        deleted: Array.isArray(cached.deleted) ? cached.deleted : DEMO_WEBINAR_IDS.slice(),
+        rooms: cached.rooms && typeof cached.rooms === "object" ? cached.rooms : {}
       };
       return __webinarsRemote;
     }
@@ -1963,7 +2003,8 @@ function setRemoteWebinars(doc) {
     deleted: Array.from(new Set([
       ...(Array.isArray(doc?.deleted) ? doc.deleted.map(String) : []),
       ...DEMO_WEBINAR_IDS
-    ]))
+    ])),
+    rooms: doc?.rooms && typeof doc.rooms === "object" ? doc.rooms : {}
   };
   __webinarsRemote = next;
   try { localStorage.setItem(WEBINARS_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
@@ -1976,12 +2017,22 @@ function localWebinarRows() {
 }
 
 function buildWebinarsPushPayload() {
+  const remote = getRemoteWebinars();
+  const remoteRooms = remote.rooms && typeof remote.rooms === "object" ? remote.rooms : {};
+  const localRooms = webinarRoomsMap();
+  const roomIds = new Set([...Object.keys(remoteRooms), ...Object.keys(localRooms)]);
+  const rooms = {};
+  roomIds.forEach((id) => {
+    if (localRooms[id] && typeof localRooms[id] === "object") rooms[id] = localRooms[id];
+    else if (remoteRooms[id] && typeof remoteRooms[id] === "object") rooms[id] = remoteRooms[id];
+  });
   return {
     webinars: localWebinarRows(),
     deleted: Array.from(new Set([
       ...readList(DELETED_LIVES_KEY).map(String),
       ...DEMO_WEBINAR_IDS
-    ]))
+    ])),
+    rooms
   };
 }
 
@@ -1998,6 +2049,22 @@ function applyRemoteWebinarsToLocal(doc) {
   // After hydrate, remote webinars are the shared source of truth (no demo seeds).
   writeList(LIVE_KEY, [...remoteWebs, ...classes]);
   writeList(DELETED_LIVES_KEY, remoteDeleted);
+  // Mirror Community rooms into local so Control edits round-trip.
+  if (doc?.rooms && typeof doc.rooms === "object") {
+    try {
+      const localRooms = webinarRoomsMap();
+      let touched = false;
+      Object.keys(doc.rooms).forEach((id) => {
+        const rem = doc.rooms[id];
+        if (!rem || typeof rem !== "object") return;
+        if (!localRooms[id]) {
+          localRooms[id] = rem;
+          touched = true;
+        }
+      });
+      if (touched) localStorage.setItem(WEBINAR_ROOMS_KEY, JSON.stringify(localRooms));
+    } catch { /* ignore */ }
+  }
 }
 
 async function pushWebinarsRemote(opts) {
@@ -2041,6 +2108,48 @@ function scheduleWebinarsPush() {
     pushWebinarsRemote({ silent: true });
   }, 400);
 }
+
+/** Flush every pending Control → public KV debounce (courses/staff/webinars/commerce/instructors). */
+async function flushControlSync(opts) {
+  const silent = !opts || opts.silent !== false;
+  const out = {};
+  if (typeof pushCatalogRemote === "function") {
+    try { out.catalog = await pushCatalogRemote({ silent }); } catch (e) { out.catalog = { ok: false, error: String(e?.message || e) }; }
+  }
+  if (typeof pushInstructorsRemote === "function") {
+    try { out.instructors = await pushInstructorsRemote({ silent }); } catch (e) { out.instructors = { ok: false, error: String(e?.message || e) }; }
+  }
+  if (typeof pushStaffRemote === "function") {
+    try { out.staff = await pushStaffRemote({ silent }); } catch (e) { out.staff = { ok: false, error: String(e?.message || e) }; }
+  }
+  if (typeof pushWebinarsRemote === "function") {
+    try { out.webinars = await pushWebinarsRemote({ silent }); } catch (e) { out.webinars = { ok: false, error: String(e?.message || e) }; }
+  }
+  if (typeof pushCommerceRemote === "function") {
+    try { out.commerce = await pushCommerceRemote({ silent }); } catch (e) { out.commerce = { ok: false, error: String(e?.message || e) }; }
+  }
+  return out;
+}
+
+function bindControlSyncFlush() {
+  if (typeof window === "undefined" || window.__bizgarhSyncFlushBound) return;
+  window.__bizgarhSyncFlushBound = true;
+  const kick = () => {
+    try {
+      if (typeof isAdminPage === "function" && !isAdminPage()) return;
+      const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+      if (!headers["X-Staff-Email"]) return;
+      // Fire-and-forget so tab close does not block; debounce timers are cleared inside push*.
+      flushControlSync({ silent: true });
+    } catch { /* ignore */ }
+  };
+  window.addEventListener("pagehide", kick);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") kick();
+  });
+}
+
+window.flushControlSync = flushControlSync;
 
 async function hydrateWebinarsFromRemote() {
   pruneDemoWebinarsLocal();
@@ -3987,7 +4096,8 @@ async function hydrateCatalogFromRemote() {
           const localList = localVideos[id];
           const localEmpty = !Array.isArray(localList) || !localList.length;
           const remoteRicher = curriculumVideosScore(remoteVideos[id]) > curriculumVideosScore(localList);
-          if (localEmpty || (isPlaceholderLessonList(localList) && remoteRicher)) {
+          const remoteMoreVdo = countLessonVdoIds(remoteVideos[id]) > countLessonVdoIds(localList);
+          if (localEmpty || (isPlaceholderLessonList(localList) && remoteRicher) || remoteMoreVdo) {
             localVideos[id] = remoteVideos[id];
             videosTouched = true;
           }
@@ -10139,6 +10249,7 @@ async function startPublicBoot() {
   try { await hydrateInstructorsFromRemote(); } catch { /* seed fallback */ }
   try { await hydrateStaffFromRemote(); } catch { /* seed fallback */ }
   try { await hydrateWebinarsFromRemote(); } catch { /* local prune fallback */ }
+  try { bindControlSyncFlush(); } catch { /* ignore */ }
   // Grant-all enrolls (bizgarh@gmail.com → every public + Control catalog course).
   try { if (typeof ensureCourseAccessGrants === "function") ensureCourseAccessGrants(); } catch { /* ignore */ }
 
@@ -10626,3 +10737,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk241: grant bizgarh@gmail.com enroll/unlock all public+Control courses */
 /* cache-bust desk242: Slingshot/classroom videos via R2 /api/media (fix IndexedDB-only fileKey) */
 /* cache-bust desk244: classroom videos = VdoCipher DRM only (no R2/IndexedDB fallback) */
+/* cache-bust desk245: Control saves auto-flush to public KV (courses/videos/webinars/staff/commerce) */

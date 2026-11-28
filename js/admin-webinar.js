@@ -802,7 +802,7 @@ const WebinarAdmin = {
     this.openBuilder(id, "live");
   },
 
-  saveRooms(form) {
+  async saveRooms(form) {
     const id = form.dataset.webinar;
     const w = this.byId(id);
     if (!w || !canEditWebinar(w)) return;
@@ -815,7 +815,13 @@ const WebinarAdmin = {
     });
     if (typeof setWebinarRooms === "function") setWebinarRooms(id, next);
     AdminCore.audit("webinar_community", id, "", "updated");
-    toast("Community saved for this webinar");
+    if (typeof pushWebinarsRemote === "function") {
+      const pushed = await pushWebinarsRemote({ silent: true });
+      if (!pushed?.ok && !pushed?.skipped) toast("Saved locally — site sync pending (retry save)");
+      else toast("Community saved for this webinar");
+    } else {
+      toast("Community saved for this webinar");
+    }
     paint();
   },
 
