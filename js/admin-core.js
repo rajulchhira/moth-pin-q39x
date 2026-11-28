@@ -190,6 +190,118 @@ AdminCore.isDemoMentorStaffEmail = (email) => {
   return AdminCore.demoMentorStaffEmails().has(e);
 };
 
+/** Seeded learner emails used by Control/LMS/public demo fills — never count in live KPIs. */
+const DEMO_LEARNER_EMAILS = new Set([
+  "riya@gmail.com", "omkar@gmail.com", "pooja@gmail.com", "sahil@gmail.com",
+  "dev@gmail.com", "mehul@gmail.com", "ananya.b@gmail.com", "kabir.s@gmail.com",
+  "nisha.b@gmail.com", "vikram.g@gmail.com", "ankit.rao@gmail.com", "sneha.p@gmail.com",
+  "karan.m@gmail.com", "divya.i@gmail.com", "ritesh@gmail.com", "kavya@gmail.com",
+  "sneha@gmail.com", "aditya@gmail.com", "harsh@gmail.com", "isha@gmail.com",
+  "rahulm@gmail.com", "tanvi@gmail.com"
+]);
+
+AdminCore.TZ = "Asia/Kolkata";
+
+AdminCore.isDemoLearnerEmail = (email) => DEMO_LEARNER_EMAILS.has(String(email || "").trim().toLowerCase());
+
+AdminCore.isDemoCommerceRecord = (row) => {
+  if (!row || typeof row !== "object") return false;
+  if (row.demo === true || row.sample === true) return true;
+  if (AdminCore.isDemoLearnerEmail(row.email || row.studentEmail || row.student)) return true;
+  const id = String(row.id || row.orderId || "");
+  const tx = String(row.tx || row.transactionId || "");
+  if (/^ord-demo/i.test(id) || /^pay-ord-demo/i.test(id) || /^out-/i.test(id)) return true;
+  if (/^TXNDEMO/i.test(tx) || /^rf-demo/i.test(id) || /^crm-st-/i.test(id)) return true;
+  if (/^ld-demo/i.test(id) || String(row.code || "").toUpperCase() === "BG-CLASS1" && row.demo) return true;
+  return false;
+};
+
+/** Successful purchase only — never FAILED / CANCELLED / UNPAID / PENDING / REFUNDED. */
+AdminCore.isPaidOrder = (o) => {
+  if (!o || AdminCore.isDemoCommerceRecord(o)) return false;
+  const s = String(o.status || "").toUpperCase();
+  return s === "PAID" || s === "SUCCESS" || s === "CAPTURED";
+};
+
+AdminCore.liveOrders = () => AdminCore.orders().filter((o) => !AdminCore.isDemoCommerceRecord(o));
+AdminCore.paidOrders = () => AdminCore.liveOrders().filter(AdminCore.isPaidOrder);
+
+/**
+ * One-shot purge of known demo commerce so Dashboard/Analytics never show sample fill.
+ * Does not invent replacements — empty store stays empty (0 / empty states).
+ */
+AdminCore.purgeDemoCommerce = () => {
+  try {
+    if (localStorage.getItem("controlDemoCommercePurgedV1") === "1") return { changed: false };
+  } catch { /* ignore */ }
+
+  let changed = false;
+  const drop = (key, pred) => {
+    try {
+      const list = storeList(key);
+      const next = list.filter((row) => !pred(row));
+      if (next.length !== list.length) {
+        saveStore(key, next);
+        changed = true;
+      }
+    } catch { /* ignore */ }
+  };
+
+  const isDemoEmail = (row) => AdminCore.isDemoLearnerEmail(row?.email || row?.studentEmail);
+  const isDemoRow = (row) => AdminCore.isDemoCommerceRecord(row) || isDemoEmail(row);
+
+  try {
+    if (typeof USERS_KEY !== "undefined" && typeof readList === "function" && typeof writeList === "function") {
+      const users = readList(USERS_KEY);
+      const next = users.filter((u) => !AdminCore.isDemoLearnerEmail(u.email));
+      if (next.length !== users.length) { writeList(USERS_KEY, next); changed = true; }
+    }
+  } catch { /* ignore */ }
+  try {
+    if (typeof ALL_ENROLL_KEY !== "undefined" && typeof readList === "function" && typeof writeList === "function") {
+      const enrolls = readList(ALL_ENROLL_KEY);
+      const next = enrolls.filter((e) => !AdminCore.isDemoLearnerEmail(e.email));
+      if (next.length !== enrolls.length) { writeList(ALL_ENROLL_KEY, next); changed = true; }
+    }
+  } catch { /* ignore */ }
+
+  drop(ORDER_KEY, isDemoRow);
+  drop(PAYMENT_KEY, isDemoRow);
+  drop(REFUND_KEY, isDemoRow);
+  drop(COMMISSION_KEY, isDemoRow);
+  drop(LEAD_KEY, isDemoRow);
+  drop(TICKET_KEY, isDemoRow);
+  drop(ATTRIB_KEY, isDemoRow);
+  try {
+    if (typeof REFERRAL_KEY !== "undefined") {
+      const refs = typeof referrals === "function" ? referrals() : storeList(REFERRAL_KEY);
+      const next = refs.filter((r) => !isDemoRow(r) && !/^rf-demo/i.test(String(r.id || "")));
+      if (next.length !== refs.length && typeof writeList === "function") {
+        writeList(REFERRAL_KEY, next);
+        changed = true;
+      }
+    }
+  } catch { /* ignore */ }
+  try {
+    if (typeof PAYOUT_KEY !== "undefined" && typeof payouts === "function" && typeof writeList === "function") {
+      const list = payouts();
+      const next = list.filter((p) => !AdminCore.isDemoLearnerEmail(p.email) && !String(p.note || "").includes("demo"));
+      if (next.length !== list.length) { writeList(PAYOUT_KEY, next); changed = true; }
+    }
+  } catch { /* ignore */ }
+
+  try {
+    localStorage.removeItem("tradeshalaAnalyticsV2");
+    localStorage.removeItem("tradeshalaAdminSeeded");
+    localStorage.setItem("controlDemoCommercePurgedV1", "1");
+    // Prevent public/LMS demo purchase seeds from re-filling metrics on this browser.
+    localStorage.setItem("tradeshalaPublicPurchaseSeed", "1");
+    localStorage.setItem("tradeshalaLmsSeeded", "1");
+  } catch { /* ignore */ }
+
+  return { changed };
+};
+
 /**
  * Drop seeded mentor Sub-admins from local staff. Optionally push cleaned roster to KV.
  * Returns { changed, removed }.
@@ -615,9 +727,12 @@ AdminCore.sessions = () => storeList(SESSION_KEY);
 AdminCore.clicks = () => storeList(CLICK_KEY);
 AdminCore.attribution = () => storeList(ATTRIB_KEY);
 AdminCore.commissions = () => {
-  const extra = storeList(COMMISSION_KEY);
+  const extra = storeList(COMMISSION_KEY).filter((c) => !AdminCore.isDemoCommerceRecord(c));
   if (extra.length) return extra;
-  return referrals().map((r) => AdminCore.referralToCommission(r));
+  const refs = typeof referrals === "function" ? referrals() : [];
+  return refs
+    .filter((r) => !AdminCore.isDemoCommerceRecord(r) && !/^rf-demo/i.test(String(r.id || "")))
+    .map((r) => AdminCore.referralToCommission(r));
 };
 
 AdminCore.referralToCommission = (r) => ({
@@ -643,18 +758,36 @@ AdminCore.referralToCommission = (r) => ({
   paid: r.status === "paid" ? r.at : ""
 });
 
+AdminCore.courseOwnerStaff = (courseId) => {
+  const course = typeof allCourses === "function" ? allCourses().find((c) => c.id === courseId) : null;
+  if (!course) return null;
+  const ownerEmail = typeof ownerEmailOf === "function" ? ownerEmailOf(course) : "";
+  if (ownerEmail) {
+    const row = AdminCore.staffRow(ownerEmail) || staffList().find((s) => String(s.email || "").toLowerCase() === String(ownerEmail).toLowerCase());
+    if (row) return AdminCore.normalizeStaff(row);
+  }
+  const byName = staffList().find((s) => {
+    const n = AdminCore.normalizeStaff(s);
+    return n.name && n.name === course.instructor && (n.creatorEnabled || n.role === "creator" || n.role === "subadmin");
+  });
+  return byName ? AdminCore.normalizeStaff(byName) : null;
+};
+
 AdminCore.syncOrdersFromEnrolls = () => {
-  const enrolls = readList(ALL_ENROLL_KEY);
+  const enrolls = readList(ALL_ENROLL_KEY).filter((e) => !AdminCore.isDemoLearnerEmail(e.email));
   const orders = AdminCore.orders();
   const pays = AdminCore.payments();
   let changed = false;
   enrolls.forEach((e) => {
-    const exists = orders.find((o) => o.email === e.email && o.courseId === e.courseId);
+    if (AdminCore.isDemoCommerceRecord(e)) return;
+    const exists = orders.find((o) => o.email === e.email && o.courseId === e.courseId && !AdminCore.isDemoCommerceRecord(o));
     if (exists) return;
     const course = allCourses().find((c) => c.id === e.courseId);
     const price = Number(course?.price || 0);
     const user = readList(USERS_KEY).find((u) => u.email === e.email);
-    const staff = staffList().find((s) => s.referralCode && user?.referredBy && s.referralCode.toLowerCase() === String(user.referredBy).toLowerCase());
+    const referred = staffList().find((s) => s.referralCode && user?.referredBy && s.referralCode.toLowerCase() === String(user.referredBy).toLowerCase());
+    const owner = AdminCore.courseOwnerStaff(e.courseId);
+    const staff = referred || owner;
     const oid = uid("ord");
     const tx = "TXN" + Math.random().toString(36).slice(2, 10).toUpperCase();
     orders.push({
@@ -669,7 +802,9 @@ AdminCore.syncOrdersFromEnrolls = () => {
       status: "PAID",
       coupon: "",
       creatorEmail: staff?.email || "",
-      referralCode: user?.referredBy || "",
+      referralCode: user?.referredBy || staff?.referralCode || "",
+      creatorId: staff?.creatorId || "",
+      source: referred ? "first_touch" : (owner ? "course_owner" : "direct"),
       tx,
       at: e.at || AdminCore.now()
     });
@@ -693,42 +828,10 @@ AdminCore.syncOrdersFromEnrolls = () => {
 
 AdminCore.seedControlPlane = () => {
   AdminCore.migrateStaff();
-  const users = readList(USERS_KEY);
-  let touched = false;
-  users.forEach((u) => {
-    if (u.email === "ritesh@gmail.com" && !u.referredBy) { u.referredBy = "AARAV20"; u.referredAt = "2026-08-12T10:00:00.000Z"; touched = true; }
-    if (u.email === "kavya@gmail.com" && !u.referredBy) { u.referredBy = "NEHA20"; u.referredAt = "2026-09-04T10:00:00.000Z"; touched = true; }
-  });
-  if (touched) writeList(USERS_KEY, users);
+  try { AdminCore.purgeDemoCommerce(); } catch { /* ignore */ }
+  // No sample leads / tickets / coupons / notifs — empty stays empty.
   AdminCore.syncOrdersFromEnrolls();
   AdminCore.backfillAttribution();
-  if (!AdminCore.leads().length) {
-    saveStore(LEAD_KEY, [
-      { id: uid("ld"), name: "Isha Verma", email: "isha@gmail.com", phone: "9876500011", source: "AARAV20", creatorEmail: "aarav@bizgarh.in", status: "NEW", notes: "Asked about breakout classroom.", followUp: "2026-09-16", history: [{ at: AdminCore.now(), note: "Lead captured from referral" }], at: "2026-09-08T09:00:00.000Z" },
-      { id: uid("ld"), name: "Rahul Mehta", email: "rahulm@gmail.com", phone: "9822011122", source: "NEHA20", creatorEmail: "neha@bizgarh.in", status: "INTERESTED", notes: "Wants weekly options.", followUp: "2026-09-14", history: [], at: "2026-09-06T11:00:00.000Z" },
-      { id: uid("ld"), name: "Tanvi Shah", email: "tanvi@gmail.com", phone: "9811100099", source: "organic", creatorEmail: "", status: "CONTACTED", notes: "", followUp: "", history: [], at: "2026-09-11T08:00:00.000Z" }
-    ]);
-  }
-  if (!AdminCore.tickets().length) {
-    saveStore(TICKET_KEY, [
-      { id: uid("tk"), title: "Classroom video stuck", body: "Lesson 2 buffers on Chrome.", email: "ritesh@gmail.com", name: "Ritesh Kulkarni", courseId: "breakout", status: "OPEN", assignee: "aarav@bizgarh.in", replies: [{ by: "ritesh@gmail.com", body: "Happens after 1 min.", at: "2026-09-10T10:00:00.000Z" }], at: "2026-09-10T10:00:00.000Z" },
-      { id: uid("tk"), title: "Refund request — Mutual Funds", body: "Bought by mistake.", email: "pooja@gmail.com", name: "Pooja Nair", courseId: "mf-guide", status: "OPEN", assignee: "", replies: [], at: "2026-09-11T12:00:00.000Z" }
-    ]);
-  }
-  if (!AdminCore.coupons().length) {
-    saveStore(COUPON_KEY, [
-      { id: uid("cp"), code: "WELCOME20", type: "percent", value: 20, active: true, uses: 12, max: 200, courses: [], created: "2026-08-01T00:00:00.000Z" },
-      { id: uid("cp"), code: "FEST500", type: "fixed", value: 500, active: true, uses: 4, max: 50, courses: [], created: "2026-09-01T00:00:00.000Z" }
-    ]);
-  }
-  if (!storeList(COMMISSION_KEY).length) {
-    saveStore(COMMISSION_KEY, AdminCore.commissions());
-  }
-  if (!AdminCore.notifs().length) {
-    saveStore(NOTIF_KEY, [
-      { id: uid("nt"), title: "Classroom is live", body: "Replay this week's session before Friday.", audience: "students", channel: "in-app", at: "2026-09-09T10:00:00.000Z" }
-    ]);
-  }
 };
 
 AdminCore.backfillAttribution = () => {
@@ -737,25 +840,27 @@ AdminCore.backfillAttribution = () => {
   const orders = AdminCore.orders();
   let changed = false;
   orders.forEach((o) => {
+    if (AdminCore.isDemoCommerceRecord(o)) return;
     if (o.creatorEmail) return;
     const user = users.find((u) => u.email === o.email);
     const fromUser = staffList().find((s) => s.referralCode && user?.referredBy && s.referralCode.toLowerCase() === String(user.referredBy).toLowerCase());
-    const ref = refs.find((r) => r.email === o.email && r.courseId === o.courseId);
+    const ref = refs.find((r) => r.email === o.email && r.courseId === o.courseId && !AdminCore.isDemoCommerceRecord(r));
     const fromRef = ref ? staffList().find((s) => s.email === ref.affiliateEmail) : null;
-    const creator = fromUser || fromRef;
+    const fromOwner = AdminCore.courseOwnerStaff(o.courseId);
+    const creator = fromUser || fromRef || fromOwner;
     if (!creator) return;
     const n = AdminCore.normalizeStaff(creator);
     o.creatorEmail = n.email;
     o.referralCode = n.referralCode || user?.referredBy || ref?.code || "";
     o.creatorId = n.creatorId || "";
-    o.source = o.source || "first_touch";
+    o.source = o.source || (fromUser || fromRef ? "first_touch" : "course_owner");
     changed = true;
   });
   if (changed) saveStore(ORDER_KEY, orders);
   const comm = storeList(COMMISSION_KEY);
   let commChanged = false;
-  AdminCore.orders().forEach((o) => {
-    if (!o.creatorEmail || o.status !== "PAID") return;
+  AdminCore.paidOrders().forEach((o) => {
+    if (!o.creatorEmail) return;
     if (comm.some((c) => c.orderId === o.id)) return;
     const orphan = comm.find((c) => !c.orderId && c.studentEmail === o.email && c.courseId === o.courseId && c.creatorEmail === o.creatorEmail);
     if (orphan) {
@@ -1111,44 +1216,83 @@ AdminCore.guardRecord = (mod, recordEmail, courseId) => {
   return false;
 };
 
+/** Instant bounds for a Control date filter, in Asia/Kolkata calendar days. */
+AdminCore.rangeBounds = (range) => {
+  const tz = AdminCore.TZ;
+  const now = Date.now();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date(now));
+  const y = Number(parts.find((p) => p.type === "year")?.value);
+  const m = Number(parts.find((p) => p.type === "month")?.value);
+  const d = Number(parts.find((p) => p.type === "day")?.value);
+  // Approximate IST offset (+05:30) for day start — Bizgarh / Colombo share this offset.
+  const istOffsetMs = 5.5 * 3600000;
+  const utcMidnightOf = (yy, mm, dd) => Date.UTC(yy, mm - 1, dd) - istOffsetMs;
+  const startToday = utcMidnightOf(y, m, d);
+  const endExclusive = startToday + 86400000;
+
+  if (!range || range === "all") return { from: 0, to: now };
+  if (typeof range === "object" && range.from) {
+    const fromParts = String(range.from).split("-").map(Number);
+    const toParts = String(range.to || range.from).split("-").map(Number);
+    const from = utcMidnightOf(fromParts[0], fromParts[1], fromParts[2]);
+    const to = utcMidnightOf(toParts[0], toParts[1], toParts[2]) + 86400000 - 1;
+    return { from, to: Math.min(to, now + 86400000) };
+  }
+  if (range === "today") return { from: startToday, to: Math.max(now, endExclusive - 1) };
+  if (range === "month") {
+    const from = utcMidnightOf(y, m, 1);
+    return { from, to: now };
+  }
+  const days = { "7d": 7, "30d": 30, "90d": 90, "180d": 180, "365d": 365 }[range];
+  if (days) return { from: startToday - (days - 1) * 86400000, to: now };
+  return { from: 0, to: now };
+};
+
 AdminCore.rangeFilter = (rows, field, range) => {
   if (!range || range === "all") return rows;
-  const now = Date.now();
-  const days = { today: 1, "7d": 7, "30d": 30, "90d": 90, "180d": 180, "365d": 365 }[range];
-  let from = 0, to = now;
-  if (days) from = now - days * 86400000;
-  if (range === "today") {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    from = d.getTime();
-  }
-  if (typeof range === "object" && range.from) {
-    from = new Date(range.from).getTime();
-    to = range.to ? new Date(range.to).getTime() + 86400000 : now;
-  }
+  const { from, to } = AdminCore.rangeBounds(range);
   return rows.filter((r) => {
     const t = new Date(r[field] || r.at || r.created).getTime();
-    return t >= from && t <= to;
+    return Number.isFinite(t) && t >= from && t <= to;
   });
 };
 
 AdminCore.kpis = (range) => {
-  const students = AdminCore.scope.students(readList(USERS_KEY));
-  const enrolls = AdminCore.scope.enrolls(readList(ALL_ENROLL_KEY));
-  const orders = AdminCore.rangeFilter(AdminCore.scope.orders(AdminCore.orders()), "at", range);
-  const allOrders = AdminCore.scope.orders(AdminCore.orders());
-  const paid = orders.filter((o) => o.status === "PAID");
-  const refunds = AdminCore.rangeFilter(AdminCore.refunds(), "at", range);
+  const students = AdminCore.scope.students(readList(USERS_KEY).filter((u) => !AdminCore.isDemoLearnerEmail(u.email)));
+  const enrolls = AdminCore.scope.enrolls(readList(ALL_ENROLL_KEY).filter((e) => !AdminCore.isDemoLearnerEmail(e.email)));
+  const scopedLive = AdminCore.scope.orders(AdminCore.liveOrders());
+  const ordersInRange = AdminCore.rangeFilter(scopedLive, "at", range);
+  const paid = ordersInRange.filter(AdminCore.isPaidOrder);
+  const allPaid = scopedLive.filter(AdminCore.isPaidOrder);
+  const refunds = AdminCore.rangeFilter(
+    AdminCore.scope.refunds(AdminCore.refunds().filter((r) => !AdminCore.isDemoCommerceRecord(r))),
+    "at",
+    range
+  );
   const revenue = paid.reduce((s, o) => s + Number(o.net || o.amount || 0), 0);
-  const today = AdminCore.rangeFilter(allOrders.filter((o) => o.status === "PAID"), "at", "today");
-  const month = AdminCore.rangeFilter(allOrders.filter((o) => o.status === "PAID"), "at", "30d");
-  const comm = AdminCore.scope.commissions(AdminCore.commissions());
-  const pendingComm = comm.filter((c) => ["PENDING", "APPROVED", "PAYABLE"].includes(c.status)).reduce((s, c) => s + Number(c.final || 0), 0);
-  const pendingPay = payouts().filter((p) => p.status === "pending").reduce((s, p) => s + Number(p.amount || 0), 0);
-  const creatorRev = allOrders.filter((o) => o.creatorEmail && o.status === "PAID").reduce((s, o) => s + Number(o.net || 0), 0);
+  const today = AdminCore.rangeFilter(allPaid, "at", "today");
+  const month = AdminCore.rangeFilter(allPaid, "at", "month");
+  const comm = AdminCore.scope.commissions(AdminCore.commissions()).filter((c) => !AdminCore.isDemoCommerceRecord(c));
+  const pendingComm = comm
+    .filter((c) => ["PENDING", "APPROVED", "PAYABLE"].includes(String(c.status || "").toUpperCase()))
+    .reduce((s, c) => s + Number(c.final || 0), 0);
+  const pendingPay = (typeof payouts === "function" ? payouts() : [])
+    .filter((p) => String(p.status || "").toLowerCase() === "pending")
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
+  const creatorRev = allPaid.filter((o) => o.creatorEmail).reduce((s, o) => s + Number(o.net || 0), 0);
   const newStudents = AdminCore.rangeFilter(students, "created", range || "30d");
   const activeCut = Date.now() - 30 * 86400000;
   const active = students.filter((u) => enrolls.some((e) => e.email === u.email && new Date(e.at).getTime() >= activeCut));
+  const staffCount = staffList().filter((s) => {
+    const n = AdminCore.normalizeStaff(s);
+    if (n.role === "owner" || n.role === "superadmin") return false;
+    if (AdminCore.isDemoMentorStaffEmail(n.email)) return false;
+    return true;
+  }).length;
+  const tickets = AdminCore.scope.tickets(AdminCore.tickets().filter((t) => !AdminCore.isDemoCommerceRecord(t)))
+    .filter((t) => String(t.status || "").toUpperCase() === "OPEN");
   return {
     students: students.length,
     newStudents: newStudents.length,
@@ -1158,27 +1302,73 @@ AdminCore.kpis = (range) => {
     todayRevenue: today.reduce((s, o) => s + Number(o.net || 0), 0),
     monthRevenue: month.reduce((s, o) => s + Number(o.net || 0), 0),
     orders: paid.length,
-    pendingPayments: allOrders.filter((o) => o.status === "PENDING").length,
+    pendingPayments: scopedLive.filter((o) => String(o.status || "").toUpperCase() === "PENDING").length,
     refunds: refunds.length,
-    staff: staffList().filter((s) => s.role !== "owner").length,
+    staff: staffCount,
     creatorRevenue: creatorRev,
     pendingCommission: pendingComm,
     pendingPayouts: pendingPay,
-    tickets: AdminCore.scope.tickets(AdminCore.tickets()).filter((t) => t.status === "OPEN").length
+    tickets: tickets.length,
+    paidAll: allPaid.length,
+    refundAll: AdminCore.refunds().filter((r) => !AdminCore.isDemoCommerceRecord(r)).length
   };
 };
 
 AdminCore.series = (range) => {
-  const days = range === "7d" ? 7 : range === "90d" ? 12 : range === "365d" ? 12 : 8;
-  const enrolls = AdminCore.scope.enrolls(readList(ALL_ENROLL_KEY));
-  const orders = AdminCore.scope.orders(AdminCore.orders()).filter((o) => o.status === "PAID");
-  const students = AdminCore.scope.students(readList(USERS_KEY));
-  const comm = AdminCore.scope.commissions(AdminCore.commissions());
-  const buckets = Array.from({ length: days }, (_, i) => {
-    const end = Date.now() - (days - 1 - i) * (range === "365d" ? 30 : 7) * 86400000;
-    const start = end - (range === "365d" ? 30 : 7) * 86400000;
-    const label = new Date(start + 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-    const inWin = (at) => { const t = new Date(at).getTime(); return t >= start && t < end; };
+  const bounds = AdminCore.rangeBounds(range);
+  const span = Math.max(1, bounds.to - bounds.from);
+  const dayMs = 86400000;
+  let bucketMs;
+  let count;
+  const rKey = typeof range === "object" ? "custom" : String(range || "30d");
+  if (rKey === "today") {
+    bucketMs = 3600000;
+    count = 24;
+  } else if (rKey === "7d") {
+    bucketMs = dayMs;
+    count = 7;
+  } else if (rKey === "30d") {
+    bucketMs = dayMs;
+    count = 30;
+  } else if (rKey === "90d") {
+    bucketMs = 7 * dayMs;
+    count = 13;
+  } else if (rKey === "180d") {
+    bucketMs = 14 * dayMs;
+    count = 13;
+  } else if (rKey === "365d") {
+    bucketMs = 30 * dayMs;
+    count = 12;
+  } else {
+    // custom / fallback — pick day/week/month from span
+    if (span <= 2 * dayMs) { bucketMs = 3600000; count = Math.max(1, Math.ceil(span / bucketMs)); }
+    else if (span <= 45 * dayMs) { bucketMs = dayMs; count = Math.max(1, Math.ceil(span / bucketMs)); }
+    else if (span <= 180 * dayMs) { bucketMs = 7 * dayMs; count = Math.max(1, Math.ceil(span / bucketMs)); }
+    else { bucketMs = 30 * dayMs; count = Math.max(1, Math.ceil(span / bucketMs)); }
+  }
+  count = Math.min(count, 48);
+
+  const enrolls = AdminCore.scope.enrolls(readList(ALL_ENROLL_KEY).filter((e) => !AdminCore.isDemoLearnerEmail(e.email)));
+  const orders = AdminCore.scope.orders(AdminCore.paidOrders());
+  const students = AdminCore.scope.students(readList(USERS_KEY).filter((u) => !AdminCore.isDemoLearnerEmail(u.email)));
+  const comm = AdminCore.scope.commissions(AdminCore.commissions()).filter((c) => !AdminCore.isDemoCommerceRecord(c));
+
+  const endEdge = rKey === "today"
+    ? AdminCore.rangeBounds("today").from + 24 * 3600000
+    : bounds.to;
+  const startEdge = endEdge - count * bucketMs;
+
+  return Array.from({ length: count }, (_, i) => {
+    const start = startEdge + i * bucketMs;
+    const end = start + bucketMs;
+    const labelDate = new Date(start + Math.min(bucketMs / 2, dayMs / 2));
+    const label = bucketMs < dayMs
+      ? labelDate.toLocaleTimeString("en-IN", { hour: "numeric", timeZone: AdminCore.TZ })
+      : labelDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: AdminCore.TZ });
+    const inWin = (at) => {
+      const t = new Date(at).getTime();
+      return Number.isFinite(t) && t >= start && t < end && t >= bounds.from && t <= bounds.to;
+    };
     const oSlice = orders.filter((o) => inWin(o.at));
     return {
       label,
@@ -1189,17 +1379,48 @@ AdminCore.series = (range) => {
       commission: comm.filter((c) => inWin(c.created)).reduce((s, c) => s + Number(c.final || 0), 0)
     };
   });
-  return buckets;
+};
+
+/** Popular courses from successful PAID purchases in range — real titles, counts, revenue. */
+AdminCore.popularCourses = (range) => {
+  const paid = AdminCore.rangeFilter(AdminCore.scope.orders(AdminCore.paidOrders()), "at", range);
+  const by = {};
+  paid.forEach((o) => {
+    const id = o.courseId || "";
+    if (!id) return;
+    if (!by[id]) by[id] = { courseId: id, purchases: 0, revenue: 0 };
+    by[id].purchases += 1;
+    by[id].revenue += Number(o.net || o.amount || 0);
+  });
+  return Object.values(by)
+    .map((row) => {
+      const c = typeof allCourses === "function" ? allCourses().find((x) => x.id === row.courseId) : null;
+      return {
+        courseId: row.courseId,
+        label: c?.title || row.courseId,
+        purchases: row.purchases,
+        revenue: row.revenue,
+        v: row.purchases,
+        display: `${row.purchases} · ${AdminCore.inr(row.revenue)}`
+      };
+    })
+    .sort((a, b) => b.purchases - a.purchases || b.revenue - a.revenue);
 };
 
 function commerceOnEnroll(user, courseId, couponCode) {
   const course = allCourses().find((c) => c.id === courseId);
   if (!course || !user) return;
+  if (AdminCore.isDemoLearnerEmail(user.email)) return;
   const orders = storeList(ORDER_KEY);
-  if (orders.some((o) => o.email === user.email && o.courseId === courseId && o.status !== "REFUNDED")) return;
-  const priorPaid = storeList(ORDER_KEY).some((o) => o.email === user.email && o.status === "PAID");
+  if (orders.some((o) => o.email === user.email && o.courseId === courseId && String(o.status || "").toUpperCase() !== "REFUNDED")) return;
+  const priorPaid = storeList(ORDER_KEY).some((o) => o.email === user.email && AdminCore.isPaidOrder(o));
   const attr = AdminCore.resolveAttribution(user, couponCode);
-  const staff = attr.creator ? AdminCore.normalizeStaff(AdminCore.staffRow(attr.creator.email) || attr.creator) : null;
+  let staff = attr.creator ? AdminCore.normalizeStaff(AdminCore.staffRow(attr.creator.email) || attr.creator) : null;
+  let source = attr.source || "direct";
+  if (!staff) {
+    staff = AdminCore.courseOwnerStaff(courseId);
+    if (staff) source = "course_owner";
+  }
   const oid = uid("ord");
   const tx = "TXN" + Math.random().toString(36).slice(2, 10).toUpperCase();
   const price = Number(course.price || 0);
@@ -1213,8 +1434,8 @@ function commerceOnEnroll(user, courseId, couponCode) {
   const net = Math.max(0, price - discount);
   orders.push({
     id: oid, email: user.email, name: user.name, courseId, amount: price, discount, tax: 0, net,
-    status: "PAID", coupon: coupon?.code || "", creatorEmail: staff?.email || "", referralCode: attr.code || "",
-    creatorId: staff?.creatorId || "", source: attr.source, attribAt: AdminCore.now(), tx, at: AdminCore.now()
+    status: "PAID", coupon: coupon?.code || "", creatorEmail: staff?.email || "", referralCode: attr.code || staff?.referralCode || "",
+    creatorId: staff?.creatorId || "", source, attribAt: AdminCore.now(), tx, at: AdminCore.now()
   });
   saveStore(ORDER_KEY, orders);
   const pays = storeList(PAYMENT_KEY);
@@ -1222,11 +1443,11 @@ function commerceOnEnroll(user, courseId, couponCode) {
   saveStore(PAYMENT_KEY, pays);
   const attribs = storeList(ATTRIB_KEY);
   attribs.push({
-    id: uid("at"), creatorId: staff?.creatorId || "", creatorEmail: staff?.email || "", referralCode: attr.code || "",
-    source: attr.source, attribAt: AdminCore.now(), userId: user.email, orderId: oid, courseId
+    id: uid("at"), creatorId: staff?.creatorId || "", creatorEmail: staff?.email || "", referralCode: attr.code || staff?.referralCode || "",
+    source, attribAt: AdminCore.now(), userId: user.email, orderId: oid, courseId
   });
   saveStore(ATTRIB_KEY, attribs);
-  if (staff?.creatorEnabled || staff?.referralCode) {
+  if (staff && (staff.creatorEnabled || staff.referralCode || staff.role === "creator" || staff.role === "subadmin")) {
     const rule = staff.commission || { type: "percent", newSale: 20, renewal: 10 };
     const saleKind = priorPaid ? "renewal" : "new";
     const rate = saleKind === "renewal" ? Number(rule.renewal || 0) : Number(rule.newSale || 20);

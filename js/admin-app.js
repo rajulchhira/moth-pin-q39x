@@ -187,10 +187,14 @@ function badge(status) {
   return `<span class="ad-badge ${cls}">${adEsc(s || "—")}</span>`;
 }
 function lineChart(values, color) {
+  const nums = (values || []).map((v) => Number(v) || 0);
+  if (!nums.length || nums.every((v) => v === 0)) {
+    return `<p class="ad-empty" style="margin:18px 0">No data in this range.</p>`;
+  }
   const w = 520, h = 160, p = 8;
-  const max = Math.max(...values, 1);
-  const pts = values.map((v, i) => {
-    const x = p + (i / Math.max(values.length - 1, 1)) * (w - p * 2);
+  const max = Math.max(...nums, 1);
+  const pts = nums.map((v, i) => {
+    const x = p + (i / Math.max(nums.length - 1, 1)) * (w - p * 2);
     const y = h - p - (v / max) * (h - p * 2);
     return `${x},${y}`;
   });
@@ -570,8 +574,9 @@ function paint() {
 
 const VIEWS = {
   dashboard() {
-    const k = AdminCore.kpis(kpiRange());
-    const ser = AdminCore.series(typeof Ad.range === "object" ? "30d" : (Ad.range === "custom" ? "30d" : Ad.range));
+    const range = kpiRange();
+    const k = AdminCore.kpis(range);
+    const ser = AdminCore.series(range);
     const cards = AdminCore.isOwner() ? [
       ["Total students", k.students], ["New students", k.newStudents], ["Active students", k.active],
       ["Courses", k.courses], ["Total revenue", AdminCore.inr(k.revenue)], ["Today", AdminCore.inr(k.todayRevenue)],
@@ -600,11 +605,13 @@ const VIEWS = {
           ${follows.length ? follows.slice(0,6).map((l)=>`<p><strong>${adEsc(l.name)}</strong> · ${adEsc(l.status)} · ${adEsc(l.followUp)}</p>`).join("") : `<p class="muted">No scheduled follow-ups.</p>`}
         </div>
       </div>` : "";
+    const revLabels = ser.some((x) => x.revenue) ? `<div class="chart-labels">${ser.map((x) => `<span>${adEsc(x.label)}</span>`).join("")}</div>` : "";
+    const stuLabels = ser.some((x) => x.students) ? `<div class="chart-labels">${ser.map((x) => `<span>${adEsc(x.label)}</span>`).join("")}</div>` : "";
     return `${rangeBar()}
       <div class="ad-kpis" style="margin-top:14px">${cards.map(([a,b]) => `<div class="ad-kpi"><span>${a}</span><b>${b}</b></div>`).join("")}</div>
       <div class="ad-grid-2">
-        <div class="ad-card"><h3>Revenue trend</h3>${lineChart(ser.map((x)=>x.revenue),"#4f46e5")}<div class="chart-labels">${ser.map((x)=>`<span>${x.label}</span>`).join("")}</div></div>
-        <div class="ad-card"><h3>Student growth</h3>${lineChart(ser.map((x)=>x.students),"#e11d74")}<div class="chart-labels">${ser.map((x)=>`<span>${x.label}</span>`).join("")}</div></div>
+        <div class="ad-card"><h3>Revenue trend</h3>${lineChart(ser.map((x)=>x.revenue),"#4f46e5")}${revLabels}</div>
+        <div class="ad-card"><h3>Student growth</h3>${lineChart(ser.map((x)=>x.students),"#e11d74")}${stuLabels}</div>
       </div>
       <div class="ad-grid-2">
         <div class="ad-card"><h3>Orders</h3>${lineChart(ser.map((x)=>x.orders),"#0f766e")}</div>
@@ -977,19 +984,20 @@ const VIEWS = {
   },
   analytics() {
     AdminCore.assert("analytics","view");
-    const k = AdminCore.kpis(kpiRange());
-    const ser = AdminCore.series(typeof Ad.range === "object" ? "30d" : (Ad.range === "custom" ? "30d" : Ad.range));
-    const enrolls = AdminCore.scope.enrolls(readList(ALL_ENROLL_KEY));
-    const byCourse = {};
-    enrolls.forEach((e) => { byCourse[e.courseId] = (byCourse[e.courseId]||0)+1; });
-    const top = Object.entries(byCourse).map(([id,v])=>({label: adTitle(id), v, display: v+" · "+AdminCore.inr(nPrice(id)*v)})).sort((a,b)=>b.v-a.v).slice(0,8);
-    const refundN = AdminCore.refunds().length;
-    const paidN = AdminCore.orders().filter((o)=>o.status==="PAID").length;
+    const range = kpiRange();
+    const k = AdminCore.kpis(range);
+    const ser = AdminCore.series(range);
+    const top = (typeof AdminCore.popularCourses === "function" ? AdminCore.popularCourses(range) : []).slice(0, 8);
+    const refundN = k.refunds || 0;
+    const paidN = k.orders || 0;
+    const denom = paidN + refundN;
+    const refundRate = denom ? Math.round((refundN / denom) * 100) : 0;
+    const conversion = k.students ? Math.round((k.orders / k.students) * 100) : 0;
     return `${rangeBar()}
       <div class="ad-kpis" style="margin-top:14px">
         <div class="ad-kpi"><span>Revenue</span><b>${AdminCore.inr(k.revenue)}</b></div>
-        <div class="ad-kpi"><span>Refund rate</span><b>${paidN?Math.round(refundN/(paidN+refundN)*100):0}%</b></div>
-        <div class="ad-kpi"><span>Conversion (orders/students)</span><b>${k.students?Math.round(k.orders/k.students*100):0}%</b></div>
+        <div class="ad-kpi"><span>Refund rate</span><b>${refundRate}%</b></div>
+        <div class="ad-kpi"><span>Conversion (orders/students)</span><b>${conversion}%</b></div>
       </div>
       <div class="ad-grid-2">
         <div class="ad-card"><h3>Popular courses</h3>${barRows(top)}</div>
@@ -2286,6 +2294,7 @@ function bootAdminUi() {
     try {
       if (typeof seedStaffAndAnalytics === "function") seedStaffAndAnalytics();
       AdminCore.seedControlPlane();
+      try { if (AdminCore.purgeDemoCommerce) AdminCore.purgeDemoCommerce(); } catch { /* ignore */ }
       // Shared KV staff roster: /control is source of truth across machines.
       if (typeof hydrateStaffFromRemote === "function") {
         await hydrateStaffFromRemote();
@@ -2304,8 +2313,28 @@ function bootAdminUi() {
       if (typeof CourseAdmin !== "undefined") CourseAdmin.bind();
       if (typeof MentorAdmin !== "undefined") MentorAdmin.bind();
       if (typeof WebinarAdmin !== "undefined") WebinarAdmin.bind();
+      // Re-paint Dashboard/Analytics after purchase/refund in another tab or on return.
+      const refreshLive = () => {
+        if (!AdminCore.session()) return;
+        if (Ad.route === "dashboard" || Ad.route === "analytics" || Ad.route === "orders" || Ad.route === "refunds" || Ad.route === "commissions" || Ad.route === "payouts") {
+          try { paint(); } catch { /* ignore */ }
+        }
+      };
+      window.addEventListener("focus", refreshLive);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") refreshLive();
+      });
+      window.addEventListener("storage", (ev) => {
+        const key = String(ev.key || "");
+        if (/tradeshala(Orders|Payments|Refunds|Commissions|Payouts|AllEnrolls|Users|Tickets)/i.test(key)) refreshLive();
+      });
     } catch (err) {
       console.error(err);
+      const view = document.getElementById("adminView");
+      if (view && !view.dataset.liveErr) {
+        view.dataset.liveErr = "1";
+        view.insertAdjacentHTML("afterbegin", `<div class="ad-card" style="margin-bottom:12px"><p style="color:#b91c1c;font-weight:700;margin:0">Could not load live metrics. Refresh and try again.</p></div>`);
+      }
     }
   })();
 

@@ -9053,89 +9053,16 @@ async function renderCertificatePage() {
   bindFaqs(root);
 }
 
-/** Seed demo learners with a known password so public Login works after first visit. */
+/**
+ * Public demo learner/purchase seeds removed — Control Overview + Analytics
+ * must not be inflated by sample students/orders. Real signups + Razorpay only.
+ */
 function ensurePublicDemoUsers() {
-  const demo = [
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", password: "student123", created: "2026-08-12T10:00:00.000Z" },
-    { name: "Sneha Bansal", email: "sneha@gmail.com", password: "student123", created: "2026-08-18T10:00:00.000Z" },
-    { name: "Aditya Menon", email: "aditya@gmail.com", password: "student123", created: "2026-09-01T10:00:00.000Z" },
-    { name: "Kavya Iyer", email: "kavya@gmail.com", password: "student123", created: "2026-09-04T10:00:00.000Z" },
-    { name: "Harsh Patel", email: "harsh@gmail.com", password: "student123", created: "2026-09-08T10:00:00.000Z" }
-  ];
-  const users = readList(USERS_KEY);
-  let changed = false;
-  demo.forEach((u) => {
-    const i = users.findIndex((x) => String(x.email || "").toLowerCase() === u.email);
-    if (i < 0) {
-      users.push({ ...u, status: "active" });
-      changed = true;
-    } else if (!users[i].password) {
-      users[i] = { ...users[i], password: u.password, name: users[i].name || u.name };
-      changed = true;
-    }
-  });
-  if (changed) writeList(USERS_KEY, users);
-  ensurePublicDemoPurchases();
+  try { localStorage.setItem("tradeshalaPublicPurchaseSeed", "1"); } catch { /* ignore */ }
 }
 
-/** Seed a few enroll + order rows so My Purchases has detail for demo students. */
 function ensurePublicDemoPurchases() {
-  if (localStorage.getItem("tradeshalaPublicPurchaseSeed")) return;
-  const demoEn = [
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-08-12T11:00:00.000Z", tx: "TXNDEMOSLING01", orderId: "ord-demo-slingshot", method: "upi" },
-    { name: "Kavya Iyer", email: "kavya@gmail.com", courseId: "slingshot", at: "2026-09-04T14:00:00.000Z", tx: "TXNDEMOSLING02", orderId: "ord-demo-slingshot-2", method: "upi" }
-  ];
-  const enrolls = readList(ALL_ENROLL_KEY);
-  let enChanged = false;
-  demoEn.forEach((e) => {
-    if (!enrolls.some((x) => x.email === e.email && x.courseId === e.courseId)) {
-      enrolls.push({ name: e.name, email: e.email, courseId: e.courseId, at: e.at });
-      enChanged = true;
-    }
-  });
-  if (enChanged) writeList(ALL_ENROLL_KEY, enrolls);
-
-  let orders = [];
-  let pays = [];
-  try { orders = JSON.parse(localStorage.getItem("tradeshalaOrders") || "[]"); } catch { orders = []; }
-  try { pays = JSON.parse(localStorage.getItem("tradeshalaPayments") || "[]"); } catch { pays = []; }
-  let commerceChanged = false;
-  demoEn.forEach((e) => {
-    if (orders.some((o) => o.email === e.email && o.courseId === e.courseId)) return;
-    const course = typeof allCourses === "function" ? allCourses().find((c) => c.id === e.courseId) : null;
-    const price = Number(course?.price || 0);
-    orders.push({
-      id: e.orderId,
-      email: e.email,
-      name: e.name,
-      courseId: e.courseId,
-      amount: price,
-      discount: 0,
-      tax: 0,
-      net: price,
-      status: "PAID",
-      coupon: "",
-      tx: e.tx,
-      method: e.method,
-      at: e.at
-    });
-    pays.push({
-      id: "pay-" + e.orderId,
-      orderId: e.orderId,
-      email: e.email,
-      amount: price,
-      status: "SUCCESS",
-      method: e.method,
-      tx: e.tx,
-      at: e.at
-    });
-    commerceChanged = true;
-  });
-  if (commerceChanged) {
-    localStorage.setItem("tradeshalaOrders", JSON.stringify(orders));
-    localStorage.setItem("tradeshalaPayments", JSON.stringify(pays));
-  }
-  localStorage.setItem("tradeshalaPublicPurchaseSeed", "1");
+  try { localStorage.setItem("tradeshalaPublicPurchaseSeed", "1"); } catch { /* ignore */ }
 }
 
 function readCommerceList(key) {
@@ -9689,3 +9616,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk228: Rehan email alias dedupe + never DOM-clone mentor strip */
 /* cache-bust desk229: logged-in logo/Home → public site /; dashboard only via profile menu */
 /* cache-bust desk230: /rehan link order Course → Community → Instagram → YouTube → Facebook */
+/* cache-bust desk231: Control Overview/Analytics live commerce only — no demo KPI seeds */

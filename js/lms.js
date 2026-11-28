@@ -186,41 +186,9 @@ function issueCert(email, name, courseId) {
 
 function seedLms() {
   if (localStorage.getItem("tradeshalaLmsSeeded")) return;
-
-  if (!affiliates().length) {
-    writeList(AFFILIATE_KEY, [
-      { email: "aarav@bizgarh.in", name: "Aarav Mehta", code: "AARAV20", rate: 20, status: "active", created: "2026-08-01T10:00:00.000Z" },
-      { email: "neha@bizgarh.in", name: "Neha Kapoor", code: "NEHA20", rate: 25, status: "active", created: "2026-08-10T10:00:00.000Z" }
-    ]);
-  }
-  if (!referrals().length) {
-    writeList(REFERRAL_KEY, [
-      { id: "rf-demo1", code: "AARAV20", affiliateEmail: "aarav@bizgarh.in", email: "ritesh@gmail.com", name: "Ritesh Kulkarni", courseId: "slingshot", amount: 999, commission: 200, status: "unpaid", at: "2026-08-12T11:00:00.000Z" },
-      { id: "rf-demo2", code: "AARAV20", affiliateEmail: "aarav@bizgarh.in", email: "kavya@gmail.com", name: "Kavya Iyer", courseId: "slingshot", amount: 999, commission: 200, status: "paid", at: "2026-09-04T14:00:00.000Z" }
-    ]);
-  }
-  if (!invites().length) {
-    writeList(INVITE_KEY, [
-      { code: "BG-CLASS1", email: "", used: false, createdBy: "admin@bizgarh.in", at: "2026-09-01T10:00:00.000Z" }
-    ]);
-  }
-  if (!callRequests().length) {
-    writeList(CALL_KEY, [
-      { id: "call-1", name: "Sneha Bansal", email: "sneha@gmail.com", topic: "Options setup", date: "2026-09-18", time: "19:00", mentor: "Neha Kapoor", mentorEmail: "neha@bizgarh.in", status: "pending", meetUrl: "", notes: "Stuck on credit spreads.", at: "2026-09-10T08:00:00.000Z" },
-      { id: "call-2", name: "Aditya Menon", email: "aditya@gmail.com", topic: "Investing plan", date: "2026-09-20", time: "11:00", mentor: "Ananya Rao", mentorEmail: "ananya@bizgarh.in", status: "approved", meetUrl: "https://meet.google.com/ts-demo", notes: "", at: "2026-09-08T09:00:00.000Z" }
-    ]);
-  }
-  if (!telegramChannels().length) {
-    writeList(COMMUNITY_KEY, [
-      { id: "tg-1", name: "Slingshot desk", url: "https://t.me/bizgarh_slingshot", creatorEmail: "aarav@bizgarh.in", courseId: "slingshot" }
-    ]);
-  }
-  if (!forumPosts().length) {
-    writeList(POST_KEY, [
-      { id: "p-1", title: "How do you size the first week?", body: "I keep going too big on the open. What did you write in the journal after the 5-minute edge lesson?", author: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-09-09T10:00:00.000Z" }
-    ]);
-  }
-
+  // Do not plant demo affiliates / referrals / call requests / forum posts —
+  // Control Dashboard + Analytics must stay empty until real activity exists.
+  // Classroom quiz/assignment templates for Slingshot remain available for editors.
   const qmap = lmsMap(QUIZ_KEY);
   if (!qmap.slingshot) {
     qmap.slingshot = [{
