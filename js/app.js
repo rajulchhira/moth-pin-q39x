@@ -9965,3 +9965,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk236: merge sub-admin commerce sync onto theme desk */
 /* cache-bust desk237: Control dark theme BG v2 — indigo/magenta/orange + stars */
 /* cache-bust desk238: Control dark BG cleaner — fewer gradients + ~15% blur */
+/* cache-bust desk239: Control sidebar scroll preserve across nav/paint remounts */
