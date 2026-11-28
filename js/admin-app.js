@@ -2299,6 +2299,10 @@ function bootAdminUi() {
       if (typeof hydrateStaffFromRemote === "function") {
         await hydrateStaffFromRemote();
       }
+      // Shared commerce ledger (orders/enrolls) — import digests + remote PAID sales.
+      if (typeof hydrateCommerceFromRemote === "function") {
+        try { await hydrateCommerceFromRemote(); } catch { /* local commerce still paints */ }
+      }
       // After hydrate, ensure demo mentor Sub-admins are gone locally + KV (keep Rehan).
       if (AdminCore.purgeDemoMentorStaff) {
         try {
@@ -2314,13 +2318,16 @@ function bootAdminUi() {
       if (typeof MentorAdmin !== "undefined") MentorAdmin.bind();
       if (typeof WebinarAdmin !== "undefined") WebinarAdmin.bind();
       // Re-paint Dashboard/Analytics after purchase/refund in another tab or on return.
-      const refreshLive = () => {
+      const refreshLive = async () => {
         if (!AdminCore.session()) return;
+        if (typeof hydrateCommerceFromRemote === "function") {
+          try { await hydrateCommerceFromRemote(); } catch { /* ignore */ }
+        }
         if (Ad.route === "dashboard" || Ad.route === "analytics" || Ad.route === "orders" || Ad.route === "refunds" || Ad.route === "commissions" || Ad.route === "payouts") {
           try { paint(); } catch { /* ignore */ }
         }
       };
-      window.addEventListener("focus", refreshLive);
+      window.addEventListener("focus", () => { refreshLive(); });
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") refreshLive();
       });
@@ -2328,6 +2335,7 @@ function bootAdminUi() {
         const key = String(ev.key || "");
         if (/tradeshala(Orders|Payments|Refunds|Commissions|Payouts|AllEnrolls|Users|Tickets)/i.test(key)) refreshLive();
       });
+      window.addEventListener("bizgarh:commerce", () => { refreshLive(); });
     } catch (err) {
       console.error(err);
       const view = document.getElementById("adminView");

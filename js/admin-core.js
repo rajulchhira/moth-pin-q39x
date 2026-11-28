@@ -1467,6 +1467,16 @@ function commerceOnEnroll(user, courseId, couponCode) {
       saveStore(COMMISSION_KEY, list);
     }
   }
+  // Push to shared KV so Control Overview / Analytics update across devices.
+  if (typeof scheduleCommercePush === "function") {
+    try { scheduleCommercePush(); } catch { /* ignore */ }
+  } else if (typeof pushCommerceRemote === "function") {
+    try { pushCommerceRemote({ silent: true }); } catch { /* ignore */ }
+  }
+  // Same-tab Control refresh (storage events only fire cross-tab).
+  try {
+    window.dispatchEvent(new CustomEvent("bizgarh:commerce", { detail: { courseId, orderId: oid } }));
+  } catch { /* ignore */ }
 }
 
 AdminCore.refundOrder = (orderId) => {
@@ -1494,6 +1504,14 @@ AdminCore.refundOrder = (orderId) => {
     return { ...p, status: "pending", amount: Math.max(0, Number(p.amount || 0) - reversedAmt), note: "Adjusted after refund" };
   }));
   AdminCore.audit("refund_order", orderId, prev, "REFUNDED");
+  if (typeof scheduleCommercePush === "function") {
+    try { scheduleCommercePush(); } catch { /* ignore */ }
+  } else if (typeof pushCommerceRemote === "function") {
+    try { pushCommerceRemote({ silent: true }); } catch { /* ignore */ }
+  }
+  try {
+    window.dispatchEvent(new CustomEvent("bizgarh:commerce", { detail: { orderId, refund: true } }));
+  } catch { /* ignore */ }
 };
 
 AdminCore.exportCsv = (rows, fields, name) => {

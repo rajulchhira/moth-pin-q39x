@@ -3762,6 +3762,9 @@
     try {
       if (typeof hydrateStaffFromRemote === "function") await hydrateStaffFromRemote();
     } catch { /* ignore */ }
+    try {
+      if (typeof hydrateCommerceFromRemote === "function") await hydrateCommerceFromRemote();
+    } catch { /* ignore */ }
     if (typeof AdminCore !== "undefined" && AdminCore.ensureRehanCreator) {
       try { AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
     }
