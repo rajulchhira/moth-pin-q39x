@@ -6,3 +6,10 @@ pages_build_output_dir = "."
 [[kv_namespaces]]
 binding = "SALES"
 id = "4bf3b2ad591f4156b25009f3327810fa"
+
+# Classroom open-play videos use env.MEDIA (R2) via /api/media.
+# Do NOT declare [[r2_buckets]] here until bucket bizgarh-media exists — a missing
+# bucket fails every Pages deploy. Bind in Cloudflare Pages → Settings → Functions:
+#   Binding name: MEDIA
+#   R2 bucket:    bizgarh-media
+# Code already returns 503 { code: "media_missing" } until that binding is present.
