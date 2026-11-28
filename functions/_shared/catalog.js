@@ -8,6 +8,8 @@ export const CATALOG_KV_KEY = "catalog:courses:v1";
 export const INSTRUCTORS_KV_KEY = "catalog:instructors:v1";
 /** Shared control staff / sub-admin roster — /control is source of truth. */
 export const STAFF_KV_KEY = "catalog:staff:v1";
+/** Shared public webinar catalog — control Live writes; /live + /webinar read. */
+export const WEBINARS_KV_KEY = "catalog:webinars:v1";
 
 export function salesKv(env) {
   return env && (env.SALES || env.SALES_KV || null);
@@ -479,5 +481,88 @@ export async function writeStaffDoc(env, body, actorEmail) {
     throw err;
   }
   await kv.put(STAFF_KV_KEY, payload);
+  return doc;
+}
+
+/** Demo seed ids retired from the public catalog — never store or rehydrate. */
+export const DEMO_WEBINAR_IDS = ["w0", "w1", "w2", "w3", "w4"];
+
+export function emptyWebinarsDoc() {
+  return {
+    version: 1,
+    updatedAt: null,
+    updatedBy: "",
+    webinars: [],
+    deleted: []
+  };
+}
+
+function sanitizeWebinarRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+  const id = String(row.id || "").trim();
+  if (!id || DEMO_WEBINAR_IDS.includes(id)) return null;
+  const kind = String(row.kind || "webinar").toLowerCase();
+  if (kind === "class") return null;
+  const out = { ...row, id, kind: "webinar" };
+  for (const key of ["banner", "pdf", "hostPhoto", "pic", "cover"]) {
+    const v = out[key];
+    if (typeof v === "string" && v.startsWith("data:") && v.length > INLINE_MEDIA_MAX) {
+      out[key] = "";
+      out[key + "InlineDropped"] = true;
+    }
+  }
+  return out;
+}
+
+export function normalizeWebinarsDoc(body, actorEmail) {
+  const src = body && typeof body === "object" ? body : {};
+  const webinars = asArray(src.webinars).map(sanitizeWebinarRow).filter(Boolean);
+  // Always keep demo ids in deleted so clients never revive them from stale caches.
+  const deleted = Array.from(new Set([
+    ...asArray(src.deleted).map((id) => String(id || "").trim()).filter(Boolean),
+    ...DEMO_WEBINAR_IDS
+  ]));
+  return {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: String(actorEmail || "").trim().toLowerCase(),
+    webinars,
+    deleted
+  };
+}
+
+export async function readWebinarsDoc(env) {
+  const kv = salesKv(env);
+  if (!kv) return { ok: false, missing: "kv", doc: emptyWebinarsDoc() };
+  try {
+    const raw = await kv.get(WEBINARS_KV_KEY);
+    if (!raw) return { ok: true, missing: "empty", doc: emptyWebinarsDoc() };
+    const parsed = JSON.parse(raw);
+    const doc = normalizeWebinarsDoc(parsed, parsed?.updatedBy || "");
+    if (parsed?.updatedAt) doc.updatedAt = parsed.updatedAt;
+    if (parsed?.updatedBy) doc.updatedBy = String(parsed.updatedBy);
+    return { ok: true, missing: null, doc };
+  } catch (err) {
+    return { ok: false, missing: "parse", error: String(err?.message || err), doc: emptyWebinarsDoc() };
+  }
+}
+
+export async function writeWebinarsDoc(env, body, actorEmail) {
+  const kv = salesKv(env);
+  if (!kv) {
+    const err = new Error("SALES KV binding missing");
+    err.status = 503;
+    err.code = "kv_missing";
+    throw err;
+  }
+  const doc = normalizeWebinarsDoc(body, actorEmail);
+  const payload = JSON.stringify(doc);
+  if (payload.length > 20 * 1024 * 1024) {
+    const err = new Error("Webinars payload too large");
+    err.status = 413;
+    err.code = "payload_too_large";
+    throw err;
+  }
+  await kv.put(WEBINARS_KV_KEY, payload);
   return doc;
 }

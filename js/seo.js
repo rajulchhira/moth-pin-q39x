@@ -62,13 +62,8 @@
     slingshot: { name: "Slingshot: The 5-Minute Trading Edge", title: "Slingshot: The 5-Minute Trading Edge | Trading Course | Bizgarh", desc: "A focused 5-minute trading edge for Indian desks — written process, invalidation, and size. Education, not tips.", instructor: "Aarav Mehta", price: 999, rating: "4.9", learners: 1240, hours: "PT5H", cat: "trending" }
   };
 
-  var WEBINARS = {
-    w1: { name: "Gap & Go for Nifty Options", title: "Gap & Go Nifty Options Webinar | Live Trading Class | Bizgarh", desc: "Live Nifty options webinar on gap selection, opening acceptance, and a journal — 18 Sep 2026. Free for registered learners.", by: "Aarav Mehta", start: "2026-09-18T11:00:00+05:30" },
-    w2: { name: "Defined-Risk Credit Spreads", title: "Credit Spreads Webinar | Defined-Risk Options Live Class | Bizgarh", desc: "Live webinar on defined-risk credit spreads for Indian options traders. 20 Sep 2026 with Neha Kapoor.", by: "Neha Kapoor", start: "2026-09-20T20:00:00+05:30" },
-    w3: { name: "Reading Weekly Structure", title: "Weekly Market Structure Webinar | Price Action Live Class | Bizgarh", desc: "Live class on reading weekly structure and real levels. 22 Sep 2026 with Vikram Singh. Education only.", by: "Vikram Singh", start: "2026-09-22T19:30:00+05:30" },
-    w4: { name: "Opening Range Playbook", title: "Opening Range Playbook Webinar | Index Open Live Class | Bizgarh", desc: "Live class on the index open, first hour, and defined invalidation. 30 Sep 2026 with Kabir Joshi.", by: "Kabir Joshi", start: "2026-09-30T20:00:00+05:30" },
-    w0: { name: "Gap & Go Replay Desk", title: "Gap & Go Replay Desk | Nifty Options Recording | Bizgarh", desc: "Ended replay of the Nifty gap desk with Aarav Mehta. Register to review the recording when it is uploaded.", by: "Aarav Mehta", start: "2026-09-08T11:00:00+05:30" }
-  };
+  /** Demo webinar SEO rows retired — pages fall back to generic live title. */
+  var WEBINARS = {};
 
   var PROGRAMS = {
     "mp-income": { name: "Options Income Mentorship", title: "Options Income Mentorship | 3-Week Live Desk | Bizgarh", desc: "A 3-week live mentorship on weekly options income, spreads, and a review you can keep. Indian traders, education only.", by: "Neha Kapoor" },

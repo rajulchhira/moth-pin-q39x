@@ -462,6 +462,11 @@ function openAdminDesk() {
 }
 const LIVE_KEY = "tradeshalaLives";
 const DELETED_LIVES_KEY = "tradeshalaDeletedLives";
+/** Retired demo webinar seeds — never rehydrate or push to KV. */
+const DEMO_WEBINAR_IDS = ["w0", "w1", "w2", "w3", "w4"];
+function isDemoWebinarId(id) {
+  return DEMO_WEBINAR_IDS.includes(String(id || ""));
+}
 const COURSE_EDITS_KEY = "tradeshalaCourseEdits";
 const COURSE_VIDEOS_KEY = "tradeshalaCourseVideos";
 const COURSE_SYLLABUS_KEY = "tradeshalaCourseSyllabus";
@@ -1491,6 +1496,165 @@ async function hydrateStaffFromRemote() {
   }
 }
 
+/** Shared KV webinar catalog (control Live → public /live + /webinar). */
+const WEBINARS_API = "/api/catalog/webinars";
+const WEBINARS_CACHE_KEY = "tradeshalaWebinarsRemoteCache";
+let __webinarsRemote = null;
+let __webinarsPushTimer = null;
+let __webinarsHydrated = false;
+
+function emptyRemoteWebinars() {
+  return { version: 1, updatedAt: null, updatedBy: "", webinars: [], deleted: DEMO_WEBINAR_IDS.slice() };
+}
+
+function getRemoteWebinars() {
+  if (__webinarsRemote) return __webinarsRemote;
+  try {
+    const cached = JSON.parse(localStorage.getItem(WEBINARS_CACHE_KEY) || "null");
+    if (cached && typeof cached === "object") {
+      __webinarsRemote = {
+        version: cached.version || 1,
+        updatedAt: cached.updatedAt || null,
+        updatedBy: cached.updatedBy || "",
+        webinars: Array.isArray(cached.webinars) ? cached.webinars : [],
+        deleted: Array.isArray(cached.deleted) ? cached.deleted : DEMO_WEBINAR_IDS.slice()
+      };
+      return __webinarsRemote;
+    }
+  } catch { /* ignore */ }
+  return emptyRemoteWebinars();
+}
+
+function setRemoteWebinars(doc) {
+  const next = {
+    version: doc?.version || 1,
+    updatedAt: doc?.updatedAt || null,
+    updatedBy: doc?.updatedBy || "",
+    webinars: Array.isArray(doc?.webinars) ? doc.webinars.filter((w) => w && !isDemoWebinarId(w.id)) : [],
+    deleted: Array.from(new Set([
+      ...(Array.isArray(doc?.deleted) ? doc.deleted.map(String) : []),
+      ...DEMO_WEBINAR_IDS
+    ]))
+  };
+  __webinarsRemote = next;
+  try { localStorage.setItem(WEBINARS_CACHE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  return next;
+}
+
+function localWebinarRows() {
+  pruneDemoWebinarsLocal();
+  return readList(LIVE_KEY).filter((w) => w && w.kind !== "class" && !isDemoWebinarId(w.id) && !w.deleted);
+}
+
+function buildWebinarsPushPayload() {
+  return {
+    webinars: localWebinarRows(),
+    deleted: Array.from(new Set([
+      ...readList(DELETED_LIVES_KEY).map(String),
+      ...DEMO_WEBINAR_IDS
+    ]))
+  };
+}
+
+function applyRemoteWebinarsToLocal(doc) {
+  const remoteWebs = Array.isArray(doc?.webinars)
+    ? doc.webinars.filter((w) => w && w.id && !isDemoWebinarId(w.id) && w.kind !== "class")
+    : [];
+  const remoteDeleted = Array.from(new Set([
+    ...(Array.isArray(doc?.deleted) ? doc.deleted.map(String) : []),
+    ...DEMO_WEBINAR_IDS
+  ]));
+  const local = readList(LIVE_KEY);
+  const classes = local.filter((w) => w && w.kind === "class");
+  // After hydrate, remote webinars are the shared source of truth (no demo seeds).
+  writeList(LIVE_KEY, [...remoteWebs, ...classes]);
+  writeList(DELETED_LIVES_KEY, remoteDeleted);
+}
+
+async function pushWebinarsRemote(opts) {
+  const silent = !opts || opts.silent !== false;
+  if (__webinarsPushTimer) {
+    clearTimeout(__webinarsPushTimer);
+    __webinarsPushTimer = null;
+  }
+  const headers = typeof catalogStaffHeaders === "function"
+    ? catalogStaffHeaders()
+    : { "Content-Type": "application/json" };
+  if (!headers["X-Staff-Email"]) {
+    if (!silent) console.warn("[webinars] skip push — no staff session");
+    return { ok: false, skipped: "no_staff" };
+  }
+  try {
+    const payload = buildWebinarsPushPayload();
+    const res = await fetch(WEBINARS_API, {
+      method: "PUT",
+      headers,
+      credentials: "same-origin",
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      if (!silent) console.warn("[webinars] push failed", data?.error || res.status);
+      return { ok: false, error: data?.error || String(res.status) };
+    }
+    setRemoteWebinars(data);
+    return { ok: true, data };
+  } catch (err) {
+    if (!silent) console.warn("[webinars] push error", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+function scheduleWebinarsPush() {
+  if (__webinarsPushTimer) clearTimeout(__webinarsPushTimer);
+  __webinarsPushTimer = setTimeout(() => {
+    __webinarsPushTimer = null;
+    pushWebinarsRemote({ silent: true });
+  }, 400);
+}
+
+async function hydrateWebinarsFromRemote() {
+  pruneDemoWebinarsLocal();
+  try {
+    const res = await fetch(WEBINARS_API, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+    });
+    if (!res.ok) {
+      __webinarsHydrated = true;
+      return getRemoteWebinars();
+    }
+    const data = await res.json().catch(() => null);
+    if (!data || !data.ok) {
+      __webinarsHydrated = true;
+      return getRemoteWebinars();
+    }
+    const sourceEmpty = data.source === "empty";
+    const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+    if (sourceEmpty) {
+      // First staff session after reset: push clean local (no demos) so KV is shared.
+      if (headers["X-Staff-Email"]) {
+        await pushWebinarsRemote({ silent: true });
+      } else {
+        // Public with empty KV: clear demos only — do not invent webinars.
+        applyRemoteWebinarsToLocal({ webinars: [], deleted: DEMO_WEBINAR_IDS.slice() });
+      }
+      __webinarsHydrated = true;
+      return getRemoteWebinars();
+    }
+    // KV document exists (even if webinars: []) — shared source of truth.
+    setRemoteWebinars(data);
+    applyRemoteWebinarsToLocal(data);
+    __webinarsHydrated = true;
+    return getRemoteWebinars();
+  } catch {
+    __webinarsHydrated = true;
+    return getRemoteWebinars();
+  }
+}
+
 /** Shared Control commerce ledger (orders / payments / enrolls) via KV. */
 const COMMERCE_API = "/api/catalog/commerce";
 const COMMERCE_CACHE_KEY = "tradeshalaCommerceRemoteCache";
@@ -2262,11 +2426,8 @@ function webinarBannerHTML(w, i) {
   </div>`;
 }
 
-const WEBINARS = [
-  { id: "w1", title: "Gap & Go for Nifty Options", by: "Aarav Mehta", when: "18 Sep 2026 • 11:00 am", free: true },
-  { id: "w2", title: "Defined-Risk Credit Spreads", by: "Neha Kapoor", when: "20 Sep 2026 • 08:00 pm", free: true },
-  { id: "w3", title: "Reading Weekly Structure", by: "Vikram Singh", when: "22 Sep 2026 • 07:30 pm", free: true }
-];
+/** Legacy marketing stub — live catalog comes from KV / local authored rows. */
+const WEBINARS = [];
 
 function getUser() {
   try { return JSON.parse(localStorage.getItem(USER_KEY) || "null"); } catch { return null; }
@@ -3848,28 +4009,45 @@ function formatLiveWhen(iso) {
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
+/**
+ * One-shot: drop retired demo webinars (w0–w4) from localStorage.
+ * Does not invent replacements — clean live state is empty until staff publishes.
+ */
+function pruneDemoWebinarsLocal() {
+  const FLAG = "tradeshalaWebinarPruneDesk240";
+  try {
+    if (localStorage.getItem(FLAG)) {
+      // Still strip any demo ghosts that reappeared (old tabs / stale caches).
+      const list = readList(LIVE_KEY);
+      const next = list.filter((w) => !isDemoWebinarId(w?.id));
+      if (next.length !== list.length) writeList(LIVE_KEY, next);
+      return;
+    }
+  } catch { return; }
+  try { localStorage.removeItem("tradeshalaLivesSeeded"); } catch { /* ignore */ }
+  const list = readList(LIVE_KEY).filter((w) => !isDemoWebinarId(w?.id));
+  writeList(LIVE_KEY, list);
+  const deleted = Array.from(new Set([
+    ...readList(DELETED_LIVES_KEY).map(String),
+    ...DEMO_WEBINAR_IDS
+  ]));
+  writeList(DELETED_LIVES_KEY, deleted);
+  try {
+    const rooms = webinarRoomsMap();
+    let roomsDirty = false;
+    DEMO_WEBINAR_IDS.forEach((id) => {
+      if (rooms[id]) { delete rooms[id]; roomsDirty = true; }
+    });
+    if (roomsDirty) localStorage.setItem(WEBINAR_ROOMS_KEY, JSON.stringify(rooms));
+  } catch { /* ignore */ }
+  try { localStorage.setItem(FLAG, "1"); } catch { /* ignore */ }
+}
+/** @deprecated Demo seeds retired — no-op kept for call sites. */
 function seedLiveClasses() {
-  if (localStorage.getItem("tradeshalaLivesSeeded")) return;
-  const seed = [
-    { id: "w1", title: "Gap & Go for Nifty Options", by: "Aarav Mehta", at: "2026-09-18T11:00:00" },
-    { id: "w2", title: "Defined-Risk Credit Spreads", by: "Neha Kapoor", at: "2026-09-20T20:00:00" },
-    { id: "w3", title: "Reading Weekly Structure", by: "Vikram Singh", at: "2026-09-22T19:30:00" }
-  ].map((w) => ({
-    ...w,
-    hostEmail: w.by.split(" ")[0].toLowerCase() + "@bizgarh.in",
-    when: formatLiveWhen(w.at),
-    duration: "60 min",
-    kind: "webinar",
-    joinUrl: "",
-    notes: "Live market session with Q&A.",
-    status: "scheduled"
-  }));
-  writeList(LIVE_KEY, seed);
-  localStorage.setItem("tradeshalaLivesSeeded", "1");
+  pruneDemoWebinarsLocal();
 }
 function rawLives() {
-  seedLiveClasses();
-  ensureCatalogWebinars();
+  pruneDemoWebinarsLocal();
   return readList(LIVE_KEY);
 }
 function deletedLiveIds() { return readList(DELETED_LIVES_KEY); }
@@ -3879,6 +4057,7 @@ function markLiveDeleted(id) {
     ids.push(id);
     writeList(DELETED_LIVES_KEY, ids);
   }
+  if (typeof scheduleWebinarsPush === "function") scheduleWebinarsPush();
 }
 function allWebinars() {
   return rawLives().map((w) => {
@@ -3908,26 +4087,9 @@ function listedWebinars() {
   const preview = typeof staffWebinarPreview === "function" && staffWebinarPreview();
   return webinarCatalogAll().filter((w) => preview || !w.unpublished);
 }
+/** @deprecated Demo catalog seeds retired — no-op kept for call sites. */
 function ensureCatalogWebinars() {
-  const list = readList(LIVE_KEY);
-  const gone = typeof deletedLiveIds === "function" ? deletedLiveIds() : [];
-  const extra = [
-    { id: "w4", title: "Opening Range Playbook", by: "Kabir Joshi", at: "2026-09-30T20:00:00", duration: "90 min", kind: "webinar", notes: "Index open, first hour, and defined invalidation." },
-    { id: "w0", title: "Gap & Go Replay Desk", by: "Aarav Mehta", at: "2026-09-08T11:00:00", duration: "60 min", kind: "webinar", notes: "Ended replay of the gap desk. Review opens after you register.", status: "ended" }
-  ];
-  let changed = false;
-  extra.forEach((w) => {
-    if (gone.includes(w.id) || list.some((x) => x.id === w.id)) return;
-    list.push({
-      ...w,
-      hostEmail: w.by.split(" ")[0].toLowerCase() + "@bizgarh.in",
-      when: formatLiveWhen(w.at),
-      joinUrl: "",
-      status: w.status || "scheduled"
-    });
-    changed = true;
-  });
-  if (changed) writeList(LIVE_KEY, list);
+  pruneDemoWebinarsLocal();
 }
 function webinarHref(id) {
   return "/webinar?id=" + encodeURIComponent(id);
@@ -5350,7 +5512,12 @@ function renderMentorProgramPage() {
   root.querySelector("[data-curr]")?.addEventListener("click", () => downloadMentorCurriculum(p.id));
 }
 
-function saveWebinars(list) { writeList(LIVE_KEY, list); }
+function saveWebinars(list) {
+  const cleaned = (Array.isArray(list) ? list : []).filter((w) => !isDemoWebinarId(w?.id));
+  writeList(LIVE_KEY, cleaned);
+  // Mentorship class rows stay local; webinar rows sync via shared KV.
+  if (typeof scheduleWebinarsPush === "function") scheduleWebinarsPush();
+}
 function updateLive(id, patch) {
   const list = rawLives();
   const i = list.findIndex((x) => x.id === id);
@@ -9484,6 +9651,7 @@ async function startPublicBoot() {
   try { await hydrateCatalogFromRemote(); } catch { /* seed fallback */ }
   try { await hydrateInstructorsFromRemote(); } catch { /* seed fallback */ }
   try { await hydrateStaffFromRemote(); } catch { /* seed fallback */ }
+  try { await hydrateWebinarsFromRemote(); } catch { /* local prune fallback */ }
 
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");

@@ -50,7 +50,8 @@ const WebinarAdmin = {
   },
 
   isSeed(w) {
-    return ["w0", "w1", "w2", "w3", "w4"].includes(w?.id);
+    // Demo seeds retired (desk240); keep helper for legacy drafts that still look unfinished.
+    return typeof isDemoWebinarId === "function" ? isDemoWebinarId(w?.id) : false;
   },
 
   phaseLabel(w) {
