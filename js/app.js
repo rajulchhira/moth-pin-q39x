@@ -9900,5 +9900,6 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk230: /rehan link order Course → Community → Instagram → YouTube → Facebook */
 /* cache-bust desk231: Control Overview/Analytics live commerce only — no demo KPI seeds */
 /* cache-bust desk232: shared KV commerce ledger — Rehan digests → Control Overview */
-/* cache-bust desk233: Control Settings → Theme light/dark + mesh Ken Burns /css/admin.css?v=desk233 */
+/* cache-bust desk233: Control Settings → Theme light/dark + mesh Ken Burns */
 /* cache-bust desk234: Control theme BGs from user light/dark refs (atmosphere only) */
+/* cache-bust desk235: Control dark BG re-extract — pure starry+aurora, no Astro UI */
