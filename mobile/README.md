@@ -66,5 +66,5 @@ mobile/
 
 ## Notes
 
-- v1 is offline sample data only — no auth, payments, or App Store / Play submit.
+- Course catalog hydrates from live `GET https://www.bizgarh.com/api/catalog/courses` on launch (and pull-to-refresh). Control publishes / price / banner edits appear without a new APK — bundled `SampleData` is the offline fallback only.
 - Brand tokens follow the site (`#4F46E5` indigo, `#E11D74` magenta, Nunito).

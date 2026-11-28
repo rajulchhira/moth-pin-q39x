@@ -4,6 +4,7 @@ import '../data/sample_data.dart';
 import '../models/course.dart';
 import '../state/app_nav.dart';
 import '../state/auth_state.dart';
+import '../state/catalog_state.dart';
 import '../state/profile_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
@@ -128,9 +129,11 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
     final profile = ProfileScope.of(context);
+    final catalog = CatalogScope.of(context);
     final nav = AppNavScope.of(context);
-    final popular = SampleData.popularCourses();
-    const live = SampleData.upcomingLive;
+    final popular = catalog.popularCourses();
+    final live = catalog.upcomingLive;
+    final mentors = catalog.mentors;
     final fade = CurvedAnimation(parent: _motion, curve: Curves.easeOutCubic);
     final slide = Tween<Offset>(
       begin: const Offset(0, 0.06),
@@ -147,9 +150,14 @@ class _HomeScreenState extends State<HomeScreen>
 
     return SafeArea(
       bottom: false,
-      child: CustomScrollView(
+      child: RefreshIndicator(
+        color: BgColors.indigo,
+        onRefresh: catalog.refresh,
+        child: CustomScrollView(
         controller: _scroll,
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
@@ -343,13 +351,13 @@ class _HomeScreenState extends State<HomeScreen>
           SliverToBoxAdapter(
             child: AutoMarquee(
               height: 252,
-              itemCount: SampleData.mentors.length,
+              itemCount: mentors.length,
               itemExtent: 168,
               gap: 14,
               reverse: true,
               pixelsPerSecond: 26,
               itemBuilder: (context, index) {
-                final mentor = SampleData.mentors[index];
+                final mentor = mentors[index];
                 return ExpertPortraitCard(
                   mentor: mentor,
                   onTap: () => _openMentor(context, mentor),
@@ -359,6 +367,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 28)),
         ],
+      ),
       ),
     );
   }

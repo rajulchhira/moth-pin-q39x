@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/sample_data.dart';
 import '../models/course.dart';
 import '../state/auth_state.dart';
+import '../state/catalog_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/course_card.dart';
@@ -34,7 +35,9 @@ class CourseDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
-    final enrolled = SampleData.enrolled
+    final catalog = CatalogScope.of(context);
+    final enrolled = catalog
+        .enrolledForDemo()
         .where((e) => e.course.id == course.id)
         .toList(growable: false);
     final owned = auth.isSignedIn && enrolled.isNotEmpty;
@@ -326,7 +329,8 @@ class MentorDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Color(mentor.accent);
-    final taught = SampleData.courses
+    final taught = CatalogScope.of(context)
+        .courses
         .where((c) => c.instructor == mentor.name)
         .toList(growable: false);
 

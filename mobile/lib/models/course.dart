@@ -27,6 +27,7 @@ class Course {
     required this.coverLabel,
     required this.coverColors,
     this.coverImageAsset,
+    this.coverImageUrl,
     this.description = '',
     this.learn = const <String>[],
     this.languages = const <String>['English', 'Hindi'],
@@ -46,8 +47,10 @@ class Course {
   final int lessons;
   final String coverLabel;
   final List<int> coverColors;
-  /// Live catalog banner / thumb (preferred over gradient + instructor overlay).
+  /// Bundled banner asset (offline seed).
   final String? coverImageAsset;
+  /// Live catalog banner — https, `/api/media/…`, or `data:` URI from Control.
+  final String? coverImageUrl;
   /// Public about copy — mirrors live `/api/catalog/courses` edit.
   final String description;
   /// “What you will learn” bullets from live catalog.
@@ -61,6 +64,52 @@ class Course {
   /// Original classroom language (first chip), matching web `courseLangs`.
   String get originalLanguage =>
       languages.isNotEmpty ? languages.first : 'English';
+
+  Course copyWith({
+    String? id,
+    String? title,
+    String? instructor,
+    String? learners,
+    double? rating,
+    int? price,
+    int? oldPrice,
+    String? category,
+    String? hours,
+    int? lessons,
+    String? coverLabel,
+    List<int>? coverColors,
+    String? coverImageAsset,
+    String? coverImageUrl,
+    bool clearCoverImageUrl = false,
+    String? description,
+    List<String>? learn,
+    List<String>? languages,
+    bool? communityOpen,
+    List<CommunityRoom>? communityRooms,
+  }) {
+    return Course(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      instructor: instructor ?? this.instructor,
+      learners: learners ?? this.learners,
+      rating: rating ?? this.rating,
+      price: price ?? this.price,
+      oldPrice: oldPrice ?? this.oldPrice,
+      category: category ?? this.category,
+      hours: hours ?? this.hours,
+      lessons: lessons ?? this.lessons,
+      coverLabel: coverLabel ?? this.coverLabel,
+      coverColors: coverColors ?? this.coverColors,
+      coverImageAsset: coverImageAsset ?? this.coverImageAsset,
+      coverImageUrl:
+          clearCoverImageUrl ? null : (coverImageUrl ?? this.coverImageUrl),
+      description: description ?? this.description,
+      learn: learn ?? this.learn,
+      languages: languages ?? this.languages,
+      communityOpen: communityOpen ?? this.communityOpen,
+      communityRooms: communityRooms ?? this.communityRooms,
+    );
+  }
 }
 
 class EnrolledCourse {

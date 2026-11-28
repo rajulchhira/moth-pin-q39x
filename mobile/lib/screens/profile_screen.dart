@@ -6,6 +6,7 @@ import '../data/sample_data.dart';
 import '../models/course.dart';
 import '../state/app_nav.dart';
 import '../state/auth_state.dart';
+import '../state/catalog_state.dart';
 import '../state/profile_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
@@ -766,7 +767,10 @@ class _CertificatesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
     final certs = auth.isSignedIn
-        ? SampleData.enrolled.where((e) => e.progress >= 1).toList()
+        ? CatalogScope.of(context)
+            .enrolledForDemo()
+            .where((e) => e.progress >= 1)
+            .toList()
         : <EnrolledCourse>[];
 
     return _SubpageScaffold(
@@ -898,7 +902,9 @@ class _PurchasesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
-    final items = auth.isSignedIn ? SampleData.enrolled : <EnrolledCourse>[];
+    final items = auth.isSignedIn
+        ? CatalogScope.of(context).enrolledForDemo()
+        : <EnrolledCourse>[];
 
     return _SubpageScaffold(
       title: 'My Purchases',

@@ -4,6 +4,7 @@ import '../theme/bg_text.dart';
 
 import '../models/course.dart';
 import '../theme/colors.dart';
+import 'course_cover_image.dart';
 
 class CourseCover extends StatelessWidget {
   const CourseCover({
@@ -25,7 +26,7 @@ class CourseCover extends StatelessWidget {
     final pad = height <= 110 ? 10.0 : 16.0;
     final titleSize = height <= 110 ? 13.0 : 18.0;
     final showMeta = !compactMeta && height >= 120;
-    final thumb = course.coverImageAsset;
+    final hasCover = CourseCoverImage.hasCover(course);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -45,14 +46,8 @@ class CourseCover extends StatelessWidget {
                 ),
               ),
             ),
-            if (thumb != null)
-              Image.asset(
-                thumb,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            if (thumb != null)
+            if (hasCover) CourseCoverImage(course: course),
+            if (hasCover)
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
