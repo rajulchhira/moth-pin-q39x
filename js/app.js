@@ -9900,3 +9900,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk230: /rehan link order Course → Community → Instagram → YouTube → Facebook */
 /* cache-bust desk231: Control Overview/Analytics live commerce only — no demo KPI seeds */
 /* cache-bust desk232: shared KV commerce ledger — Rehan digests → Control Overview */
+/* cache-bust desk233: Control Settings → Theme light/dark + mesh Ken Burns /css/admin.css?v=desk233 */

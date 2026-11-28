@@ -1,14 +1,26 @@
 <!DOCTYPE html>
-<html lang="en" style="background:#f4f6fb;color-scheme:light">
+<html lang="en" class="control-html" style="background:#eef8ff;color-scheme:light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
   <title>Control | Bizgarh</title>
   <meta name="robots" content="noindex, nofollow">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("controlTheme") === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-control-theme", t);
+        document.documentElement.style.colorScheme = t;
+        document.documentElement.style.background = t === "dark" ? "#0c1834" : "#eef8ff";
+        var m = document.querySelector('meta[name="color-scheme"]');
+        if (m) m.setAttribute("content", t);
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/css/fonts.css?v=hang1">
-  <link rel="stylesheet" href="/css/style.css?v=desk232">
-  <link rel="stylesheet" href="/css/admin.css?v=desk232">
+  <link rel="stylesheet" href="/css/style.css?v=desk233">
+  <link rel="stylesheet" href="/css/admin.css?v=desk233">
   <style>
     .hidden{display:none!important}
     #adminApp.hidden{display:none!important}
@@ -20,6 +32,13 @@
   </style>
 </head>
 <body class="ad-body">
+  <!-- Dual-layer mesh + photo Ken Burns (desk233) — JS ensureControlMesh() repairs if missing -->
+  <div class="ad-mesh" id="adMesh" aria-hidden="true">
+    <div class="ad-mesh-photo"></div>
+    <div class="ad-mesh-layer ad-mesh-layer-a"></div>
+    <div class="ad-mesh-layer ad-mesh-layer-b"></div>
+    <div class="ad-mesh-waves" aria-hidden="true"></div>
+  </div>
   <div id="staffLogin" class="ad-login">
     <form class="ad-login-card" id="staffLoginForm" action="#" method="post" onsubmit="return false">
       <div class="logo" style="margin-bottom:8px">
@@ -253,14 +272,14 @@
         loading = true;
         busy(true);
         var files = [
-          "/js/app.js?v=desk232",
-          "/js/lms.js?v=desk232",
-          "/js/admin-core.js?v=desk232",
-          "/js/admin.js?v=desk232",
+          "/js/app.js?v=desk233",
+          "/js/lms.js?v=desk233",
+          "/js/admin-core.js?v=desk233",
+          "/js/admin.js?v=desk233",
           "/js/admin-course.js?v=desk212",
           "/js/admin-mentor.js?v=desk3",
           "/js/admin-webinar.js?v=desk3",
-          "/js/admin-app.js?v=desk232"
+          "/js/admin-app.js?v=desk233"
         ];
         var i = 0;
         function finish() {
