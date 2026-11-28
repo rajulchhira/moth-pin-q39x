@@ -844,6 +844,7 @@ function curriculumVideosScore(list) {
     if (String(l?.kind || "") === "pdf" || l?.pdf || l?.pdfInline) score += 6;
     if (l?.vdoId || l?.fileKey) score += 5;
     if (l?.src && !isSampleMediaUrl(l.src)) score += 3;
+    if (String(l?.src || "").startsWith("/api/media/")) score += 4;
   });
   return score;
 }
@@ -957,6 +958,221 @@ async function delVideoBlob(key) {
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
+}
+
+/** Public path for an R2 classroom media object (Pages Function streams it). */
+function mediaUrlForKey(key) {
+  const k = String(key || "").replace(/^\/+/, "");
+  if (!k) return "";
+  return "/api/media/" + k.split("/").map(encodeURIComponent).join("/");
+}
+
+function mediaStaffHeaders(contentType) {
+  const base = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+  const out = { ...base };
+  delete out["Content-Type"];
+  if (contentType) out["Content-Type"] = contentType;
+  return out;
+}
+
+async function mediaRemoteReady() {
+  try {
+    const res = await fetch("/api/media", { method: "GET", credentials: "same-origin", cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    return Boolean(data && data.ready);
+  } catch {
+    return false;
+  }
+}
+
+function xhrPutMedia(url, blob, headers, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    Object.entries(headers || {}).forEach(([k, v]) => {
+      if (v != null && v !== "") xhr.setRequestHeader(k, String(v));
+    });
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText || "{}"); } catch { data = {}; }
+      if (xhr.status >= 200 && xhr.status < 300 && data.ok !== false) {
+        resolve(data);
+        return;
+      }
+      const err = new Error(data.error || ("Media upload failed (" + xhr.status + ")"));
+      err.code = data.code || "MEDIA_UPLOAD";
+      err.status = xhr.status;
+      reject(err);
+    };
+    xhr.onerror = () => reject(new Error("Media upload failed. Check the network and try again."));
+    xhr.onabort = () => reject(new Error("Media upload cancelled"));
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+    }
+    xhr.send(blob);
+  });
+}
+
+/**
+ * Upload a lesson blob to R2 via /api/media (multipart when larger than ~90MB).
+ * Returns { key, src }.
+ */
+async function putMediaRemote(key, blob, onProgress) {
+  const k = String(key || "").trim();
+  if (!k) throw new Error("Missing media key");
+  const typed = blob instanceof Blob
+    ? (blob.type ? blob : new Blob([blob], { type: "video/mp4" }))
+    : new Blob([blob], { type: "video/mp4" });
+  const contentType = typed.type || "video/mp4";
+  const url = mediaUrlForKey(k);
+  const size = typed.size || 0;
+  const SINGLE_MAX = 90 * 1024 * 1024;
+  const CHUNK = 8 * 1024 * 1024;
+
+  if (size <= SINGLE_MAX) {
+    const data = await xhrPutMedia(url, typed, mediaStaffHeaders(contentType), onProgress);
+    return { key: k, src: data.src || url };
+  }
+
+  const initRes = await fetch(url + "?action=multipart-init", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { ...mediaStaffHeaders("application/json"), "Content-Type": "application/json" },
+    body: JSON.stringify({ contentType })
+  });
+  const init = await initRes.json().catch(() => ({}));
+  if (!init.ok || !init.uploadId) {
+    const err = new Error(init.error || "Could not start media upload");
+    err.code = init.code || "MEDIA_INIT";
+    throw err;
+  }
+  const uploadId = String(init.uploadId);
+  const parts = [];
+  let offset = 0;
+  let partNumber = 1;
+  try {
+    while (offset < size) {
+      const end = Math.min(offset + CHUNK, size);
+      const slice = typed.slice(offset, end);
+      const partUrl = url + "?action=part&uploadId=" + encodeURIComponent(uploadId) + "&partNumber=" + partNumber;
+      const partData = await xhrPutMedia(partUrl, slice, mediaStaffHeaders(contentType), (frac) => {
+        if (!onProgress) return;
+        const done = offset + (end - offset) * frac;
+        onProgress(done / size);
+      });
+      parts.push({ partNumber, etag: partData.etag });
+      offset = end;
+      partNumber += 1;
+    }
+    const doneRes = await fetch(url + "?action=multipart-complete", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { ...mediaStaffHeaders("application/json"), "Content-Type": "application/json" },
+      body: JSON.stringify({ uploadId, parts })
+    });
+    const done = await doneRes.json().catch(() => ({}));
+    if (!done.ok) {
+      const err = new Error(done.error || "Could not finish media upload");
+      err.code = done.code || "MEDIA_COMPLETE";
+      throw err;
+    }
+    if (onProgress) onProgress(1);
+    return { key: k, src: done.src || url };
+  } catch (err) {
+    try {
+      await fetch(url + "?action=multipart-abort", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { ...mediaStaffHeaders("application/json"), "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadId })
+      });
+    } catch { /* ignore abort errors */ }
+    throw err;
+  }
+}
+
+/**
+ * Push IndexedDB-only lesson blobs to R2 and rewrite lesson.src so live learners can play.
+ * Run from Control when staff still has the original browser files.
+ */
+async function syncLocalLessonMediaToRemote(opts) {
+  const silent = !!(opts && opts.silent);
+  const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+  if (!headers["X-Staff-Email"]) return { synced: 0, skipped: "no_staff" };
+  const ready = await mediaRemoteReady();
+  if (!ready) return { synced: 0, skipped: "media_missing" };
+
+  const map = courseVideosMap();
+  const remote = typeof remoteVideosMap === "function" ? remoteVideosMap() : {};
+  let synced = 0;
+  const courseIds = new Set([...Object.keys(map), ...Object.keys(remote || {})]);
+  for (const courseId of courseIds) {
+    const localList = Array.isArray(map[courseId]) ? map[courseId] : null;
+    const remoteList = Array.isArray(remote?.[courseId]) ? remote[courseId] : null;
+    const lessons = (localList || remoteList || []).map((l) => (l && typeof l === "object" ? { ...l } : l));
+    if (!lessons.length) continue;
+    let touched = false;
+    for (let i = 0; i < lessons.length; i += 1) {
+      const l = lessons[i];
+      if (!l || !l.fileKey) continue;
+      if (l.vdoId) continue;
+      const src = String(l.src || "");
+      if (src && (/^https?:\/\//i.test(src) || src.startsWith("/api/media/"))) continue;
+      let blob = null;
+      try { blob = await getVideoBlob(l.fileKey); } catch { blob = null; }
+      if (!blob) continue;
+      try {
+        const up = await putMediaRemote(l.fileKey, blob);
+        lessons[i] = { ...l, src: up.src || mediaUrlForKey(l.fileKey), fileKey: l.fileKey };
+        synced += 1;
+        touched = true;
+      } catch (err) {
+        if (!silent && typeof toast === "function") {
+          toast("Could not sync " + (l.t || l.fileKey) + ": " + (err.message || "upload failed"));
+        }
+      }
+    }
+    if (touched) map[courseId] = lessons;
+  }
+  if (synced) {
+    setCourseVideosMap(map);
+    // Also rewrite remote-only copies that staff mirrored into localStorage.
+    try {
+      if (typeof pushCatalogRemote === "function") await pushCatalogRemote({ silent: true });
+    } catch { /* ignore */ }
+    if (!silent && typeof toast === "function") {
+      toast(synced === 1 ? "Synced 1 lesson video to live media" : ("Synced " + synced + " lesson videos to live media"));
+    }
+  }
+  return { synced };
+}
+
+/** Resolve a playable URL for a lesson: remote src, else R2 by fileKey, else IndexedDB blob URL. */
+async function resolveLessonPlayUrl(lesson) {
+  if (!lesson) return { url: "", mode: "empty" };
+  const src = String(lesson.src || "").trim();
+  if (src && (/^https?:\/\//i.test(src) || src.startsWith("/api/media/") || src.startsWith("blob:"))) {
+    return { url: src, mode: "src" };
+  }
+  const key = String(lesson.fileKey || "").trim();
+  if (key) {
+    const remote = mediaUrlForKey(key);
+    try {
+      const probe = await fetch(remote, { method: "HEAD", credentials: "same-origin", cache: "no-store" });
+      if (probe.ok || probe.status === 206) return { url: remote, mode: "r2" };
+    } catch { /* fall through to IndexedDB */ }
+    try {
+      const blob = await getVideoBlob(key);
+      if (blob) {
+        return { url: URL.createObjectURL(blob), mode: "idb", blobUrl: true };
+      }
+    } catch { /* missing locally */ }
+    return { url: "", mode: "missing", key };
+  }
+  if (src) return { url: src, mode: "src" };
+  return { url: "", mode: "empty" };
 }
 
 function parseVdoCipherId(value) {
@@ -1133,6 +1349,22 @@ async function addClassroomLesson(courseId, fields, onProgress) {
     if (kind && !kind.startsWith("video/") && !/\.(mp4|webm|mov|m4v|mkv)$/.test(name)) {
       throw new Error("Choose an MP4 or similar video file");
     }
+    async function storeOpenPlayRemote(progressFrom) {
+      const key = "course-" + courseId + "-" + Date.now();
+      const start = Number(progressFrom) || 0.05;
+      if (typeof putVideoBlob === "function") {
+        try { await putVideoBlob(key, file); } catch { /* local cache optional */ }
+      }
+      if (onProgress) onProgress(start);
+      const up = await putMediaRemote(key, file, (frac) => {
+        if (onProgress) onProgress(start + (1 - start) * frac);
+      });
+      lesson.fileKey = key;
+      lesson.src = up.src || mediaUrlForKey(key);
+      lesson.drm = false;
+      if (onProgress) onProgress(1);
+      return key;
+    }
     if (wantDrm) {
       try {
         const up = await fetchVdoUpload(lesson.t || file.name);
@@ -1142,34 +1374,42 @@ async function addClassroomLesson(courseId, fields, onProgress) {
         lesson.src = "";
         lesson.drm = true;
       } catch (err) {
-        const canLocal = typeof putVideoBlob === "function"
-          && err
+        const canOpen = err
           && (err.code === "NO_DRM" || err.code === "VDO_UPLOADER" || err.code === "UPLOAD");
-        if (canLocal) {
-          const key = "course-" + courseId + "-" + Date.now();
-          if (onProgress) onProgress(0.1);
-          await putVideoBlob(key, file);
-          if (onProgress) onProgress(1);
-          lesson.fileKey = key;
-          lesson.src = "";
-          lesson.drm = false;
-          toast(err.code === "VDO_UPLOADER"
-            ? "VdoCipher Uploader permission missing · lesson saved as open play for now"
-            : "DRM upload failed · saved as open play on this browser");
+        if (canOpen) {
+          try {
+            await storeOpenPlayRemote(0.08);
+            toast(err.code === "VDO_UPLOADER"
+              ? "VdoCipher Uploader permission missing · saved as open play on live media"
+              : "DRM upload failed · saved as open play on live media");
+          } catch (mediaErr) {
+            // Last resort: browser-local only (will NOT play for other learners).
+            if (typeof putVideoBlob !== "function") throw mediaErr;
+            const key = "course-" + courseId + "-" + Date.now();
+            await putVideoBlob(key, file);
+            lesson.fileKey = key;
+            lesson.src = "";
+            lesson.drm = false;
+            toast("Saved on this browser only — live media unavailable (" + (mediaErr.message || "R2") + ")");
+          }
         } else {
           throw err;
         }
       }
-    } else if (typeof putVideoBlob === "function") {
-      const key = "course-" + courseId + "-" + Date.now();
-      if (onProgress) onProgress(0.1);
-      await putVideoBlob(key, file);
-      if (onProgress) onProgress(1);
-      lesson.fileKey = key;
-      lesson.src = "";
-      lesson.drm = false;
     } else {
-      throw new Error("Could not store this video file");
+      try {
+        await storeOpenPlayRemote(0.05);
+      } catch (mediaErr) {
+        if (typeof putVideoBlob !== "function") throw mediaErr;
+        const key = "course-" + courseId + "-" + Date.now();
+        if (onProgress) onProgress(0.1);
+        await putVideoBlob(key, file);
+        if (onProgress) onProgress(1);
+        lesson.fileKey = key;
+        lesson.src = "";
+        lesson.drm = false;
+        toast("Saved on this browser only — bind MEDIA R2 (bizgarh-media) for live playback");
+      }
     }
   }
   if (fields.notes) lesson.notes = String(fields.notes || "").trim();
@@ -3728,6 +3968,8 @@ async function hydrateCatalogFromRemote() {
         if (roomsTouched) localStorage.setItem(COURSE_ROOMS_KEY, JSON.stringify(localRooms));
         // Authored local (Intro / Lesson 2–4) always wins over empty or placeholder KV.
         await syncRicherCurriculumToRemote({ silent: true });
+        // IndexedDB fileKey lessons never reach other browsers — push blobs to R2 when present.
+        try { await syncLocalLessonMediaToRemote({ silent: true }); } catch { /* ignore */ }
         // Pin Slingshot Hindi-as-Original into catalog edits + KV when staff is signed in.
         try { ensureSlingshotHindiOriginal({ push: true }); } catch { /* ignore */ }
       } catch { /* ignore mirror errors */ }
@@ -7644,18 +7886,28 @@ async function playMentorRecording(lesson) {
       return;
     }
   }
-  if (lesson.fileKey && typeof getVideoBlob === "function") {
+  if (typeof resolveLessonPlayUrl === "function") {
     try {
-      const blob = await getVideoBlob(lesson.fileKey);
-      if (blob) {
-        host.innerHTML = `<video class="mp-frame" src="${URL.createObjectURL(blob)}" controls playsinline></video>`;
+      const resolved = await resolveLessonPlayUrl(lesson);
+      if (resolved.url) {
+        host.innerHTML = `<video class="mp-frame" src="${escapeHtml(resolved.url)}" controls playsinline></video>`;
         return;
       }
-    } catch {}
-  }
-  if (lesson.src) {
-    host.innerHTML = `<video class="mp-frame" src="${escapeHtml(lesson.src)}" controls playsinline></video>`;
-    return;
+    } catch { /* fall through */ }
+  } else {
+    if (lesson.fileKey && typeof getVideoBlob === "function") {
+      try {
+        const blob = await getVideoBlob(lesson.fileKey);
+        if (blob) {
+          host.innerHTML = `<video class="mp-frame" src="${URL.createObjectURL(blob)}" controls playsinline></video>`;
+          return;
+        }
+      } catch {}
+    }
+    if (lesson.src) {
+      host.innerHTML = `<video class="mp-frame" src="${escapeHtml(lesson.src)}" controls playsinline></video>`;
+      return;
+    }
   }
   host.innerHTML = `<p class="muted">No recording uploaded yet. Join the live desk, or wait for the mentor to add the file in admin.</p>`;
 }
@@ -10313,3 +10565,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk238: Control dark BG cleaner — fewer gradients + ~15% blur */
 /* cache-bust desk239: Control sidebar scroll preserve across nav/paint remounts */
 /* cache-bust desk241: grant bizgarh@gmail.com enroll/unlock all public+Control courses */
+/* cache-bust desk242: Slingshot/classroom videos via R2 /api/media (fix IndexedDB-only fileKey) */

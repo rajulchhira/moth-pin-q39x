@@ -754,32 +754,88 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
         return;
       }
       clearVdo();
-      if (LESSONS[i].fileKey) {
+      let playUrl = "";
+      let fromBlob = false;
+      if (typeof resolveLessonPlayUrl === "function") {
+        const resolved = await resolveLessonPlayUrl(LESSONS[i]);
+        playUrl = resolved.url || "";
+        fromBlob = !!resolved.blobUrl;
+        if (!playUrl) {
+          clearTimeout(waitTimer);
+          loadEl.classList.remove("show");
+          reportDrmMode({
+            mode: resolved.mode === "missing"
+              ? "media missing on R2 (fileKey only in KV)"
+              : "no playable source",
+            mounted: false
+          });
+          showDrmError(resolved.mode === "missing"
+            ? "This lesson video is not on live media yet. Open /control on the browser that uploaded it (after MEDIA R2 is bound) to sync, or re-upload the file."
+            : "This lesson has no playable video source.");
+          toast("Lesson video unavailable");
+          return;
+        }
+      } else if (LESSONS[i].fileKey && typeof getVideoBlob === "function") {
         const blob = await getVideoBlob(LESSONS[i].fileKey);
         if (!blob) throw new Error("missing file");
         blobUrl = URL.createObjectURL(blob);
-        video.src = blobUrl;
+        playUrl = blobUrl;
+        fromBlob = true;
       } else if (LESSONS[i].src) {
-        video.src = LESSONS[i].src;
+        playUrl = LESSONS[i].src;
       }
+      if (!playUrl) {
+        clearTimeout(waitTimer);
+        loadEl.classList.remove("show");
+        showDrmError("This lesson has no playable video source.");
+        toast("Lesson video unavailable");
+        return;
+      }
+      if (fromBlob) blobUrl = playUrl;
+      video.src = playUrl;
     } catch (err) {
       clearVdo();
       if (vdoId) {
+        clearTimeout(waitTimer);
         loadEl.classList.remove("show");
         reportDrmMode({ mode: "DRM failed: " + (err.message || "unknown"), mounted: false });
         showDrmError(err.message || "This DRM lesson could not start.");
         toast("Protected lesson could not start");
         return;
       }
-      if (LESSONS[i].src) video.src = LESSONS[i].src;
+      if (LESSONS[i].src) {
+        video.src = LESSONS[i].src;
+      } else {
+        clearTimeout(waitTimer);
+        loadEl.classList.remove("show");
+        showDrmError(err.message || "This lesson video could not start.");
+        toast("Lesson video unavailable");
+        return;
+      }
+    }
+    if (!video.getAttribute("src") && !video.src) {
+      clearTimeout(waitTimer);
+      loadEl.classList.remove("show");
+      showDrmError("This lesson has no playable video source.");
+      return;
     }
     const bounce = () => {
-      if (LESSONS[i].src && video.src.startsWith("blob:")) video.src = LESSONS[i].src;
+      const direct = String(LESSONS[i].src || "");
+      if (direct && video.src.startsWith("blob:")) video.src = direct;
     };
     video.addEventListener("error", bounce, { once: true });
     video.playbackRate = rate;
     await video.play().catch(() => {});
-    loadEl.classList.remove("show");
+    // Empty / broken sources fire "waiting" forever — clear loader unless media is actually buffering.
+    if (!video.src || video.error) {
+      clearTimeout(waitTimer);
+      loadEl.classList.remove("show");
+      if (video.error) {
+        showDrmError("This lesson video could not be loaded.");
+      }
+    } else {
+      loadEl.classList.remove("show");
+    }
     setPlaying(!video.paused);
     applyQuality();
     showUi();
@@ -972,6 +1028,9 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
     }
   });
   video.addEventListener("waiting", () => {
+    // No src / failed media: never spin the loader forever (live fileKey-only bug).
+    if (!video.currentSrc && !video.src) return;
+    if (video.error) return;
     clearTimeout(waitTimer);
     waitTimer = setTimeout(() => loadEl.classList.add("show"), 280);
   });

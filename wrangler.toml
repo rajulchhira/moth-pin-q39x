@@ -6,3 +6,9 @@ pages_build_output_dir = "."
 [[kv_namespaces]]
 binding = "SALES"
 id = "4bf3b2ad591f4156b25009f3327810fa"
+
+# Classroom open-play videos (IndexedDB is browser-local and never reaches live learners).
+# Create the bucket once in Cloudflare → R2 → bizgarh-media, then bind MEDIA on the Pages project.
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "bizgarh-media"
