@@ -432,6 +432,10 @@ const CourseAdmin = {
     if (typeof syncRicherCurriculumToRemote === "function") {
       syncRicherCurriculumToRemote({ silent: true }).catch(() => {});
     }
+    // Push IndexedDB fileKey blobs to R2 whenever Lessons opens (needs MEDIA binding).
+    if (typeof syncLocalLessonMediaToRemote === "function") {
+      syncLocalLessonMediaToRemote({ silent: true }).catch(() => {});
+    }
     const sy = syllabusFor(c.id);
     const lessons = lessonsAll(c.id);
     const byId = Object.fromEntries(lessons.map((l) => [l.id, l]));
@@ -439,6 +443,20 @@ const CourseAdmin = {
     const count = sy.sections.reduce((n, s) => n + (s.items || []).length, 0);
     const firstSec = sy.sections[0]?.id || "";
     const empty = !count;
+    const pendingLive = lessons.filter((l) => {
+      if (!l || (l.kind && l.kind !== "video")) return false;
+      if (l.vdoId) return false;
+      const src = String(l.src || "");
+      if (src && (/^https?:\/\//i.test(src) || src.startsWith("/api/media/"))) return false;
+      return Boolean(l.fileKey) || !src;
+    });
+    const mediaBanner = can && !empty ? `<div class="cb-media-sync" data-course="${adEsc(c.id)}">
+        <p class="muted" style="margin:0 0 8px">${pendingLive.length
+          ? pendingLive.length + " video(s) still need live media (R2). Open this page on the browser that uploaded them, after MEDIA is bound."
+          : "Lesson media looks linked for live playback."}</p>
+        <button type="button" class="btn btn-primary" data-cb-sync-media>Sync videos to live</button>
+        <span class="muted" data-cb-sync-status style="margin-left:10px"></span>
+      </div>` : "";
     const list = empty ? `<div class="cb-empty-box">
         <p>No lessons yet.</p>
         <p class="muted">Add one video. Students watch them in this order.</p>
@@ -481,6 +499,7 @@ const CourseAdmin = {
         </section>`).join("");
     const body = `<div class="cb-panel">
       <p class="cb-say">${empty ? "Add lessons in the order students should watch them." : "Drag a lesson to change the order. Hidden lessons stay off the public page."}</p>
+      ${mediaBanner}
       <div class="cb-sy-list" data-course="${adEsc(c.id)}">${list}</div>
       ${can && !empty ? `<button type="button" class="cb-add-chapter" data-sec-insert="${sy.sections.length}">+ Add a chapter</button>
         <details class="cb-more"><summary>Import many lessons from a file</summary>
@@ -839,6 +858,50 @@ const CourseAdmin = {
       if (tab && Ad.courseId) { this.openBuilder(Ad.courseId, tab.dataset.cbTab); return; }
       if (e.target.closest("[data-cb-back]")) { go("courses"); return; }
       if (e.target.closest("[data-cb-import]")) { document.getElementById("cbCsv")?.click(); return; }
+      const syncMedia = e.target.closest("[data-cb-sync-media]");
+      if (syncMedia) {
+        e.preventDefault();
+        const status = document.querySelector("[data-cb-sync-status]");
+        const btn = syncMedia;
+        btn.disabled = true;
+        if (status) status.textContent = "Checking live media…";
+        (async () => {
+          try {
+            const ready = typeof mediaRemoteReady === "function" ? await mediaRemoteReady() : false;
+            if (!ready) {
+              if (status) status.textContent = "MEDIA R2 not bound yet";
+              toast("Create R2 bucket bizgarh-media and bind MEDIA on Pages, then redeploy");
+              return;
+            }
+            if (status) status.textContent = "Uploading local videos…";
+            if (typeof syncLocalLessonMediaToRemote !== "function") {
+              toast("Sync helper missing — hard-refresh Control");
+              return;
+            }
+            const out = await syncLocalLessonMediaToRemote({ silent: false });
+            if (out.skipped === "no_staff") {
+              toast("Sign in as staff in Control first");
+            } else if (out.skipped === "media_missing") {
+              toast("MEDIA R2 binding missing on live");
+            } else if (!(out.synced > 0)) {
+              toast("No local video files to sync on this browser — re-upload or use the original upload browser");
+            } else {
+              paint();
+            }
+            if (status) {
+              status.textContent = out.synced > 0
+                ? ("Synced " + out.synced)
+                : (out.skipped ? String(out.skipped) : "Nothing to sync here");
+            }
+          } catch (err) {
+            if (status) status.textContent = "Sync failed";
+            toast(err.message || "Could not sync videos");
+          } finally {
+            btn.disabled = false;
+          }
+        })();
+        return;
+      }
       const addKind = e.target.closest("[data-add-kind]");
       if (addKind) { this.openLessonModal(addKind.dataset.sec, addKind.dataset.addKind); return; }
       const insert = e.target.closest("[data-sec-insert]");
