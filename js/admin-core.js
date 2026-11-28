@@ -1421,6 +1421,10 @@ function commerceOnEnroll(user, courseId, couponCode) {
     staff = AdminCore.courseOwnerStaff(courseId);
     if (staff) source = "course_owner";
   }
+  // Any course ownerEmail (sub-admin upload) attributes even if staff roster not hydrated yet.
+  const ownerMail = typeof ownerEmailOf === "function" ? String(ownerEmailOf(course) || "").trim().toLowerCase() : "";
+  if (!staff && ownerMail) source = "course_owner";
+  const creatorEmail = String(staff?.email || ownerMail || "").trim().toLowerCase();
   const oid = uid("ord");
   const tx = "TXN" + Math.random().toString(36).slice(2, 10).toUpperCase();
   const price = Number(course.price || 0);
@@ -1432,19 +1436,21 @@ function commerceOnEnroll(user, courseId, couponCode) {
     saveStore(COUPON_KEY, AdminCore.coupons().map((c) => c.id === coupon.id ? coupon : c));
   }
   const net = Math.max(0, price - discount);
-  orders.push({
+  const at = AdminCore.now();
+  const orderRow = {
     id: oid, email: user.email, name: user.name, courseId, amount: price, discount, tax: 0, net,
-    status: "PAID", coupon: coupon?.code || "", creatorEmail: staff?.email || "", referralCode: attr.code || staff?.referralCode || "",
-    creatorId: staff?.creatorId || "", source, attribAt: AdminCore.now(), tx, at: AdminCore.now()
-  });
+    status: "PAID", coupon: coupon?.code || "", creatorEmail, referralCode: attr.code || staff?.referralCode || "",
+    creatorId: staff?.creatorId || "", source, attribAt: at, tx, at
+  };
+  orders.push(orderRow);
   saveStore(ORDER_KEY, orders);
   const pays = storeList(PAYMENT_KEY);
-  pays.push({ id: uid("pay"), orderId: oid, email: user.email, amount: net, status: "SUCCESS", method: "upi", tx, at: AdminCore.now() });
+  pays.push({ id: uid("pay"), orderId: oid, email: user.email, amount: net, status: "SUCCESS", method: "upi", tx, at });
   saveStore(PAYMENT_KEY, pays);
   const attribs = storeList(ATTRIB_KEY);
   attribs.push({
-    id: uid("at"), creatorId: staff?.creatorId || "", creatorEmail: staff?.email || "", referralCode: attr.code || staff?.referralCode || "",
-    source, attribAt: AdminCore.now(), userId: user.email, orderId: oid, courseId
+    id: uid("at"), creatorId: staff?.creatorId || "", creatorEmail, referralCode: attr.code || staff?.referralCode || "",
+    source, attribAt: at, userId: user.email, orderId: oid, courseId
   });
   saveStore(ATTRIB_KEY, attribs);
   if (staff && (staff.creatorEnabled || staff.referralCode || staff.role === "creator" || staff.role === "subadmin")) {
@@ -1462,16 +1468,19 @@ function commerceOnEnroll(user, courseId, couponCode) {
       list.push({
         id: uid("cm"), creatorEmail: staff.email, student: user.name, studentEmail: user.email, courseId, orderId: oid, transactionId: tx,
         gross: price, discount, tax: 0, net, rule: useType, rate: useRate, amount, refundAdj: 0, final: amount,
-        saleKind, status: "PENDING", created: AdminCore.now(), approved: "", paid: ""
+        saleKind, status: "PENDING", created: at, approved: "", paid: ""
       });
       saveStore(COMMISSION_KEY, list);
     }
   }
-  // Push to shared KV so Control Overview / Analytics update across devices.
+  // Staff Control: full ledger merge. Public checkout: single-sale beacon (any course owner).
   if (typeof scheduleCommercePush === "function") {
     try { scheduleCommercePush(); } catch { /* ignore */ }
   } else if (typeof pushCommerceRemote === "function") {
     try { pushCommerceRemote({ silent: true }); } catch { /* ignore */ }
+  }
+  if (typeof pushCommerceSaleBeacon === "function") {
+    try { pushCommerceSaleBeacon(orderRow); } catch { /* welcome digest still mirrors */ }
   }
   // Same-tab Control refresh (storage events only fire cross-tab).
   try {

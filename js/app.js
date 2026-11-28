@@ -1708,6 +1708,48 @@ function scheduleCommercePush() {
   }, 500);
 }
 
+/**
+ * Public purchase beacon — appends one PAID sale to shared KV without a staff session.
+ * Same trust model as /api/welcome creatorEmail (trusted browser origin).
+ * Used so ANY sub-admin/creator course sale reaches Control across devices.
+ */
+async function pushCommerceSaleBeacon(sale) {
+  if (!sale || !sale.email || !sale.courseId) return { ok: false, skipped: "incomplete" };
+  try {
+    const res = await fetch(COMMERCE_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        sale: {
+          id: sale.id,
+          email: sale.email,
+          studentEmail: sale.email,
+          name: sale.name || "",
+          studentName: sale.name || "",
+          courseId: sale.courseId,
+          amount: sale.amount,
+          net: sale.net != null ? sale.net : sale.amount,
+          discount: sale.discount || 0,
+          status: "PAID",
+          creatorEmail: sale.creatorEmail || "",
+          referralCode: sale.referralCode || "",
+          creatorId: sale.creatorId || "",
+          source: sale.source || "course_owner",
+          tx: sale.tx || "",
+          at: sale.at || new Date().toISOString()
+        }
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: !!(res.ok && data.ok), data };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+window.pushCommerceSaleBeacon = pushCommerceSaleBeacon;
+
 async function hydrateCommerceFromRemote() {
   try {
     const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
@@ -2912,6 +2954,7 @@ function mailEndpoint(path) {
 }
 
 function creatorShareFor(course) {
+  // Any course with an owner (sub-admin upload or seed edit) — not Rehan/slingshot-only.
   const ownerEmail = typeof ownerEmailOf === "function" ? ownerEmailOf(course) : "";
   if (!ownerEmail) return null;
   const staff = (typeof staffList === "function" ? staffList() : []).find((s) => String(s.email || "").toLowerCase() === String(ownerEmail).toLowerCase());
@@ -3271,20 +3314,25 @@ async function hydrateCatalogFromRemote() {
       return getRemoteCatalog();
     }
     setRemoteCatalog(data);
-    // Pin course ownership from KV edits so creatorShareFor / commerce attribution
-    // work on public checkout even before Control courseOwners local map exists.
+    // Pin course ownership from KV edits + extras so ANY sub-admin/creator course
+    // attributes correctly on public checkout (not only seed edits like slingshot).
     try {
-      if (typeof courseOwners === "function" && typeof setCourseOwners === "function" && data.edits) {
+      if (typeof courseOwners === "function" && typeof setCourseOwners === "function") {
         const owners = courseOwners();
         let dirty = false;
-        Object.keys(data.edits).forEach((id) => {
-          const oe = data.edits[id] && data.edits[id].ownerEmail;
-          if (!oe) return;
+        const pin = (id, oe) => {
+          if (!id || !oe) return;
           const mail = String(oe).trim().toLowerCase();
           if (mail && owners[id] !== mail) {
             owners[id] = mail;
             dirty = true;
           }
+        };
+        Object.keys(data.edits || {}).forEach((id) => {
+          pin(id, data.edits[id] && data.edits[id].ownerEmail);
+        });
+        (data.extras || []).forEach((c) => {
+          if (c?.id) pin(c.id, c.ownerEmail);
         });
         if (dirty) setCourseOwners(owners);
       }
@@ -3416,12 +3464,22 @@ function applyCoursePatch(id, fields) {
   if (i >= 0) {
     extra[i] = { ...extra[i], ...fields };
     writeList(EXTRA_COURSES_KEY, extra);
-    scheduleCatalogPush();
-    return;
+  } else {
+    const edits = courseEdits();
+    edits[id] = { ...(edits[id] || {}), ...fields };
+    setCourseEdits(edits);
   }
-  const edits = courseEdits();
-  edits[id] = { ...(edits[id] || {}), ...fields };
-  setCourseEdits(edits);
+  // Keep ownership map in sync for any sub-admin/creator course (commerce attribution).
+  if (fields && fields.ownerEmail && typeof courseOwners === "function" && typeof setCourseOwners === "function") {
+    try {
+      const map = courseOwners();
+      const mail = String(fields.ownerEmail).trim().toLowerCase();
+      if (mail && map[id] !== mail) {
+        map[id] = mail;
+        setCourseOwners(map);
+      }
+    } catch { /* ignore */ }
+  }
   scheduleCatalogPush();
 }
 function courseBannerOf(c) {
@@ -9900,3 +9958,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk230: /rehan link order Course → Community → Instagram → YouTube → Facebook */
 /* cache-bust desk231: Control Overview/Analytics live commerce only — no demo KPI seeds */
 /* cache-bust desk232: shared KV commerce ledger — Rehan digests → Control Overview */
+/* cache-bust desk233: all sub-admin course sales → shared commerce KV */
