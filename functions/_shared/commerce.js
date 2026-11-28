@@ -483,11 +483,24 @@ export async function importDigestsIntoCommerce(env, opts) {
       earning: acc.earning + row.earning
     }), { sales: 0, gross: 0, earning: 0 });
 
+  const allCreators = Object.values(creators).reduce((acc, row) => ({
+    sales: acc.sales + (Number(row.sales) || 0),
+    gross: acc.gross + (Number(row.gross) || 0),
+    earning: acc.earning + (Number(row.earning) || 0),
+    count: acc.count + 1
+  }), { sales: 0, gross: 0, earning: 0, count: 0 });
+
   const digestSummary = {
     scannedAt: new Date().toISOString(),
     digestKeyCount: digestKeys.length,
     saleKeyCount: saleKeys.length,
+    // Per-creator breakdown (every sub-admin / creator with digests).
     creators,
+    creatorCount: allCreators.count,
+    totalSales: allCreators.sales,
+    totalGross: allCreators.gross,
+    totalEarning: allCreators.earning,
+    // Backward-compatible Rehan rollup (also in creators[rrehann3377@gmail.com]).
     rehanSales: rehan.sales,
     rehanGross: rehan.gross,
     rehanEarning: rehan.earning,

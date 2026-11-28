@@ -614,6 +614,11 @@ document.addEventListener("DOMContentLoaded", () => {
     map[id] = course.ownerEmail || s.email;
     setCourseOwners(map);
     COVERS[id] = { bg: "linear-gradient(135deg,#4f46e5,#1e1b4b)", title: course.title.slice(0, 14).toUpperCase(), sub: course.instructor };
+    // Shared KV so any sub-admin course is live for public buy + Control commerce.
+    if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+    else if (typeof pushCatalogRemote === "function") {
+      try { pushCatalogRemote({ silent: true }); } catch { /* ignore */ }
+    }
     f.reset();
     if (!isOwner()) document.getElementById("instructorField").value = s.name;
     toast("Course published");

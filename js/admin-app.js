@@ -1945,6 +1945,11 @@ function bindApp() {
         extra.push({ id, title: f.title.value.trim(), instructor, learners: "0", rating: "4.8", price: Number(f.price.value), old: Number(f.price.value), cat: f.cat.value, cover: id, hours: f.hours.value, lessons: Number(f.lessons.value), description: f.description.value.trim(), ownerEmail: s.email, banner });
         if (!writeList(EXTRA_COURSES_KEY, extra)) return;
         const map = courseOwners(); map[id] = s.email; setCourseOwners(map);
+        // Push to shared catalog so public checkout + commerce attribution see ownerEmail.
+        if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+        else if (typeof pushCatalogRemote === "function") {
+          try { pushCatalogRemote({ silent: true }); } catch { /* ignore */ }
+        }
         AdminCore.audit("course_create", id, "", f.title.value);
         toast("Course published");
         paint();
