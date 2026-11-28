@@ -2519,6 +2519,10 @@ function bootAdminUi() {
       if (typeof hydrateStaffFromRemote === "function") {
         await hydrateStaffFromRemote();
       }
+      // Shared webinar catalog: prune demos + sync Control ↔ public via KV.
+      if (typeof hydrateWebinarsFromRemote === "function") {
+        try { await hydrateWebinarsFromRemote(); } catch { /* local prune still applies */ }
+      }
       // Shared commerce ledger (orders/enrolls) — import digests + remote PAID sales.
       if (typeof hydrateCommerceFromRemote === "function") {
         try { await hydrateCommerceFromRemote(); } catch { /* local commerce still paints */ }
