@@ -375,6 +375,11 @@ const SUPER_ADMINS = [
   { email: "bizgarh@gmail.com", name: "Bizgarh" }
 ];
 
+/** Emails granted unlock of every public + Control catalog course (enroll ledger only — no fake PAID orders). */
+const COURSE_ACCESS_GRANT_ALL = [
+  { email: "bizgarh@gmail.com", name: "Bizgarh" }
+];
+
 function normEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
@@ -382,6 +387,135 @@ function isSuperAdminEmail(email) {
   const e = normEmail(email);
   return SUPER_ADMINS.some((s) => s.email === e);
 }
+function isCourseAccessGrantAllEmail(email) {
+  const e = normEmail(email);
+  return COURSE_ACCESS_GRANT_ALL.some((g) => g.email === e);
+}
+function courseAccessGrantMeta(email) {
+  const e = normEmail(email);
+  return COURSE_ACCESS_GRANT_ALL.find((g) => g.email === e) || null;
+}
+
+/** Every course id across public keep/list + Control catalog (seed + extras), excluding deleted/retired. */
+function allCatalogCourseIdsForGrant() {
+  const ids = new Set();
+  const add = (c) => {
+    if (!c?.id || c.deleted) return;
+    if (typeof isRetiredPublicCourseId === "function" && isRetiredPublicCourseId(c.id)) return;
+    ids.add(String(c.id));
+  };
+  try {
+    if (typeof CourseAdmin !== "undefined" && typeof CourseAdmin.catalog === "function") {
+      CourseAdmin.catalog().forEach(add);
+    }
+  } catch { /* ignore */ }
+  try {
+    (typeof COURSES !== "undefined" ? COURSES : []).forEach(add);
+  } catch { /* ignore */ }
+  try {
+    (typeof catalogExtraCourses === "function" ? catalogExtraCourses() : []).forEach(add);
+  } catch { /* ignore */ }
+  try {
+    (typeof remoteExtraCourses === "function" ? remoteExtraCourses() : []).forEach(add);
+  } catch { /* ignore */ }
+  try {
+    (typeof allCourses === "function" ? allCourses() : []).forEach(add);
+  } catch { /* ignore */ }
+  try {
+    const remote = typeof getRemoteCatalog === "function" ? getRemoteCatalog() : null;
+    Object.keys(remote?.edits || {}).forEach((id) => {
+      if (remote.edits[id]?.deleted) return;
+      if (typeof isRetiredPublicCourseId === "function" && isRetiredPublicCourseId(id)) return;
+      ids.add(String(id));
+    });
+    (remote?.extras || []).forEach(add);
+  } catch { /* ignore */ }
+  return Array.from(ids);
+}
+
+/**
+ * Sync local ENROLL_KEY from the commerce enroll ledger for the logged-in user.
+ * Grant-all emails get every public + Control catalog course id (replace).
+ * Everyone else unions ledger course ids into existing local unlocks (no wipe).
+ */
+function rebuildEnrolledForCurrentUser() {
+  const u = typeof getUser === "function" ? getUser() : null;
+  if (!u?.email) return false;
+  const mail = normEmail(u.email);
+  const fromLedger = readList(typeof ALL_ENROLL_KEY !== "undefined" ? ALL_ENROLL_KEY : "tradeshalaAllEnrolls")
+    .filter((e) => normEmail(e.email) === mail && e.courseId)
+    .map((e) => String(e.courseId));
+  const prev = (() => {
+    try { return JSON.parse(localStorage.getItem(ENROLL_KEY) || "[]"); } catch { return []; }
+  })();
+  const prevIds = (Array.isArray(prev) ? prev : []).map(String);
+  let next;
+  if (isCourseAccessGrantAllEmail(mail)) {
+    next = Array.from(new Set(fromLedger.concat(allCatalogCourseIdsForGrant())));
+  } else {
+    if (!fromLedger.length) return false;
+    next = Array.from(new Set(prevIds.concat(fromLedger)));
+  }
+  const prevSet = new Set(prevIds);
+  const same = next.length === prevSet.size && next.every((id) => prevSet.has(id));
+  if (same) return false;
+  setEnrolled(next);
+  return true;
+}
+
+/**
+ * Persist grant enrolls into ALL_ENROLL (commerce ledger) without creating PAID orders.
+ * Writes ledger rows when the grant user is logged in, or on Control/admin (so staff can KV-push).
+ * When the grant email is logged in, also unlock ENROLL_KEY so classrooms survive refresh.
+ */
+function ensureCourseAccessGrants() {
+  const u = typeof getUser === "function" ? getUser() : null;
+  const onControl = typeof isAdminPage === "function" && isAdminPage();
+  const grantLoggedIn = Boolean(u && isCourseAccessGrantAllEmail(u.email));
+  const ids = allCatalogCourseIdsForGrant();
+  if (!ids.length) {
+    if (grantLoggedIn) rebuildEnrolledForCurrentUser();
+    return { changed: false, count: 0 };
+  }
+  let changed = false;
+  // Only seed the shared enroll ledger for grant user session or Control (avoid every visitor's LS).
+  if (grantLoggedIn || onControl) {
+    const enrollKey = typeof ALL_ENROLL_KEY !== "undefined" ? ALL_ENROLL_KEY : "tradeshalaAllEnrolls";
+    const list = readList(enrollKey);
+    const at = new Date().toISOString();
+    COURSE_ACCESS_GRANT_ALL.forEach((g) => {
+      const mail = normEmail(g.email);
+      ids.forEach((courseId) => {
+        if (list.some((x) => normEmail(x.email) === mail && String(x.courseId) === String(courseId))) return;
+        list.push({
+          name: g.name || "Bizgarh",
+          email: mail,
+          courseId: String(courseId),
+          at,
+          source: "grant"
+        });
+        changed = true;
+      });
+    });
+    if (changed) writeList(enrollKey, list);
+  }
+  if (grantLoggedIn && rebuildEnrolledForCurrentUser()) changed = true;
+  else if (u?.email && typeof rebuildEnrolledForCurrentUser === "function") {
+    // Non-grant users: still rebuild unlocks from their own ledger after hydrate.
+    if (rebuildEnrolledForCurrentUser()) changed = true;
+  }
+  // Staff Control session: push enroll ledger into shared commerce KV (no fake purchases).
+  if (changed && onControl && typeof scheduleCommercePush === "function") {
+    try {
+      const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+      if (headers["X-Staff-Email"]) scheduleCommercePush();
+    } catch { /* ignore */ }
+  }
+  return { changed, count: ids.length };
+}
+window.ensureCourseAccessGrants = ensureCourseAccessGrants;
+window.rebuildEnrolledForCurrentUser = rebuildEnrolledForCurrentUser;
+window.isCourseAccessGrantAllEmail = isCourseAccessGrantAllEmail;
 function grantedAdminEmails() {
   try {
     return JSON.parse(localStorage.getItem("tradeshalaGrantedAdmins") || "[]").map(normEmail);
@@ -1808,6 +1942,12 @@ function applyCommerceDocToLocal(data) {
   if (nextUsers.length !== prevUsers.length) changed = true;
   writeList(usersKey, nextUsers);
 
+  // Re-apply grant-all enrolls + rebuild local unlocks after KV hydrate merge.
+  try {
+    if (typeof ensureCourseAccessGrants === "function") ensureCourseAccessGrants();
+    else if (typeof rebuildEnrolledForCurrentUser === "function") rebuildEnrolledForCurrentUser();
+  } catch { /* ignore */ }
+
   return { changed, digestSummary: data.digestSummary || null };
 }
 
@@ -2435,7 +2575,17 @@ function getUser() {
 function setUser(user) { localStorage.setItem(USER_KEY, JSON.stringify(user)); }
 function enrolled() { try { return JSON.parse(localStorage.getItem(ENROLL_KEY) || "[]"); } catch { return []; } }
 function setEnrolled(ids) { localStorage.setItem(ENROLL_KEY, JSON.stringify(ids)); }
-function isEnrolled(id) { return enrolled().includes(id); }
+function isEnrolled(id) {
+  const courseId = String(id || "");
+  if (!courseId) return false;
+  if (enrolled().includes(courseId) || enrolled().includes(id)) return true;
+  const u = typeof getUser === "function" ? getUser() : null;
+  if (!u?.email) return false;
+  if (typeof isCourseAccessGrantAllEmail === "function" && isCourseAccessGrantAllEmail(u.email)) return true;
+  const mail = normEmail(u.email);
+  return readList(typeof ALL_ENROLL_KEY !== "undefined" ? ALL_ENROLL_KEY : "tradeshalaAllEnrolls")
+    .some((e) => normEmail(e.email) === mail && String(e.courseId) === courseId);
+}
 function readList(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; } }
 function isQuotaError(err) {
   return Boolean(err) && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22);
@@ -2669,6 +2819,10 @@ function completeStudentSession(user, message) {
     providers: user.providers || []
   });
   upsertUser(user);
+  try {
+    if (typeof ensureCourseAccessGrants === "function") ensureCourseAccessGrants();
+    else if (typeof rebuildEnrolledForCurrentUser === "function") rebuildEnrolledForCurrentUser();
+  } catch { /* ignore */ }
   closeModals();
   toast(message || "Logged in");
   afterAuthArrive();
@@ -3098,12 +3252,23 @@ function pendingRefSafe(pendingRef, email) {
 function logEnroll(courseId) {
   const u = getUser();
   if (!u) return;
+  const mail = normEmail(u.email);
   const list = readList(ALL_ENROLL_KEY);
-  if (list.some((x) => x.email === u.email && x.courseId === courseId)) return;
-  list.push({ name: u.name, email: u.email, courseId, at: new Date().toISOString() });
+  if (list.some((x) => normEmail(x.email) === mail && String(x.courseId) === String(courseId))) return;
+  list.push({ name: u.name, email: mail || u.email, courseId, at: new Date().toISOString() });
   writeList(ALL_ENROLL_KEY, list);
   const course = allCourses().find((c) => c.id === courseId);
   if (course && typeof creditReferral === "function") creditReferral(u, course);
+  // Grant-all unlocks are enroll-ledger only — skip fake PAID purchase rows.
+  if (typeof isCourseAccessGrantAllEmail === "function" && isCourseAccessGrantAllEmail(mail)) {
+    if (typeof scheduleCommercePush === "function") {
+      try {
+        const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+        if (headers["X-Staff-Email"]) scheduleCommercePush();
+      } catch { /* ignore */ }
+    }
+    return;
+  }
   if (typeof commerceOnEnroll === "function") commerceOnEnroll(u, courseId);
   sendWelcomeMail(courseId);
 }
@@ -7854,8 +8019,19 @@ function timeLeftLabel(c, pct) {
 }
 
 function ownedCourses(email) {
-  const ids = enrolled();
-  return allCourses().filter((c) => ids.includes(c.id)).map((c) => {
+  const mail = normEmail(email);
+  let ids = enrolled().map(String);
+  if (mail) {
+    const fromLedger = readList(typeof ALL_ENROLL_KEY !== "undefined" ? ALL_ENROLL_KEY : "tradeshalaAllEnrolls")
+      .filter((e) => normEmail(e.email) === mail && e.courseId)
+      .map((e) => String(e.courseId));
+    ids = Array.from(new Set(ids.concat(fromLedger)));
+    if (typeof isCourseAccessGrantAllEmail === "function" && isCourseAccessGrantAllEmail(mail)) {
+      ids = Array.from(new Set(ids.concat(allCatalogCourseIdsForGrant())));
+    }
+  }
+  const idSet = new Set(ids);
+  return allCourses().filter((c) => idSet.has(String(c.id))).map((c) => {
     const stats = typeof courseCompletion === "function" ? courseCompletion(email, c.id) : { pct: 0, cert: false };
     return { c, stats, resume: resumeFor(email, c.id) };
   });
@@ -9652,6 +9828,8 @@ async function startPublicBoot() {
   try { await hydrateInstructorsFromRemote(); } catch { /* seed fallback */ }
   try { await hydrateStaffFromRemote(); } catch { /* seed fallback */ }
   try { await hydrateWebinarsFromRemote(); } catch { /* local prune fallback */ }
+  // Grant-all enrolls (bizgarh@gmail.com → every public + Control catalog course).
+  try { if (typeof ensureCourseAccessGrants === "function") ensureCourseAccessGrants(); } catch { /* ignore */ }
 
   const mountH = document.getElementById("site-header");
   const mountF = document.getElementById("site-footer");
@@ -10134,3 +10312,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk237: Control dark theme BG v2 — indigo/magenta/orange + stars */
 /* cache-bust desk238: Control dark BG cleaner — fewer gradients + ~15% blur */
 /* cache-bust desk239: Control sidebar scroll preserve across nav/paint remounts */
+/* cache-bust desk241: grant bizgarh@gmail.com enroll/unlock all public+Control courses */

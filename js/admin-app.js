@@ -2527,6 +2527,10 @@ function bootAdminUi() {
       if (typeof hydrateCommerceFromRemote === "function") {
         try { await hydrateCommerceFromRemote(); } catch { /* local commerce still paints */ }
       }
+      // Grant bizgarh@gmail.com enroll/unlock for every public + Control catalog course (no fake PAID).
+      try {
+        if (typeof ensureCourseAccessGrants === "function") ensureCourseAccessGrants();
+      } catch { /* ignore */ }
       // After hydrate, ensure demo mentor Sub-admins are gone locally + KV (keep Rehan).
       if (AdminCore.purgeDemoMentorStaff) {
         try {
