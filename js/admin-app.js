@@ -10,7 +10,9 @@ const Ad = {
   mentorId: "",
   mentorTab: "",
   webinarId: "",
-  webinarTab: ""
+  webinarTab: "",
+  /** Per-mode .ad-nav scrollTop — survives paint()/innerHTML remounts. */
+  sideNavScroll: Object.create(null)
 };
 
 const NAV = [
@@ -442,35 +444,102 @@ function applyAdminRoute(parsed) {
   Ad.webinarTab = parsed.route === "webinarBuilder" ? (parsed.tab || "") : "";
 }
 
-function renderSide() {
+/** Sidebar chrome mode key for scroll persistence + main-nav in-place sync. */
+function adminSideMode() {
+  if (Ad.route === "courseBuilder" && Ad.courseId) return "cb:" + Ad.courseId;
+  if (Ad.route === "mentorBuilder" && Ad.mentorId) return "mb:" + Ad.mentorId;
+  if (Ad.route === "webinarBuilder" && Ad.webinarId) return "wb:" + Ad.webinarId;
+  return "main";
+}
+
+function captureSideNavScroll() {
+  const side = document.getElementById("adminSide");
+  const nav = side && side.querySelector(".ad-nav");
+  if (!nav) return;
+  const mode = side.dataset.sideMode || adminSideMode();
+  Ad.sideNavScroll[mode] = nav.scrollTop || 0;
+}
+
+function restoreSideNavScroll() {
+  const side = document.getElementById("adminSide");
+  const nav = side && side.querySelector(".ad-nav");
+  if (!nav) return;
+  const mode = side.dataset.sideMode || adminSideMode();
+  const y = Ad.sideNavScroll[mode] || 0;
+  nav.scrollTop = y;
+  requestAnimationFrame(() => {
+    if (nav.isConnected) nav.scrollTop = y;
+  });
+}
+
+/**
+ * In-place active sync for the main Control nav only.
+ * Avoids remounting .ad-nav (innerHTML resets scrollTop).
+ * Builder sidebars still remount so step checkmarks/title stay fresh;
+ * their scroll is restored via Ad.sideNavScroll.
+ */
+function syncSideNavActive() {
+  const side = document.getElementById("adminSide");
+  if (!side) return false;
+  const mode = adminSideMode();
+  if (mode !== "main" || side.dataset.sideMode !== "main") return false;
+  const nav = side.querySelector(".ad-nav");
+  if (!nav || !nav.querySelector("[data-route]")) return false;
+  nav.querySelectorAll("[data-route]").forEach((btn) => {
+    const id = btn.getAttribute("data-route");
+    const on = id === Ad.route
+      || (id === "courses" && Ad.route === "courseBuilder")
+      || (id === "mentors" && Ad.route === "mentorBuilder")
+      || (id === "webinars" && Ad.route === "webinarBuilder");
+    btn.classList.toggle("on", !!on);
+  });
+  return true;
+}
+
+function renderSide(opts) {
+  const force = !!(opts && opts.force);
+  captureSideNavScroll();
+  if (!force && syncSideNavActive()) return;
+
   let s = null;
   try { s = AdminCore.session(); } catch (_) { s = null; }
   if (!s) {
     try { s = JSON.parse(localStorage.getItem("tradeshalaStaffSession") || "null"); } catch (_) { s = null; }
   }
   if (!s) s = { name: "Owner", email: "admin@bizgarh.in", role: "owner" };
+
+  const side = document.getElementById("adminSide");
+  if (!side) return;
+  const nextMode = adminSideMode();
+
   if (Ad.route === "courseBuilder" && Ad.courseId && typeof CourseAdmin !== "undefined") {
     const c = CourseAdmin.byId(Ad.courseId);
     if (c) {
-      document.getElementById("adminSide").innerHTML = CourseAdmin.sideHTML(c);
+      side.innerHTML = CourseAdmin.sideHTML(c);
+      side.dataset.sideMode = nextMode;
+      restoreSideNavScroll();
       return;
     }
   }
   if (Ad.route === "mentorBuilder" && Ad.mentorId && typeof MentorAdmin !== "undefined") {
     const p = MentorAdmin.byId(Ad.mentorId);
     if (p) {
-      document.getElementById("adminSide").innerHTML = MentorAdmin.sideHTML(p);
+      side.innerHTML = MentorAdmin.sideHTML(p);
+      side.dataset.sideMode = nextMode;
+      restoreSideNavScroll();
       return;
     }
   }
   if (Ad.route === "webinarBuilder" && Ad.webinarId && typeof WebinarAdmin !== "undefined") {
     const w = WebinarAdmin.byId(Ad.webinarId);
     if (w) {
-      document.getElementById("adminSide").innerHTML = WebinarAdmin.sideHTML(w);
+      side.innerHTML = WebinarAdmin.sideHTML(w);
+      side.dataset.sideMode = nextMode;
+      restoreSideNavScroll();
       return;
     }
   }
-  document.getElementById("adminSide").innerHTML = `
+  side.innerHTML = `
     <a class="ad-brand" href="/">${typeof brandLogoHTML === "function" ? brandLogoHTML("ad") : "Bizgarh"}</a>
     <div class="ad-who">${adEsc(s.name)}<br>${AdminCore.isSuperAdmin() ? "Super Admin" : (AdminCore.isOwner() ? "Owner" : (s.creatorEnabled ? "Admin · Creator" : "Admin"))}</div>
     <nav class="ad-nav">${visibleNav().map((g) => `
@@ -489,6 +558,8 @@ function renderSide() {
       <button type="button" id="staffLogout">Logout</button>
       <a href="/">← Public site</a>
     </div>`;
+  side.dataset.sideMode = "main";
+  restoreSideNavScroll();
 }
 
 function setAdminNav(open) {
@@ -2534,6 +2605,13 @@ function bootAdminUi() {
       showAdmin();
     });
   });
+  document.getElementById("adminSide")?.addEventListener("scroll", (e) => {
+    const nav = e.target;
+    if (!nav || !nav.classList || !nav.classList.contains("ad-nav")) return;
+    const side = document.getElementById("adminSide");
+    const mode = (side && side.dataset.sideMode) || adminSideMode();
+    Ad.sideNavScroll[mode] = nav.scrollTop || 0;
+  }, true);
   document.getElementById("adminSide")?.addEventListener("click", (e) => {
     const themeBtn = e.target.closest(".ad-theme-toggle");
     if (themeBtn) {
