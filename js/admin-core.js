@@ -381,6 +381,11 @@ AdminCore.ensureRehanCreator = () => {
   if (i >= 0) list[i] = next;
   else list.push(next);
   writeList(STAFF_KEY, list);
+  // Seed/refresh must reach shared staff KV so other Control devices see Rehan.
+  if (typeof scheduleStaffPush === "function") scheduleStaffPush();
+  else if (typeof pushStaffRemote === "function") {
+    try { pushStaffRemote({ silent: true }); } catch { /* ignore */ }
+  }
 
   // Mirror into instructor catalog edits (same source of truth as /control Staff face).
   if (typeof applyInstructorEdit === "function") {
@@ -441,8 +446,8 @@ AdminCore.ensureRehanCreator = () => {
           languages: ["Hindi", "English"]
         };
         setCourseEdits(edits);
-        if (needLang && typeof scheduleCatalogPush === "function") scheduleCatalogPush();
-        else if (needLang && typeof pushCatalogRemote === "function") {
+        if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+        else if (typeof pushCatalogRemote === "function") {
           try { pushCatalogRemote({ silent: true }); } catch { /* ignore */ }
         }
       }

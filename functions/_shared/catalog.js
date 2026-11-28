@@ -91,6 +91,15 @@ function isPlaceholderSyllabusDoc(doc) {
   return sections.every((sec) => PLACEHOLDER_SECTION_TITLES.has(String(sec?.title || "").toLowerCase()));
 }
 
+function countLessonVdoIds(list) {
+  if (!Array.isArray(list)) return 0;
+  let n = 0;
+  for (const l of list) {
+    if (l && String(l.vdoId || "").trim()) n += 1;
+  }
+  return n;
+}
+
 function curriculumVideosScore(list) {
   if (!Array.isArray(list) || !list.length) return 0;
   if (isPlaceholderLessonList(list)) return 1;
@@ -99,7 +108,9 @@ function curriculumVideosScore(list) {
     const title = String(l?.t || "").toLowerCase();
     if (!PLACEHOLDER_LESSON_TITLES.has(title)) score += 4;
     if (String(l?.kind || "") === "pdf" || l?.pdf || l?.pdfInline) score += 6;
-    if (l?.vdoId || l?.fileKey) score += 5;
+    // VdoCipher DRM ids outrank IndexedDB/R2 fileKey for public play.
+    if (l?.vdoId) score += 12;
+    else if (l?.fileKey) score += 5;
     if (l?.src && !isSampleMediaUrl(l.src)) score += 3;
   }
   return score;
@@ -207,6 +218,12 @@ function mergeCurriculumMaps(incomingVideos, incomingSyllabus, prevVideos, prevS
     const prevList = prevVideos[id];
     if (Array.isArray(nextList)) {
       if (nextList.length && isPlaceholderLessonList(nextList) && curriculumVideosScore(prevList) > 1) {
+        videos[id] = prevList;
+      } else if (
+        countLessonVdoIds(prevList) > countLessonVdoIds(nextList)
+        && curriculumVideosScore(prevList) >= curriculumVideosScore(nextList)
+      ) {
+        // Keep playable DRM ids when another Control tab still has fileKey-only rows.
         videos[id] = prevList;
       } else {
         videos[id] = nextList;
@@ -493,7 +510,8 @@ export function emptyWebinarsDoc() {
     updatedAt: null,
     updatedBy: "",
     webinars: [],
-    deleted: []
+    deleted: [],
+    rooms: {}
   };
 }
 
@@ -514,7 +532,7 @@ function sanitizeWebinarRow(row) {
   return out;
 }
 
-export function normalizeWebinarsDoc(body, actorEmail) {
+export function normalizeWebinarsDoc(body, actorEmail, prevDoc) {
   const src = body && typeof body === "object" ? body : {};
   const webinars = asArray(src.webinars).map(sanitizeWebinarRow).filter(Boolean);
   // Always keep demo ids in deleted so clients never revive them from stale caches.
@@ -522,12 +540,15 @@ export function normalizeWebinarsDoc(body, actorEmail) {
     ...asArray(src.deleted).map((id) => String(id || "").trim()).filter(Boolean),
     ...DEMO_WEBINAR_IDS
   ]));
+  // Preserve Community rooms when an older client omits rooms on PUT.
+  const roomsRaw = src.rooms !== undefined ? src.rooms : (prevDoc && prevDoc.rooms);
   return {
     version: 1,
     updatedAt: new Date().toISOString(),
     updatedBy: String(actorEmail || "").trim().toLowerCase(),
     webinars,
-    deleted
+    deleted,
+    rooms: normalizeRoomsMap(roomsRaw)
   };
 }
 
@@ -555,7 +576,8 @@ export async function writeWebinarsDoc(env, body, actorEmail) {
     err.code = "kv_missing";
     throw err;
   }
-  const doc = normalizeWebinarsDoc(body, actorEmail);
+  const prev = await readWebinarsDoc(env);
+  const doc = normalizeWebinarsDoc(body, actorEmail, prev?.doc || null);
   const payload = JSON.stringify(doc);
   if (payload.length > 20 * 1024 * 1024) {
     const err = new Error("Webinars payload too large");

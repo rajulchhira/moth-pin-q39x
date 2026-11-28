@@ -1628,6 +1628,8 @@ function bindApp() {
       if (!ids.includes(unpub.dataset.unpublish)) ids.push(unpub.dataset.unpublish);
       writeList(HIDDEN_COURSES_KEY, ids);
       AdminCore.audit("course_unpublish", unpub.dataset.unpublish, "live", "unpublished");
+      if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+      else if (typeof pushCatalogRemote === "function") pushCatalogRemote({ silent: true }).catch(() => {});
       toast("Course unpublished");
       paint();
       return;
@@ -1636,6 +1638,8 @@ function bindApp() {
     if (pub && AdminCore.isOwner()) {
       writeList(HIDDEN_COURSES_KEY, hiddenCourseIds().filter((id) => id !== pub.dataset.publish));
       AdminCore.audit("course_publish", pub.dataset.publish, "unpublished", "live");
+      if (typeof scheduleCatalogPush === "function") scheduleCatalogPush();
+      else if (typeof pushCatalogRemote === "function") pushCatalogRemote({ silent: true }).catch(() => {});
       toast("Course published");
       paint();
       return;
@@ -1690,6 +1694,7 @@ function bindApp() {
       const list = AdminCore.commissions().map((c) => c.id === cm.dataset.cm ? { ...c, status: cm.dataset.st, approved: AdminCore.now() } : c);
       writeList(COMMISSION_KEY, list);
       AdminCore.audit("commission_status", cm.dataset.cm, "", cm.dataset.st);
+      if (typeof scheduleCommercePush === "function") scheduleCommercePush();
       paint(); return;
     }
     const po = e.target.closest("[data-po]");
@@ -1702,6 +1707,7 @@ function bindApp() {
         writeList(COMMISSION_KEY, AdminCore.commissions().map((c) => row.commissionIds.includes(c.id) ? { ...c, status: "PAID", paid: AdminCore.now() } : c));
       }
       AdminCore.audit("payout_status", po.dataset.po, "pending", st);
+      if (typeof scheduleCommercePush === "function") scheduleCommercePush();
       paint(); return;
     }
     const callBtn = e.target.closest("[data-call]");
