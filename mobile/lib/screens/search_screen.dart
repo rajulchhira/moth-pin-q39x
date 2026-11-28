@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/sample_data.dart';
 import '../state/app_nav.dart';
+import '../state/catalog_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/course_card.dart';
@@ -70,7 +71,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final results = SampleData.search(query: _query, category: _category);
+    final catalog = CatalogScope.of(context);
+    final results =
+        catalog.search(query: _query, category: _category);
     final libraryTitle = SampleData.libraryLabel(_category);
 
     return SafeArea(
@@ -177,55 +180,64 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
           Expanded(
-            child: results.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'No courses match that filter.',
-                            textAlign: TextAlign.center,
-                            style: bgText(
-                              fontWeight: FontWeight.w700,
-                              color: BgColors.muted,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: () => _setCategory('all'),
-                            child: Text(
-                              'Show all courses',
-                              style: bgText(
-                                fontWeight: FontWeight.w800,
-                                color: BgColors.indigo,
+            child: RefreshIndicator(
+              color: BgColors.indigo,
+              onRefresh: catalog.refresh,
+              child: results.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        const SizedBox(height: 80),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'No courses match that filter.',
+                                textAlign: TextAlign.center,
+                                style: bgText(
+                                  fontWeight: FontWeight.w700,
+                                  color: BgColors.muted,
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () => _setCategory('all'),
+                                child: Text(
+                                  'Show all courses',
+                                  style: bgText(
+                                    fontWeight: FontWeight.w800,
+                                    color: BgColors.indigo,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    )
+                  : ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      itemCount: results.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final course = results[index];
+                        return CourseCard(
+                          course: course,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    CourseDetailScreen(course: course),
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    itemCount: results.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final course = results[index];
-                      return CourseCard(
-                        course: course,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  CourseDetailScreen(course: course),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+            ),
           ),
         ],
       ),

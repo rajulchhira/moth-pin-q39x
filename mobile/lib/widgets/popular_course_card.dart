@@ -5,6 +5,7 @@ import '../models/course.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import 'category_glyph.dart';
+import 'course_cover_image.dart';
 
 /// “Most popular courses” marquee card — horizontal ~3:2 cover, equal sizes.
 /// Layout: gradient/image cover with uppercase topic label; below: bold title,
@@ -23,8 +24,8 @@ class PopularCourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final thumb = course.coverImageAsset;
-    final photo = thumb == null
+    final hasCover = CourseCoverImage.hasCover(course);
+    final photo = !hasCover
         ? SampleData.photoAssetForInstructor(course.instructor)
         : null;
     final colors = course.coverColors.map(Color.new).toList();
@@ -54,13 +55,8 @@ class PopularCourseCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (thumb != null)
-                    Image.asset(
-                      thumb,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.center,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    )
+                  if (hasCover)
+                    CourseCoverImage(course: course)
                   else if (photo != null)
                     Opacity(
                       opacity: 0.42,
@@ -71,7 +67,7 @@ class PopularCourseCard extends StatelessWidget {
                         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                       ),
                     ),
-                  if (thumb != null)
+                  if (hasCover)
                     const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'screens/shell.dart';
 import 'state/auth_state.dart';
+import 'state/catalog_state.dart';
 import 'state/profile_state.dart';
 import 'theme/app_theme.dart';
 import 'theme/colors.dart';
@@ -45,16 +46,24 @@ class BizgarhApp extends StatefulWidget {
 class _BizgarhAppState extends State<BizgarhApp> {
   final AuthState _auth = AuthState(signedIn: false);
   final ProfileState _profile = ProfileState();
+  late final CatalogState _catalog;
   bool _booting = true;
 
   @override
   void initState() {
     super.initState();
+    // Widget tests install TestWidgetsFlutterBinding — skip live HTTP there.
+    final inTest =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    _catalog = CatalogState(autoRefresh: !inTest);
     _boot();
   }
 
   Future<void> _boot() async {
-    await _auth.restore();
+    await Future.wait([
+      _auth.restore(),
+      _catalog.boot(),
+    ]);
     if (_auth.isSignedIn) {
       _profile.applyAccount(name: _auth.name, email: _auth.email);
     }
@@ -65,6 +74,7 @@ class _BizgarhAppState extends State<BizgarhApp> {
   void dispose() {
     _auth.dispose();
     _profile.dispose();
+    _catalog.dispose();
     super.dispose();
   }
 
@@ -76,24 +86,27 @@ class _BizgarhAppState extends State<BizgarhApp> {
       notifier: _auth,
       child: ProfileScope(
         notifier: _profile,
-        child: MaterialApp(
-          title: 'Bizgarh',
-          debugShowCheckedModeBanner: false,
-          theme: light,
-          darkTheme: light,
-          themeMode: ThemeMode.light,
-          home: _booting
-              ? const Scaffold(
-                  backgroundColor: BgColors.canvas,
-                  body: Center(child: CircularProgressIndicator()),
-                )
-              : const AppShell(),
-          builder: (context, child) {
-            return ColoredBox(
-              color: BgColors.canvas,
-              child: child ?? const SizedBox.shrink(),
-            );
-          },
+        child: CatalogScope(
+          notifier: _catalog,
+          child: MaterialApp(
+            title: 'Bizgarh',
+            debugShowCheckedModeBanner: false,
+            theme: light,
+            darkTheme: light,
+            themeMode: ThemeMode.light,
+            home: _booting
+                ? const Scaffold(
+                    backgroundColor: BgColors.canvas,
+                    body: Center(child: CircularProgressIndicator()),
+                  )
+                : const AppShell(),
+            builder: (context, child) {
+              return ColoredBox(
+                color: BgColors.canvas,
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
+          ),
         ),
       ),
     );

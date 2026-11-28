@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../data/sample_data.dart';
 import '../models/course.dart';
 import '../state/app_nav.dart';
 import '../state/auth_state.dart';
+import '../state/catalog_state.dart';
 import '../theme/bg_text.dart';
 import '../theme/colors.dart';
 import '../widgets/course_card.dart';
@@ -108,7 +108,7 @@ class _LearningScreenState extends State<LearningScreen> {
           ] else ...[
             Builder(
               builder: (context) {
-                final items = SampleData.enrolled;
+                final items = CatalogScope.of(context).enrolledForDemo();
                 final ongoing =
                     items.where((e) => e.progress < 1).toList(growable: false);
                 final completed =
