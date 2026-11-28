@@ -1,55 +1,20 @@
 const OWNER = { name: "Platform Owner", email: "admin@bizgarh.in", password: "admin123", role: "owner" };
 
+/** Legacy no-op — Control metrics must never re-seed sample students/enrolls. */
 function seedAdminDemo() {
-  if (localStorage.getItem("tradeshalaAdminSeeded")) return;
-  const users = readList(USERS_KEY);
-  const demo = [
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", password: "student123", created: "2026-08-12T10:00:00.000Z" },
-    { name: "Sneha Bansal", email: "sneha@gmail.com", password: "student123", created: "2026-08-18T10:00:00.000Z" },
-    { name: "Aditya Menon", email: "aditya@gmail.com", password: "student123", created: "2026-09-01T10:00:00.000Z" },
-    { name: "Kavya Iyer", email: "kavya@gmail.com", password: "student123", created: "2026-09-04T10:00:00.000Z" },
-    { name: "Harsh Patel", email: "harsh@gmail.com", password: "student123", created: "2026-09-08T10:00:00.000Z" }
-  ];
-  demo.forEach((u) => {
-    const i = users.findIndex((x) => x.email === u.email);
-    if (i < 0) users.push(u);
-    else if (!users[i].password) users[i] = { ...users[i], password: u.password };
-  });
-  writeList(USERS_KEY, users);
-
-  const enrolls = readList(ALL_ENROLL_KEY);
-  const demoEn = [
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-08-12T11:00:00.000Z" },
-    { name: "Ritesh Kulkarni", email: "ritesh@gmail.com", courseId: "slingshot", at: "2026-08-13T11:00:00.000Z" },
-    { name: "Sneha Bansal", email: "sneha@gmail.com", courseId: "slingshot", at: "2026-08-18T12:00:00.000Z" },
-    { name: "Aditya Menon", email: "aditya@gmail.com", courseId: "slingshot", at: "2026-09-01T09:00:00.000Z" },
-    { name: "Kavya Iyer", email: "kavya@gmail.com", courseId: "slingshot", at: "2026-09-04T14:00:00.000Z" },
-    { name: "Harsh Patel", email: "harsh@gmail.com", courseId: "slingshot", at: "2026-09-08T16:00:00.000Z" }
-  ];
-  demoEn.forEach((e) => {
-    if (!enrolls.some((x) => x.email === e.email && x.courseId === e.courseId)) enrolls.push(e);
-  });
-  writeList(ALL_ENROLL_KEY, enrolls);
-
-  const regs = readList(REGS_KEY);
-  if (!regs.length) {
-    writeList(REGS_KEY, [
-      { id: "w1", name: "Ritesh Kulkarni", email: "ritesh@gmail.com", at: "2026-09-09T08:00:00.000Z" },
-      { id: "w2", name: "Sneha Bansal", email: "sneha@gmail.com", at: "2026-09-10T08:00:00.000Z" }
-    ]);
-  }
-  localStorage.setItem("tradeshalaAdminSeeded", "1");
+  try { localStorage.setItem("tradeshalaAdminSeeded", "1"); } catch { /* ignore */ }
 }
 
 function seedStaffAndAnalytics() {
   seedAdminDemo();
-  seedLms();
+  if (typeof seedLms === "function") seedLms();
   // Do NOT seed MENTORS[] into staff — those fake Sub-admins reappeared after remove.
   // Keep only real staff + Rehan (ensureRehan / migrateStaff); purge any leftover demos.
   if (typeof AdminCore !== "undefined") {
     try { if (AdminCore.migrateStaff) AdminCore.migrateStaff(); } catch { /* ignore */ }
     try { if (AdminCore.ensureRehanCreator) AdminCore.ensureRehanCreator(); } catch { /* ignore */ }
     try { if (AdminCore.purgeDemoMentorStaff) AdminCore.purgeDemoMentorStaff({ push: false }); } catch { /* ignore */ }
+    try { if (AdminCore.purgeDemoCommerce) AdminCore.purgeDemoCommerce(); } catch { /* ignore */ }
   }
   const staff = staffList();
 
@@ -61,39 +26,8 @@ function seedStaffAndAnalytics() {
     }
   });
   setCourseOwners(owners);
-
-  if (localStorage.getItem("tradeshalaAnalyticsV2")) return;
-  const names = [
-    ["Riya Shah", "riya@gmail.com"],
-    ["Omkar Kale", "omkar@gmail.com"],
-    ["Pooja Nair", "pooja@gmail.com"],
-    ["Sahil Khan", "sahil@gmail.com"],
-    ["Dev Joshi", "dev@gmail.com"],
-    ["Mehul Shah", "mehul@gmail.com"]
-  ];
-  const users = readList(USERS_KEY);
-  names.forEach(([name, email]) => {
-    if (!users.some((u) => u.email === email)) {
-      users.push({ name, email, created: new Date(Date.now() - 40 * 86400000).toISOString() });
-    }
-  });
-  writeList(USERS_KEY, users);
-
-  const enrolls = readList(ALL_ENROLL_KEY);
-  const courseIds = allCourses().map((c) => c.id);
-  for (let w = 0; w < 8; w++) {
-    const count = 3 + (w % 3);
-    for (let i = 0; i < count; i++) {
-      const person = names[(w + i) % names.length];
-      const cid = courseIds[(w * 2 + i) % courseIds.length];
-      const at = new Date(Date.now() - (7 - w) * 7 * 86400000 - i * 3600000).toISOString();
-      if (!enrolls.some((e) => e.email === person[1] && e.courseId === cid && e.at === at)) {
-        enrolls.push({ name: person[0], email: person[1], courseId: cid, at });
-      }
-    }
-  }
-  writeList(ALL_ENROLL_KEY, enrolls);
-  localStorage.setItem("tradeshalaAnalyticsV2", "1");
+  // Mark analytics seed as done without writing fake enroll/revenue rows.
+  try { localStorage.setItem("tradeshalaAnalyticsV2", "1"); } catch { /* ignore */ }
 }
 
 function inr(n) { return "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN"); }
