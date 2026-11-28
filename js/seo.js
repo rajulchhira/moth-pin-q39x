@@ -101,6 +101,7 @@
     "/about": { title: "About Bizgarh | Stock Market Classroom for Indian Traders", desc: "Bizgarh is an independent stock market classroom. We teach process, risk, and journals — not tips, PMS, or guaranteed returns." },
     "/terms": { title: "Terms of Usage | Bizgarh", desc: "Bizgarh Terms of Usage for classrooms, live desks, and the learning product." },
     "/privacy": { title: "Privacy Policy | Bizgarh", desc: "Bizgarh Privacy Policy — how we collect, use, store, and protect personal information on our learning platform." },
+    "/data-deletion": { title: "Request Data Deletion | Bizgarh", desc: "Request deletion of your Bizgarh account or personal data — steps for website and Google Play learners." },
     "/refund": { title: "Refund and Cancellation Policy | Bizgarh", desc: "Bizgarh Refund and Cancellation Policy for training programs, course fees, and online learning." },
     "/reviews": { title: "Bizgarh Reviews | Stock Market Course Feedback from Indian Learners", desc: "520 learner notes on Bizgarh stock market courses, webinars, and mentorship desks. Honest classroom feedback, not a highlight reel." },
     "/contact": { title: "Help Centre | Stock Market Course FAQ | Bizgarh", desc: "Search 111 FAQs on enroll, live desks, certificates, and journals — or write desk@bizgarh.com. Help for Bizgarh learners." },

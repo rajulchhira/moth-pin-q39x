@@ -6225,6 +6225,7 @@ function footerHTML() {
             <a href="/contact">Help &amp; Support</a>
             <a href="/terms">Terms of Usage</a>
             <a href="/privacy">Privacy Policy</a>
+            <a href="/data-deletion">Data deletion</a>
             <a href="/refund">Refund Policy</a>
           </div>
         </nav>
