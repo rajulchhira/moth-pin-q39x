@@ -1326,90 +1326,145 @@ function setAdminUploadProgress(form, fraction) {
   if (btn && pct >= 100) btn.textContent = "Saving…";
 }
 
+function normLessonTitleKey(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchVdoLibrary(opts) {
+  const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : { "Content-Type": "application/json" };
+  const q = opts && opts.q ? ("&q=" + encodeURIComponent(opts.q)) : "";
+  const res = await fetch("/api/video/list?limit=100" + q, {
+    method: "GET",
+    credentials: "same-origin",
+    headers
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!data.ok) {
+    const err = new Error(data.error || "Could not list VdoCipher videos");
+    err.code = data.code || "";
+    throw err;
+  }
+  return Array.isArray(data.videos) ? data.videos : [];
+}
+
+/**
+ * Match classroom lessons missing vdoId to VdoCipher library titles (staff).
+ * Sets vdoId + drm:true, clears fileKey/src for linked lessons, pushes KV.
+ */
+async function linkClassroomLessonsToVdoCipher(courseId, opts) {
+  const silent = !!(opts && opts.silent);
+  const headers = typeof catalogStaffHeaders === "function" ? catalogStaffHeaders() : {};
+  if (!headers["X-Staff-Email"]) return { linked: 0, skipped: "no_staff" };
+  const id = String(courseId || "").trim();
+  if (!id) return { linked: 0, skipped: "no_course" };
+  let library = [];
+  try {
+    library = await fetchVdoLibrary();
+  } catch (err) {
+    if (!silent && typeof toast === "function") toast(err.message || "Could not list DRM videos");
+    return { linked: 0, skipped: "list_failed", error: err.message || "" };
+  }
+  if (!library.length) return { linked: 0, skipped: "empty_library" };
+
+  const byTitle = new Map();
+  library.forEach((v) => {
+    const key = normLessonTitleKey(v.title);
+    if (key && !byTitle.has(key)) byTitle.set(key, v);
+  });
+
+  const map = courseVideosMap();
+  const remote = typeof remoteVideosMap === "function" ? remoteVideosMap() : {};
+  const list = Array.isArray(map[id])
+    ? map[id].map((l) => (l && typeof l === "object" ? { ...l } : l))
+    : (Array.isArray(remote[id]) ? remote[id].map((l) => (l && typeof l === "object" ? { ...l } : l)) : []);
+  if (!list.length) return { linked: 0, skipped: "no_lessons" };
+
+  let linked = 0;
+  const unmatched = [];
+  list.forEach((l, i) => {
+    if (!l || (l.kind && l.kind !== "video")) return;
+    if (parseVdoCipherId(l.vdoId)) return;
+    const key = normLessonTitleKey(l.t);
+    const hit = key && byTitle.get(key);
+    if (!hit || !hit.id) {
+      unmatched.push(l.t || ("lesson-" + i));
+      return;
+    }
+    list[i] = {
+      ...l,
+      vdoId: String(hit.id),
+      drm: true,
+      src: "",
+      fileKey: ""
+    };
+    linked += 1;
+  });
+  if (linked) {
+    map[id] = list;
+    setCourseVideosMap(map);
+    try {
+      if (typeof pushCatalogRemote === "function") await pushCatalogRemote({ silent: true });
+    } catch { /* ignore */ }
+    if (!silent && typeof toast === "function") {
+      toast(linked === 1 ? "Linked 1 lesson to VdoCipher DRM" : ("Linked " + linked + " lessons to VdoCipher DRM"));
+    }
+  } else if (!silent && typeof toast === "function") {
+    toast(unmatched.length
+      ? "No title matches in VdoCipher — re-upload with DRM or paste video IDs"
+      : "Lessons already linked to VdoCipher");
+  }
+  return { linked, unmatched };
+}
+
 async function addClassroomLesson(courseId, fields, onProgress) {
   const vdoId = parseVdoCipherId(fields.vdoId || fields.src);
   const src = String(fields.src || "").trim();
   const file = fields.file;
-  const wantDrm = fields.drm === true;
+  // Classroom videos are VdoCipher DRM by default (checkbox on). Never fall back to IndexedDB/R2.
+  const wantDrm = fields.drm !== false;
   if (!file && !src && !vdoId) throw new Error("Choose a video file to upload");
   const lessonId = "v-" + Date.now();
   const lesson = {
     id: lessonId,
     t: String(fields.title || "").trim(),
     dur: String(fields.dur || "").trim() || "video",
-    src: vdoId ? "" : src,
+    src: vdoId ? "" : (wantDrm ? "" : src),
     kind: fields.kind || "video",
     published: fields.published !== false,
     drm: wantDrm
   };
-  if (vdoId) lesson.vdoId = vdoId;
+  if (vdoId) {
+    lesson.vdoId = vdoId;
+    lesson.drm = true;
+    lesson.src = "";
+  }
   if (file && !lesson.vdoId) {
     const kind = String(file.type || "").toLowerCase();
     const name = String(file.name || "").toLowerCase();
     if (kind && !kind.startsWith("video/") && !/\.(mp4|webm|mov|m4v|mkv)$/.test(name)) {
       throw new Error("Choose an MP4 or similar video file");
     }
-    async function storeOpenPlayRemote(progressFrom) {
-      const key = "course-" + courseId + "-" + Date.now();
-      const start = Number(progressFrom) || 0.05;
-      if (typeof putVideoBlob === "function") {
-        try { await putVideoBlob(key, file); } catch { /* local cache optional */ }
-      }
-      if (onProgress) onProgress(start);
-      const up = await putMediaRemote(key, file, (frac) => {
-        if (onProgress) onProgress(start + (1 - start) * frac);
-      });
-      lesson.fileKey = key;
-      lesson.src = up.src || mediaUrlForKey(key);
-      lesson.drm = false;
-      if (onProgress) onProgress(1);
-      return key;
+    if (!wantDrm) {
+      throw new Error("Turn on Protect this video (DRM) — classroom lessons stream via VdoCipher, not open files");
     }
-    if (wantDrm) {
-      try {
-        const up = await fetchVdoUpload(lesson.t || file.name);
-        if (onProgress) onProgress(0.02);
-        await uploadFileToVdo(up, file, onProgress);
-        lesson.vdoId = String(up.videoId);
-        lesson.src = "";
-        lesson.drm = true;
-      } catch (err) {
-        const canOpen = err
-          && (err.code === "NO_DRM" || err.code === "VDO_UPLOADER" || err.code === "UPLOAD");
-        if (canOpen) {
-          try {
-            await storeOpenPlayRemote(0.08);
-            toast(err.code === "VDO_UPLOADER"
-              ? "VdoCipher Uploader permission missing · saved as open play on live media"
-              : "DRM upload failed · saved as open play on live media");
-          } catch (mediaErr) {
-            // Last resort: browser-local only (will NOT play for other learners).
-            if (typeof putVideoBlob !== "function") throw mediaErr;
-            const key = "course-" + courseId + "-" + Date.now();
-            await putVideoBlob(key, file);
-            lesson.fileKey = key;
-            lesson.src = "";
-            lesson.drm = false;
-            toast("Saved on this browser only — live media unavailable (" + (mediaErr.message || "R2") + ")");
-          }
-        } else {
-          throw err;
-        }
+    try {
+      const up = await fetchVdoUpload(lesson.t || file.name);
+      if (onProgress) onProgress(0.02);
+      await uploadFileToVdo(up, file, onProgress);
+      lesson.vdoId = String(up.videoId);
+      lesson.src = "";
+      lesson.fileKey = "";
+      lesson.drm = true;
+      if (onProgress) onProgress(1);
+    } catch (err) {
+      if (err && err.code === "VDO_UPLOADER") {
+        throw new Error("VdoCipher Uploader permission missing. In VdoCipher → Config → API Keys enable Uploader (or Full Access), set VDOCIPHER_API_SECRET on Cloudflare Pages, redeploy, then upload again.");
       }
-    } else {
-      try {
-        await storeOpenPlayRemote(0.05);
-      } catch (mediaErr) {
-        if (typeof putVideoBlob !== "function") throw mediaErr;
-        const key = "course-" + courseId + "-" + Date.now();
-        if (onProgress) onProgress(0.1);
-        await putVideoBlob(key, file);
-        if (onProgress) onProgress(1);
-        lesson.fileKey = key;
-        lesson.src = "";
-        lesson.drm = false;
-        toast("Saved on this browser only — bind MEDIA R2 (bizgarh-media) for live playback");
-      }
+      throw err;
     }
   }
   if (fields.notes) lesson.notes = String(fields.notes || "").trim();
@@ -3968,8 +4023,12 @@ async function hydrateCatalogFromRemote() {
         if (roomsTouched) localStorage.setItem(COURSE_ROOMS_KEY, JSON.stringify(localRooms));
         // Authored local (Intro / Lesson 2–4) always wins over empty or placeholder KV.
         await syncRicherCurriculumToRemote({ silent: true });
-        // IndexedDB fileKey lessons never reach other browsers — push blobs to R2 when present.
-        try { await syncLocalLessonMediaToRemote({ silent: true }); } catch { /* ignore */ }
+        // Link fileKey-only lessons to VdoCipher by title when the DRM library has matches.
+        try {
+          if (typeof linkClassroomLessonsToVdoCipher === "function") {
+            await linkClassroomLessonsToVdoCipher("slingshot", { silent: true });
+          }
+        } catch { /* ignore */ }
         // Pin Slingshot Hindi-as-Original into catalog edits + KV when staff is signed in.
         try { ensureSlingshotHindiOriginal({ push: true }); } catch { /* ignore */ }
       } catch { /* ignore mirror errors */ }
@@ -10566,3 +10625,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk239: Control sidebar scroll preserve across nav/paint remounts */
 /* cache-bust desk241: grant bizgarh@gmail.com enroll/unlock all public+Control courses */
 /* cache-bust desk242: Slingshot/classroom videos via R2 /api/media (fix IndexedDB-only fileKey) */
+/* cache-bust desk244: classroom videos = VdoCipher DRM only (no R2/IndexedDB fallback) */

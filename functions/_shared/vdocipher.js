@@ -58,6 +58,47 @@ export async function createUpload(title) {
   return { videoId: String(data.videoId), clientPayload: data.clientPayload };
 }
 
+/** List videos in the VdoCipher library (for Control to link lesson vdoIds). */
+export async function listVideos({ page, limit, q } = {}) {
+  const secret = vdoSecret();
+  if (!secret) {
+    const err = new Error("VdoCipher is not configured");
+    err.status = 503;
+    throw err;
+  }
+  const params = new URLSearchParams();
+  params.set("page", String(Math.max(1, Number(page) || 1)));
+  params.set("limit", String(Math.min(100, Math.max(1, Number(limit) || 50))));
+  const query = String(q || "").trim();
+  if (query) params.set("q", query.slice(0, 80));
+  const res = await fetch("https://dev.vdocipher.com/api/videos?" + params.toString(), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: "Apisecret " + secret
+    }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || "Could not list DRM videos");
+    err.status = res.status >= 400 ? res.status : 502;
+    throw err;
+  }
+  const rows = Array.isArray(data.rows) ? data.rows
+    : (Array.isArray(data.videos) ? data.videos : (Array.isArray(data) ? data : []));
+  const videos = rows.map((v) => ({
+    id: String(v.id || v.videoId || ""),
+    title: String(v.title || v.name || ""),
+    status: String(v.status || v.upload_status || ""),
+    length: v.length != null ? Number(v.length) : (v.duration != null ? Number(v.duration) : null)
+  })).filter((v) => v.id);
+  return {
+    videos,
+    count: Number(data.count != null ? data.count : videos.length) || videos.length,
+    page: Number(data.page) || Number(page) || 1
+  };
+}
+
 export async function issueOtp({ videoId, name, email }) {
   const secret = vdoSecret();
   if (!secret) {

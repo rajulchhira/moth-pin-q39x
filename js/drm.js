@@ -733,6 +733,7 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
     video.removeAttribute("src");
     hideDrmError();
     loadEl.classList.add("show");
+    // Classroom default: VdoCipher DRM. drm:false is rare open-play only.
     const wantDrm = LESSONS[i].drm !== false;
     const vdoId = typeof parseVdoCipherId === "function"
       ? parseVdoCipherId(LESSONS[i].vdoId || (!LESSONS[i].fileKey ? LESSONS[i].src : ""))
@@ -744,10 +745,19 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
       drm: LESSONS[i].drm,
       vdoId,
       mounted: false,
-      mode: vdoId ? "vdocipher" : (LESSONS[i].fileKey ? "local file (no DRM)" : "direct link (no DRM)")
+      mode: vdoId ? "vdocipher" : (wantDrm ? "drm missing vdoId" : (LESSONS[i].fileKey ? "local file (no DRM)" : "direct link (no DRM)"))
     });
     try {
-      if (wantDrm && vdoId) {
+      if (wantDrm) {
+        if (!vdoId) {
+          clearTimeout(waitTimer);
+          loadEl.classList.remove("show");
+          clearVdo();
+          reportDrmMode({ mode: "drm missing vdoId (fileKey-only lesson)", mounted: false });
+          showDrmError("This lesson has no VdoCipher video id. In /control → Lessons click “Link VdoCipher DRM” (match by title), or re-upload with Protect/DRM on. Do not use IndexedDB/R2 for classroom videos.");
+          toast("Protected lesson needs a VdoCipher id");
+          return;
+        }
         await loadVdoLesson(vdoId);
         loadEl.classList.remove("show");
         showUi();
@@ -756,38 +766,20 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
       clearVdo();
       let playUrl = "";
       let fromBlob = false;
-      if (typeof resolveLessonPlayUrl === "function") {
-        const resolved = await resolveLessonPlayUrl(LESSONS[i]);
-        playUrl = resolved.url || "";
-        fromBlob = !!resolved.blobUrl;
-        if (!playUrl) {
-          clearTimeout(waitTimer);
-          loadEl.classList.remove("show");
-          reportDrmMode({
-            mode: resolved.mode === "missing"
-              ? "media missing on R2 (fileKey only in KV)"
-              : "no playable source",
-            mounted: false
-          });
-          showDrmError(resolved.mode === "missing"
-            ? "This lesson video is not on live media yet. Open /control on the browser that uploaded it (after MEDIA R2 is bound) to sync, or re-upload the file."
-            : "This lesson has no playable video source.");
-          toast("Lesson video unavailable");
-          return;
-        }
+      if (LESSONS[i].src) {
+        playUrl = LESSONS[i].src;
       } else if (LESSONS[i].fileKey && typeof getVideoBlob === "function") {
         const blob = await getVideoBlob(LESSONS[i].fileKey);
-        if (!blob) throw new Error("missing file");
-        blobUrl = URL.createObjectURL(blob);
-        playUrl = blobUrl;
-        fromBlob = true;
-      } else if (LESSONS[i].src) {
-        playUrl = LESSONS[i].src;
+        if (blob) {
+          blobUrl = URL.createObjectURL(blob);
+          playUrl = blobUrl;
+          fromBlob = true;
+        }
       }
       if (!playUrl) {
         clearTimeout(waitTimer);
         loadEl.classList.remove("show");
-        showDrmError("This lesson has no playable video source.");
+        showDrmError("This open-play lesson has no video source.");
         toast("Lesson video unavailable");
         return;
       }
@@ -795,9 +787,9 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
       video.src = playUrl;
     } catch (err) {
       clearVdo();
-      if (vdoId) {
-        clearTimeout(waitTimer);
-        loadEl.classList.remove("show");
+      clearTimeout(waitTimer);
+      loadEl.classList.remove("show");
+      if (wantDrm || vdoId) {
         reportDrmMode({ mode: "DRM failed: " + (err.message || "unknown"), mounted: false });
         showDrmError(err.message || "This DRM lesson could not start.");
         toast("Protected lesson could not start");
@@ -806,8 +798,6 @@ ${hw ? "L1 hardware — capture should go black." : "L3 software — Chrome blac
       if (LESSONS[i].src) {
         video.src = LESSONS[i].src;
       } else {
-        clearTimeout(waitTimer);
-        loadEl.classList.remove("show");
         showDrmError(err.message || "This lesson video could not start.");
         toast("Lesson video unavailable");
         return;

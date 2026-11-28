@@ -432,9 +432,11 @@ const CourseAdmin = {
     if (typeof syncRicherCurriculumToRemote === "function") {
       syncRicherCurriculumToRemote({ silent: true }).catch(() => {});
     }
-    // Push IndexedDB fileKey blobs to R2 whenever Lessons opens (needs MEDIA binding).
-    if (typeof syncLocalLessonMediaToRemote === "function") {
-      syncLocalLessonMediaToRemote({ silent: true }).catch(() => {});
+    // Classroom videos = VdoCipher DRM. Auto-link missing vdoIds by title when library has matches.
+    if (typeof linkClassroomLessonsToVdoCipher === "function" && canEditCourse(c)) {
+      linkClassroomLessonsToVdoCipher(c.id, { silent: true }).then((out) => {
+        if (out && out.linked > 0) paint();
+      }).catch(() => {});
     }
     const sy = syllabusFor(c.id);
     const lessons = lessonsAll(c.id);
@@ -443,18 +445,16 @@ const CourseAdmin = {
     const count = sy.sections.reduce((n, s) => n + (s.items || []).length, 0);
     const firstSec = sy.sections[0]?.id || "";
     const empty = !count;
-    const pendingLive = lessons.filter((l) => {
+    const pendingDrm = lessons.filter((l) => {
       if (!l || (l.kind && l.kind !== "video")) return false;
-      if (l.vdoId) return false;
-      const src = String(l.src || "");
-      if (src && (/^https?:\/\//i.test(src) || src.startsWith("/api/media/"))) return false;
-      return Boolean(l.fileKey) || !src;
+      const id = typeof parseVdoCipherId === "function" ? parseVdoCipherId(l.vdoId) : l.vdoId;
+      return !id;
     });
     const mediaBanner = can && !empty ? `<div class="cb-media-sync" data-course="${adEsc(c.id)}">
-        <p class="muted" style="margin:0 0 8px">${pendingLive.length
-          ? pendingLive.length + " video(s) still need live media (R2). Open this page on the browser that uploaded them, after MEDIA is bound."
-          : "Lesson media looks linked for live playback."}</p>
-        <button type="button" class="btn btn-primary" data-cb-sync-media>Sync videos to live</button>
+        <p class="muted" style="margin:0 0 8px">${pendingDrm.length
+          ? pendingDrm.length + " video(s) missing VdoCipher id (fileKey-only cannot play on live). Link by title from your VdoCipher library, or re-upload with DRM."
+          : "All videos linked to VdoCipher DRM."}</p>
+        <button type="button" class="btn btn-primary" data-cb-link-vdo>Link VdoCipher DRM</button>
         <span class="muted" data-cb-sync-status style="margin-left:10px"></span>
       </div>` : "";
     const list = empty ? `<div class="cb-empty-box">
@@ -858,44 +858,32 @@ const CourseAdmin = {
       if (tab && Ad.courseId) { this.openBuilder(Ad.courseId, tab.dataset.cbTab); return; }
       if (e.target.closest("[data-cb-back]")) { go("courses"); return; }
       if (e.target.closest("[data-cb-import]")) { document.getElementById("cbCsv")?.click(); return; }
-      const syncMedia = e.target.closest("[data-cb-sync-media]");
-      if (syncMedia) {
+      const linkVdo = e.target.closest("[data-cb-link-vdo]");
+      if (linkVdo) {
         e.preventDefault();
         const status = document.querySelector("[data-cb-sync-status]");
-        const btn = syncMedia;
+        const btn = linkVdo;
+        const courseId = Ad.courseId || linkVdo.closest("[data-course]")?.dataset.course;
         btn.disabled = true;
-        if (status) status.textContent = "Checking live media…";
+        if (status) status.textContent = "Listing VdoCipher library…";
         (async () => {
           try {
-            const ready = typeof mediaRemoteReady === "function" ? await mediaRemoteReady() : false;
-            if (!ready) {
-              if (status) status.textContent = "MEDIA R2 not bound yet";
-              toast("Create R2 bucket bizgarh-media and bind MEDIA on Pages, then redeploy");
+            if (typeof linkClassroomLessonsToVdoCipher !== "function") {
+              toast("Link helper missing — hard-refresh Control");
               return;
             }
-            if (status) status.textContent = "Uploading local videos…";
-            if (typeof syncLocalLessonMediaToRemote !== "function") {
-              toast("Sync helper missing — hard-refresh Control");
-              return;
-            }
-            const out = await syncLocalLessonMediaToRemote({ silent: false });
-            if (out.skipped === "no_staff") {
-              toast("Sign in as staff in Control first");
-            } else if (out.skipped === "media_missing") {
-              toast("MEDIA R2 binding missing on live");
-            } else if (!(out.synced > 0)) {
-              toast("No local video files to sync on this browser — re-upload or use the original upload browser");
-            } else {
-              paint();
-            }
+            const out = await linkClassroomLessonsToVdoCipher(courseId, { silent: false });
+            if (out.linked > 0) paint();
             if (status) {
-              status.textContent = out.synced > 0
-                ? ("Synced " + out.synced)
-                : (out.skipped ? String(out.skipped) : "Nothing to sync here");
+              status.textContent = out.linked > 0
+                ? ("Linked " + out.linked)
+                : (out.skipped === "empty_library"
+                  ? "VdoCipher library empty — fix Uploader & re-upload"
+                  : (out.skipped || "No new matches"));
             }
           } catch (err) {
-            if (status) status.textContent = "Sync failed";
-            toast(err.message || "Could not sync videos");
+            if (status) status.textContent = "Link failed";
+            toast(err.message || "Could not link VdoCipher videos");
           } finally {
             btn.disabled = false;
           }
