@@ -27,7 +27,8 @@ android {
 
     defaultConfig {
         applicationId = "com.bizgarh.bizgarh_mobile"
-        minSdk = flutter.minSdkVersion
+        // Play Automatic Protection requires minSdk >= 24 (was Flutter default 21).
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
