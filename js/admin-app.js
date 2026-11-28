@@ -63,8 +63,8 @@ const NAV = [
 /** Control desk theme — same localStorage pattern as CRM (`crmTheme`). */
 const CONTROL_THEME_KEY = "controlTheme";
 const CONTROL_THEME_BG = {
-  light: "/img/control-theme/bg-light.jpg?v=desk237",
-  dark: "/img/control-theme/bg-dark.jpg?v=desk237"
+  light: "/img/control-theme/bg-light.jpg?v=desk238",
+  dark: "/img/control-theme/bg-dark.jpg?v=desk238"
 };
 
 function getControlTheme() {

@@ -43,7 +43,7 @@ html.control-html[data-control-theme="light"] {
   position: relative;
   overflow-x: clip;
 }
-/* Fixed mesh backdrop — photo Ken Burns + CSS washes (CRM motion feel, desk237) */
+/* Fixed mesh backdrop — photo Ken Burns + CSS washes (CRM motion feel, desk238) */
 .ad-mesh {
   position: fixed;
   inset: 0;
@@ -57,7 +57,7 @@ html.control-html[data-control-theme="light"] {
   inset: -18%;
   width: 136%;
   height: 136%;
-  background-image: url("/img/control-theme/bg-light.jpg?v=desk237");
+  background-image: url("/img/control-theme/bg-light.jpg?v=desk238");
   background-size: cover;
   background-position: 50% 45%;
   background-repeat: no-repeat;
@@ -67,7 +67,7 @@ html.control-html[data-control-theme="light"] {
   animation-play-state: running;
 }
 html.control-html[data-control-theme="dark"] .ad-mesh-photo {
-  background-image: url("/img/control-theme/bg-dark.jpg?v=desk237");
+  background-image: url("/img/control-theme/bg-dark.jpg?v=desk238");
   opacity: 0.88;
 }
 .ad-mesh-layer {

@@ -9964,3 +9964,4 @@ else setTimeout(startPublicBoot, 0);
 /* cache-bust desk235: Control dark BG re-extract — pure starry+aurora, no Astro UI */
 /* cache-bust desk236: merge sub-admin commerce sync onto theme desk */
 /* cache-bust desk237: Control dark theme BG v2 — indigo/magenta/orange + stars */
+/* cache-bust desk238: Control dark BG cleaner — fewer gradients + ~15% blur */
